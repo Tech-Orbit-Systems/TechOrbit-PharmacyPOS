@@ -19,7 +19,7 @@ express.use(bodyParser.json());
 express.use(bodyParser.urlencoded({ extended: false }));
 express.use(limiter);
 
-express.all("/*", function (req, res, next) {
+express.all("/{*path}", function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
     res.header(
