@@ -5,6 +5,8 @@ const bodyParser = require("body-parser");
 const rateLimit = require("express-rate-limit");
 const pkg = require("./package.json");
 const {app} = require('electron');
+const { getDatabase } = require("./infrastructure/sqlite/runtime");
+const { createSqliteSalesRouter } = require("./api/v2/sqlite-sales");
 process.env.APPDATA = app.getPath('appData');
 process.env.APPNAME = pkg.name;
 const PORT = Number(process.env.PORT || 3210);
@@ -42,6 +44,7 @@ express.use("/api/customers", require("./api/customers"));
 express.use("/api/categories", require("./api/categories"));
 express.use("/api/settings", require("./api/settings"));
 express.use("/api/users", require("./api/users"));
+express.use("/api/v2/sales", createSqliteSalesRouter({ getDatabase }));
 express.use("/api", require("./api/transactions"));
 
 server.listen(PORT, () => {
