@@ -22,12 +22,13 @@ describe("SQLite pharmacy foundation", () => {
 
   test("runs migrations once and enables foreign keys", () => {
     expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
-    expect(db.prepare("SELECT count(*) AS count FROM SchemaMigrations").get().count).toBe(1);
+    const migrationCount = db.prepare("SELECT count(*) AS count FROM SchemaMigrations").get().count;
+    expect(migrationCount).toBeGreaterThanOrEqual(2);
     expect(() => db.exec("PRAGMA wal_checkpoint(TRUNCATE)")).not.toThrow();
 
     db.close();
     db = openDatabase({ filename: path.join(tempDir, "test.sqlite3") });
-    expect(db.prepare("SELECT count(*) AS count FROM SchemaMigrations").get().count).toBe(1);
+    expect(db.prepare("SELECT count(*) AS count FROM SchemaMigrations").get().count).toBe(migrationCount);
   });
 
   test("creates and finds a product by barcode", () => {

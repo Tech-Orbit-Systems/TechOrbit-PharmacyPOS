@@ -22,7 +22,7 @@
     "archiver": "^7.0.1",
     "async": "^3.2.4",
     "bcrypt": "npm:bcryptjs@^2.4.3",
-    "better-sqlite3": "^12.2.0",
+    "better-sqlite3": "^13.0.3",
     "body-parser": "^2.3.0",
     "dompurify": "^3.4.13",
     "electron-context-menu": "^3.6.1",
@@ -62,13 +62,14 @@
     "immutable": "3.8.3",
     "socket.io-parser": "^4.2.7",
     "tar": "^7.5.11",
-    "node-abi": "^4.28.0",
+    "node-abi": "^4.35.0",
     "@xmldom/xmldom": "^0.8.12",
     "terser": "^5.39.2",
     "@tootallnate/once": "^3.0.1",
     "@octokit/plugin-paginate-rest": "^9.2.2",
     "@octokit/request": "^8.4.1",
-    "@octokit/request-error": "^5.1.1"
+    "@octokit/request-error": "^5.1.1",
+    "electron": "37.10.3"
   },
   "resolutions": {
     "@malept/cross-spawn-promise": "1.1.1",
@@ -99,7 +100,8 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
-    "test": "jest"
+    "test": "jest",
+    "migrate:inventory": "node migration/run-nedb-to-sqlite.js"
   },
   "browserslist": {
     "production": [
@@ -124,7 +126,7 @@
     "@electron-forge/publisher-github": "^7.11.1",
     "browser-sync": "^3.0.3",
     "cross-env": "^7.0.3",
-    "electron": "^43.3.0",
+    "electron": "37.10.3",
     "electron-is-dev": "^2.0.0",
     "electron-log": "^4.4.8",
     "electron-reloader": "^1.2.3",

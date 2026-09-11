@@ -1,0 +1,13 @@
+const fs = require("fs"); const os = require("os"); const path = require("path");
+const { openDatabase } = require("../infrastructure/sqlite/database");
+const { migrateLegacyInventory, parseNeDb } = require("../migration/nedb-to-sqlite");
+describe("NeDB to SQLite inventory migration", () => {
+  let tempDir; let sourceFile; let db;
+  beforeEach(() => { tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "techorbit-migrate-")); sourceFile = path.join(tempDir, "inventory.db");
+    fs.writeFileSync(sourceFile, [JSON.stringify({ _id: 101, name: "Paracetamol", barcode: 12345, price: "12.50", quantity: "7", minStock: "2", expirationDate: "2028-05-31", supplier: "Medi Supply", category: "Tablet" }), JSON.stringify({ _id: 102, name: "Vitamin C", barcode: 12345, price: "5", quantity: 0, expirationDate: "bad-date", supplier: "Medi Supply" })].join("\n")); db = openDatabase({ filename: path.join(tempDir, "target.sqlite3") }); });
+  afterEach(() => { db.close(); fs.rmSync(tempDir, { recursive: true, force: true }); });
+  test("dry-run reports mappings without writing", () => { const report = migrateLegacyInventory({ db, sourceFile }); expect(report).toMatchObject({ mode: "dry-run", productCount: 2, openingQuantity: 7, supplierCount: 1 }); expect(report.warnings).toHaveLength(2); expect(db.prepare("SELECT count(*) AS count FROM Products").get().count).toBe(0); });
+  test("commit creates products, opening batch and balanced opening movement", () => { const report = migrateLegacyInventory({ db, sourceFile, commit: true }); expect(report).toMatchObject({ mode: "commit", productCount: 2, openingQuantity: 7, supplierCount: 1 }); expect(db.prepare("SELECT count(*) AS count FROM Products").get().count).toBe(2); expect(db.prepare("SELECT default_sale_price_minor FROM Products WHERE legacy_source_id = '101'").get().default_sale_price_minor).toBe(1250); expect(db.prepare("SELECT sum(quantity_on_hand) AS total FROM ProductBatches").get().total).toBe(7); expect(db.prepare("SELECT sum(quantity_delta) AS total FROM InventoryMovements").get().total).toBe(7); });
+  test("same source cannot be imported twice", () => { migrateLegacyInventory({ db, sourceFile, commit: true }); expect(() => migrateLegacyInventory({ db, sourceFile, commit: true })).toThrow("already been imported"); });
+  test("NeDB tombstones remove earlier documents", () => { expect(parseNeDb(`${JSON.stringify({ _id: 1, name: "Old" })}\n${JSON.stringify({ $$deleted: true, _id: 1 })}`)).toEqual([]); });
+});
