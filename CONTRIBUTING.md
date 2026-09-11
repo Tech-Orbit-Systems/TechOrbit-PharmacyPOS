@@ -1,6 +1,6 @@
-# Contributing to PharmaSpot
+# Contributing to TechOrbit Pharmacy POS
 
-Thank you for considering contributing to PharmaSpot! We welcome your help and appreciate your interest in improving this project.
+Thank you for considering contributing to TechOrbit Pharmacy POS. We welcome focused changes aligned with the documented architecture and roadmap.
 
 ## Getting Started
 
@@ -9,14 +9,14 @@ Thank you for considering contributing to PharmaSpot! We welcome your help and a
 
 ## Issues
 
-Before contributing, check the [issue tracker](https://github.com/drkNsubuga/PharmaSpot/issues) for existing issues. If your issue or feature request is not already documented, feel free to open a new issue.
+Before contributing, check the [issue tracker](https://github.com/Tech-Orbit-Systems/TechOrbit-PharmacyPOS/issues) for existing issues. If your issue or feature request is not already documented, open a new issue.
 
 ## Development Setup
 
 1. Clone your fork of the repository:
    ```bash
-   git clone (https://github.com/drkNsubuga/PharmaSpot.git
-   cd PharmaSpot
+   git clone https://github.com/Tech-Orbit-Systems/TechOrbit-PharmacyPOS.git
+   cd TechOrbit-PharmacyPOS
    ```
 
 2. Install dependencies:

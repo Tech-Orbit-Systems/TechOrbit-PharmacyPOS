@@ -42,8 +42,8 @@ module.exports = {
       name: '@electron-forge/publisher-github',
       config: {
         repository: {
-          owner: 'drkNsubuga',
-          name: 'PharmaSpot',
+          owner: 'Tech-Orbit-Systems',
+          name: 'TechOrbit-PharmacyPOS',
           draft: true,
         },
       },

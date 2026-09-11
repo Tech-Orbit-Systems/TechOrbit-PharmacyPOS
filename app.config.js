@@ -1,8 +1,8 @@
 /*app.config.js*/
 let appConfig = {
-	UPDATE_SERVER: "https://download.pharmaspot.patternsdigital.com",
-	// about 
-	COPYRIGHT_YEAR: "2022",
+	// Keep automatic updates disabled until a signed Tech Orbit release endpoint exists.
+	UPDATE_SERVER: "",
+	COPYRIGHT_YEAR: "2026",
 }
 
 module.exports={appConfig}
