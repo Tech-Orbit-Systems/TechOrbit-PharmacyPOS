@@ -1,11 +1,12 @@
 const http = require("http");
+const path = require("path");
 const express = require("express")();
 const server = http.createServer(express);
 const bodyParser = require("body-parser");
 const rateLimit = require("express-rate-limit");
 const pkg = require("./package.json");
 const {app} = require('electron');
-const { getDatabase } = require("./infrastructure/sqlite/runtime");
+const { getDatabase, getSqliteFilename } = require("./infrastructure/sqlite/runtime");
 const { createSqliteSalesRouter } = require("./api/v2/sqlite-sales");
 const { createSqliteProductsRouter } = require("./api/v2/sqlite-products");
 const { createProductImportRouter } = require("./api/v2/sqlite-product-import");
@@ -16,6 +17,7 @@ const { createExpensesRouter } = require("./api/v2/sqlite-expenses");
 const { createCashClosingRouter } = require("./api/v2/sqlite-cash-closing");
 const { createCustomerAccountsRouter } = require("./api/v2/sqlite-customer-accounts");
 const { createStockAdjustmentsRouter } = require("./api/v2/sqlite-stock-adjustments");
+const { createBackupsRouter } = require("./api/v2/sqlite-backups");
 process.env.APPDATA = app.getPath('appData');
 process.env.APPNAME = pkg.name;
 const PORT = Number(process.env.PORT || 3210);
@@ -63,6 +65,7 @@ express.use("/api/v2/expenses", createExpensesRouter({ getDatabase }));
 express.use("/api/v2/closing", createCashClosingRouter({ getDatabase }));
 express.use("/api/v2/customer-accounts", createCustomerAccountsRouter({ getDatabase }));
 express.use("/api/v2/stock-adjustments", createStockAdjustmentsRouter({ getDatabase }));
+express.use("/api/v2/backups", createBackupsRouter({ getDatabase, getDatabaseFile: getSqliteFilename, getBackupDir: () => path.join(process.env.APPDATA, process.env.APPNAME, "backups") }));
 express.use("/api", require("./api/transactions"));
 
 server.listen(PORT, () => {
