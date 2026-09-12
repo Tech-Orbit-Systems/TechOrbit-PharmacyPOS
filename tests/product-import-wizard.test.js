@@ -2,6 +2,7 @@ const {
   MAX_PRODUCT_IMPORT_BYTES,
   canManageProductImport,
   formatFileSize,
+  normalizeDuplicatePolicy,
   validateProductImportFile,
 } = require("../assets/js/product-import-wizard");
 
@@ -37,6 +38,13 @@ describe("product import wizard", () => {
     expect(formatFileSize(512)).toBe("512 B");
     expect(formatFileSize(1536)).toBe("1.5 KB");
     expect(formatFileSize(2 * 1024 * 1024)).toBe("2.0 MB");
+  });
+
+  test("normalizes duplicate policy to the safe default", () => {
+    expect(normalizeDuplicatePolicy("skip")).toBe("skip");
+    expect(normalizeDuplicatePolicy("update")).toBe("update");
+    expect(normalizeDuplicatePolicy("delete")).toBe("error");
+    expect(normalizeDuplicatePolicy()).toBe("error");
   });
 
   test("rejects filenames that only contain the xlsx suffix as part of another extension", () => {

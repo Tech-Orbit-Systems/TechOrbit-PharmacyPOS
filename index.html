@@ -634,6 +634,15 @@
                             </a>
                         </div>
                         <div class="form-group">
+                            <label for="productImportDuplicatePolicy">If barcode or SKU already exists</label>
+                            <select id="productImportDuplicatePolicy" class="form-control">
+                                <option value="error" selected>Stop and report it as an error (recommended)</option>
+                                <option value="skip">Skip the existing product</option>
+                                <option value="update">Update the existing product master</option>
+                            </select>
+                            <p id="productImportPolicyHelp" class="help-block">Safest option: no existing product data will change.</p>
+                        </div>
+                        <div class="form-group">
                             <label for="productImportFile">Completed Excel file (.xlsx)</label>
                             <input id="productImportFile" type="file" class="form-control" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
                             <p class="help-block">Maximum file size: 8 MB. The original file remains unchanged.</p>

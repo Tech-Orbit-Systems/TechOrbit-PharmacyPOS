@@ -1,4 +1,13 @@
 const MAX_PRODUCT_IMPORT_BYTES = 8 * 1024 * 1024;
+const DUPLICATE_POLICY_HELP = {
+  error: "Safest option: no existing product data will change.",
+  skip: "Existing products stay unchanged; only new products will be imported.",
+  update: "Existing product master fields and sale units will be updated after confirmation.",
+};
+
+function normalizeDuplicatePolicy(value) {
+  return Object.prototype.hasOwnProperty.call(DUPLICATE_POLICY_HELP, value) ? value : "error";
+}
 
 function canManageProductImport(user) {
   if (!user) return false;
@@ -46,6 +55,11 @@ class ProductImportWizard {
     $("#productImportButton").show();
     $("#productImportTemplate").attr("href", `${this.apiBase}/v2/imports/products/template`);
     $("#productImportFile").on("change", event => this.handleFileSelection(event));
+    $("#productImportDuplicatePolicy").on("change", event => {
+      const policy = normalizeDuplicatePolicy(event.target.value);
+      $("#productImportPolicyHelp").text(DUPLICATE_POLICY_HELP[policy]);
+      this.clearPreview();
+    });
     $("#productImportPreviewButton").on("click", () => this.preview());
     $("#productImportModal").on("hidden.bs.modal", () => this.reset());
     return true;
@@ -75,7 +89,7 @@ class ProductImportWizard {
     button.prop("disabled", true).text("Validating...");
     const body = new FormData();
     body.append("file", file, file.name);
-    body.append("duplicatePolicy", "error");
+    body.append("duplicatePolicy", normalizeDuplicatePolicy(this.$("#productImportDuplicatePolicy").val()));
     if (this.user && this.user._id) body.append("createdBy", this.user._id);
     try {
       const response = await fetch(`${this.apiBase}/v2/imports/products/preview`, { method: "POST", body });
@@ -127,8 +141,10 @@ class ProductImportWizard {
 
 module.exports = {
   MAX_PRODUCT_IMPORT_BYTES,
+  DUPLICATE_POLICY_HELP,
   ProductImportWizard,
   canManageProductImport,
   formatFileSize,
+  normalizeDuplicatePolicy,
   validateProductImportFile,
 };
