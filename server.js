@@ -12,6 +12,7 @@ const { createProductImportRouter } = require("./api/v2/sqlite-product-import");
 const { createOpeningStockImportRouter } = require("./api/v2/sqlite-opening-stock-import");
 const { createPurchasePaymentsRouter } = require("./api/v2/sqlite-purchase-payments");
 const { createPurchaseReturnsRouter } = require("./api/v2/sqlite-purchase-returns");
+const { createExpensesRouter } = require("./api/v2/sqlite-expenses");
 process.env.APPDATA = app.getPath('appData');
 process.env.APPNAME = pkg.name;
 const PORT = Number(process.env.PORT || 3210);
@@ -55,6 +56,7 @@ express.use("/api/v2/imports/products", createProductImportRouter({ getDatabase 
 express.use("/api/v2/imports/opening-stock", createOpeningStockImportRouter({ getDatabase }));
 express.use("/api/v2/purchase-payments", createPurchasePaymentsRouter({ getDatabase }));
 express.use("/api/v2/purchase-returns", createPurchaseReturnsRouter({ getDatabase }));
+express.use("/api/v2/expenses", createExpensesRouter({ getDatabase }));
 express.use("/api", require("./api/transactions"));
 
 server.listen(PORT, () => {

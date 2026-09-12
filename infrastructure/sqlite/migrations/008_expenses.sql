@@ -1,0 +1,4 @@
+CREATE TABLE ExpenseCategories(id INTEGER PRIMARY KEY,name TEXT NOT NULL UNIQUE,active INTEGER NOT NULL DEFAULT 1 CHECK(active IN(0,1)),created_at TEXT NOT NULL);
+CREATE TABLE Expenses(id INTEGER PRIMARY KEY,category_id INTEGER NOT NULL REFERENCES ExpenseCategories(id),amount_minor INTEGER NOT NULL CHECK(amount_minor>0),method TEXT NOT NULL,expense_date TEXT NOT NULL,vendor TEXT,description TEXT NOT NULL,idempotency_key TEXT NOT NULL UNIQUE,status TEXT NOT NULL CHECK(status IN('posted','void')),created_by INTEGER REFERENCES Users(id),created_at TEXT NOT NULL,voided_at TEXT,voided_by INTEGER REFERENCES Users(id),void_reason TEXT);
+CREATE INDEX idx_expenses_date_status ON Expenses(expense_date,status,id);
+INSERT INTO ExpenseCategories(name,created_at) VALUES ('Rent',datetime('now')),('Utilities',datetime('now')),('Salaries',datetime('now')),('Transport',datetime('now')),('Miscellaneous',datetime('now'));
