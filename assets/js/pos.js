@@ -6,6 +6,8 @@ const notiflix = require("notiflix");
 const validator = require("validator");
 const DOMPurify = require("dompurify");
 const _ = require("lodash");
+const { SqliteCounterClient } = require("./sqlite-counter-client");
+const { catalogProductToCart, buildSqliteSale } = require("./counter-sale-mapper");
 let fs = require("fs");
 let path = require("path");
 let moment = require("moment");
@@ -58,6 +60,8 @@ let auth_empty = "Please enter a username and password";
 let holdOrderlocation = $("#renderHoldOrders");
 let customerOrderLocation = $("#renderCustomerOrders");
 let storage = new Store();
+const sqliteCounterEnabled = SqliteCounterClient.isEnabled({ getItem: key => storage.get(key) });
+const sqliteCounterClient = new SqliteCounterClient({ baseUrl: "http://" + host + ":" + port + "/api/v2" });
 let settings;
 let platform;
 let user = {};
@@ -421,6 +425,27 @@ if (auth == undefined) {
       let req = {
         skuCode: $("#skuCode").val(),
       };
+
+      if (sqliteCounterEnabled) {
+        sqliteCounterClient.barcodeLookup(req.skuCode).then(function (product) {
+          $(".search-barcode-btn").html(searchBarCodeIcon);
+          if (product.sellableBaseQuantity < 1) {
+            notiflix.Report.info("Out of stock!", "This item is currently unavailable", "Ok");
+            return;
+          }
+          $(this).addProductToCart(catalogProductToCart(product));
+          $("#searchBarCode").get(0).reset();
+          $("#basic-addon2").html('<i class="glyphicon glyphicon-ok"></i>');
+          if (product.prescriptionRequired) notiflix.Notify.warning(`${product.name} requires a prescription check`);
+          if (product.controlledMedicine) notiflix.Notify.warning(`${product.name} is a controlled medicine`);
+        }).catch(function (error) {
+          $(".search-barcode-btn").html(searchBarCodeIcon);
+          $("#basic-addon2").html('<i class="glyphicon glyphicon-remove"></i>');
+          if (error.status === 404) notiflix.Report.warning("Not Found!", `<b>${DOMPurify.sanitize(req.skuCode)}</b> is not a valid barcode!`, "Ok");
+          else notiflix.Report.failure("Lookup failed", error.message, "Ok");
+        });
+        return;
+      }
 
       $.ajax({
         url: api + "inventory/product/sku",
@@ -918,6 +943,27 @@ if (auth == undefined) {
         user: user.fullname,
         user_id: user._id,
       };
+
+      if (sqliteCounterEnabled && status === 1 && holdOrder === 0) {
+        let sqliteSale;
+        try { sqliteSale = buildSqliteSale({ orderNumber, cart, paymentType, discount, soldAt: currentTime }); }
+        catch (error) { $(".loading").hide(); notiflix.Report.failure("Checkout blocked", error.message, "Ok"); return; }
+        sqliteCounterClient.postSale(sqliteSale).then(function (posted) {
+          return sqliteCounterClient.receipt(posted.saleId);
+        }).then(function () {
+          cart = [];
+          receipt = DOMPurify.sanitize(receipt,{ ALLOW_UNKNOWN_PROTOCOLS: true });
+          $("#viewTransaction").html(receipt);
+          $("#orderModal").modal("show");
+          $(".loading").hide(); $("#dueModal").modal("hide"); $("#paymentModel").modal("hide");
+          $(this).renderTable(cart);
+        }).catch(function (error) {
+          $(".loading").hide();
+          notiflix.Report.failure("Sale not completed", error.message, "Ok");
+        });
+        $("#refNumber").val(""); $("#change").text(""); $("#payment,#paymentText").val("");
+        return;
+      }
 
       $.ajax({
         url: api + "new",

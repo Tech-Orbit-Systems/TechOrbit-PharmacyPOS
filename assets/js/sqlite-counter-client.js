@@ -5,7 +5,7 @@ class SqliteCounterClient {
   productSearch(term,limit=30) { return this.request(`/products/search?q=${encodeURIComponent(term)}&limit=${limit}`); }
   postSale(sale) { return this.request("/sales",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(sale)}); }
   receipt(saleId) { return this.request(`/sales/${encodeURIComponent(saleId)}/receipt`); }
-  static isEnabled(storage=globalThis.localStorage) { return storage?.getItem("techorbit.sqliteCounterEnabled")==="true"; }
+  static isEnabled(storage=globalThis.localStorage) { const value=storage?.getItem("techorbit.sqliteCounterEnabled"); return value===true||value==="true"; }
 }
 if(typeof module!=="undefined")module.exports={SqliteCounterClient};
 if(typeof window!=="undefined")window.SqliteCounterClient=SqliteCounterClient;
