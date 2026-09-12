@@ -1,0 +1,11 @@
+const express=require("express");const multer=require("multer");
+const {ProductImportService}=require("../../infrastructure/sqlite/services/product-import");
+const {parseWorkbookBuffer,createProductTemplate}=require("../../infrastructure/import/product-import-files");
+const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:8*1024*1024,files:1}});
+function createProductImportRouter({getDatabase}){const router=express.Router();
+ router.get("/template",async(req,res)=>{try{const buffer=await createProductTemplate();res.set({"content-type":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","content-disposition":"attachment; filename=techorbit-product-import-template.xlsx"}).send(buffer);}catch(error){res.status(500).json({error:"TEMPLATE_FAILED",message:"Template could not be generated"});}});
+ router.post("/preview",upload.single("file"),async(req,res)=>{try{if(!req.file)throw new Error("Excel file is required");if(!/\.xlsx$/i.test(req.file.originalname))throw new Error("Only .xlsx files are supported in this preview");const rows=await parseWorkbookBuffer(req.file.buffer);if(rows.length>5000)throw new Error("A maximum of 5000 product rows is allowed per import");const result=new ProductImportService(getDatabase()).preview({rows,sourceName:req.file.originalname,sourceBuffer:req.file.buffer,duplicatePolicy:req.body.duplicatePolicy||"error",createdBy:req.body.createdBy?Number(req.body.createdBy):null});res.status(201).json({...result,rows:result.rows.slice(0,200),previewTruncated:result.rows.length>200});}catch(error){res.status(422).json({error:"IMPORT_PREVIEW_FAILED",message:error.message});}});
+ router.post("/:jobId/commit",(req,res)=>{try{res.json(new ProductImportService(getDatabase()).commit(Number(req.params.jobId)));}catch(error){const conflict=/already committed|not available/i.test(error.message);res.status(conflict?409:422).json({error:"IMPORT_COMMIT_FAILED",message:error.message});}});
+ router.get("/:jobId/errors",(req,res)=>{const rows=getDatabase().prepare("SELECT row_number,raw_json,errors_json FROM ImportRows WHERE import_job_id=? AND action='error' ORDER BY row_number").all(Number(req.params.jobId)).map(row=>({rowNumber:row.row_number,raw:JSON.parse(row.raw_json),errors:JSON.parse(row.errors_json)}));res.json(rows);});
+ return router;}
+module.exports={createProductImportRouter};

@@ -8,6 +8,7 @@ const {app} = require('electron');
 const { getDatabase } = require("./infrastructure/sqlite/runtime");
 const { createSqliteSalesRouter } = require("./api/v2/sqlite-sales");
 const { createSqliteProductsRouter } = require("./api/v2/sqlite-products");
+const { createProductImportRouter } = require("./api/v2/sqlite-product-import");
 process.env.APPDATA = app.getPath('appData');
 process.env.APPNAME = pkg.name;
 const PORT = Number(process.env.PORT || 3210);
@@ -47,6 +48,7 @@ express.use("/api/settings", require("./api/settings"));
 express.use("/api/users", require("./api/users"));
 express.use("/api/v2/sales", createSqliteSalesRouter({ getDatabase }));
 express.use("/api/v2/products", createSqliteProductsRouter({ getDatabase }));
+express.use("/api/v2/imports/products", createProductImportRouter({ getDatabase }));
 express.use("/api", require("./api/transactions"));
 
 server.listen(PORT, () => {
