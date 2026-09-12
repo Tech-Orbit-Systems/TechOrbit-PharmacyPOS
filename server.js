@@ -13,6 +13,7 @@ const { createOpeningStockImportRouter } = require("./api/v2/sqlite-opening-stoc
 const { createPurchasePaymentsRouter } = require("./api/v2/sqlite-purchase-payments");
 const { createPurchaseReturnsRouter } = require("./api/v2/sqlite-purchase-returns");
 const { createExpensesRouter } = require("./api/v2/sqlite-expenses");
+const { createCashClosingRouter } = require("./api/v2/sqlite-cash-closing");
 process.env.APPDATA = app.getPath('appData');
 process.env.APPNAME = pkg.name;
 const PORT = Number(process.env.PORT || 3210);
@@ -57,6 +58,7 @@ express.use("/api/v2/imports/opening-stock", createOpeningStockImportRouter({ ge
 express.use("/api/v2/purchase-payments", createPurchasePaymentsRouter({ getDatabase }));
 express.use("/api/v2/purchase-returns", createPurchaseReturnsRouter({ getDatabase }));
 express.use("/api/v2/expenses", createExpensesRouter({ getDatabase }));
+express.use("/api/v2/closing", createCashClosingRouter({ getDatabase }));
 express.use("/api", require("./api/transactions"));
 
 server.listen(PORT, () => {

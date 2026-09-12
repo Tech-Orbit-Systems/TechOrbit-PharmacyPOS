@@ -35,6 +35,8 @@ Before production rehearsal, correct the legacy `stock` flag mapping and expand 
 
 ## Phase 3 — Pharmacy operations
 
+Backend increments completed: supplier payable settlement, supplier purchase returns, expense ledger, cash shifts and rolling six-month period closing. Front-end implementation is intentionally parked pending the dedicated UI/UX discussion.
+
 - Supplier and purchase receiving workflows.
 - Batch/expiry/FEFO stock handling.
 - Returns, expenses, cash shifts and closing.

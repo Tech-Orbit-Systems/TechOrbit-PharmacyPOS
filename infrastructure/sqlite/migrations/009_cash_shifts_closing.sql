@@ -1,0 +1,4 @@
+CREATE TABLE CashShifts(id INTEGER PRIMARY KEY,user_id INTEGER REFERENCES Users(id),device_id TEXT NOT NULL,opened_at TEXT NOT NULL,opening_cash_minor INTEGER NOT NULL CHECK(opening_cash_minor>=0),status TEXT NOT NULL CHECK(status IN('open','closed')),closed_at TEXT,expected_cash_minor INTEGER,counted_cash_minor INTEGER,variance_minor INTEGER,notes TEXT,created_at TEXT NOT NULL);
+CREATE UNIQUE INDEX idx_cash_shift_one_open ON CashShifts(user_id,device_id) WHERE status='open';
+CREATE INDEX idx_cash_shifts_time ON CashShifts(opened_at,closed_at,status);
+CREATE TABLE PeriodClosings(id INTEGER PRIMARY KEY,period_type TEXT NOT NULL CHECK(period_type IN('month','six_month')),period_start TEXT NOT NULL,period_end TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'closed' CHECK(status='closed'),totals_json TEXT NOT NULL,closed_at TEXT NOT NULL,closed_by INTEGER REFERENCES Users(id),notes TEXT,UNIQUE(period_type,period_start,period_end));

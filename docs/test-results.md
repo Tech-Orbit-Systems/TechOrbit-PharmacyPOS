@@ -1,5 +1,13 @@
 # Test Results
 
+## 2026-09-12 - Operations backend
+
+- Supplier payments: partial/final payment, idempotency, overpayment rollback and ledger reconciliation verified.
+- Purchase returns: source-line limits, available-stock protection, payable credit and atomic rollback verified.
+- Expenses: post, idempotency, money out, controlled void, reversal and audit verified.
+- Closing: cash ledger expectation, variance, duplicate close protection, six consecutive months and immutable period snapshot verified.
+- Final regression: 24 suites and 88 tests passed before Windows packaging.
+
 ## 2026-09-12 - Import workflow
 
 - Product Master: template, `.xlsx` validation, preview cap, complete CSV errors, duplicate policies and atomic commit verified.

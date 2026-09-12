@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-12 - Pharmacy operations backend
+
+- Added idempotent supplier payable settlements with partial/final reconciliation.
+- Added atomic supplier purchase returns with batch stock reversal, payable credits and refunds.
+- Added categorized, auditable expenses with cash-out and controlled void reversal.
+- Added cash shifts, expected/count variance, immutable period closings and six-month summaries.
+
 ## 2026-09-12 - Bulk import workflow
 
 - Added admin-only Product Master import wizard with template, preview, duplicate policies, lifecycle status and CSV errors.
