@@ -38,4 +38,8 @@ describe("product import wizard", () => {
     expect(formatFileSize(1536)).toBe("1.5 KB");
     expect(formatFileSize(2 * 1024 * 1024)).toBe("2.0 MB");
   });
+
+  test("rejects filenames that only contain the xlsx suffix as part of another extension", () => {
+    expect(validateProductImportFile({ name: "products.xlsx.exe", size: 100 })).toMatchObject({ valid: false });
+  });
 });

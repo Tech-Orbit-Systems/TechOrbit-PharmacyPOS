@@ -639,6 +639,20 @@
                             <p class="help-block">Maximum file size: 8 MB. The original file remains unchanged.</p>
                         </div>
                         <div id="productImportFileInfo" class="alert alert-warning" role="status">No file selected.</div>
+                        <div id="productImportPreview" style="display:none">
+                            <hr>
+                            <div class="row m-b-15">
+                                <div class="col-sm-8"><h4>Validation Preview</h4><p id="productImportSummary" class="text-muted"></p></div>
+                                <div class="col-sm-4 text-right"><a id="productImportErrorsDownload" class="btn btn-danger" href="#" style="display:none"><i class="fa fa-download"></i> Download Error Report</a></div>
+                            </div>
+                            <div class="table-responsive" style="max-height:340px;overflow:auto">
+                                <table class="table table-bordered table-striped table-condensed">
+                                    <thead><tr><th>Row</th><th>Status</th><th>SKU</th><th>Barcode</th><th>Name</th><th>Issues</th></tr></thead>
+                                    <tbody id="productImportPreviewRows"></tbody>
+                                </table>
+                            </div>
+                            <p id="productImportPreviewLimit" class="help-block"></p>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>

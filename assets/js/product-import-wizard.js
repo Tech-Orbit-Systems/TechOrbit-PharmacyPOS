@@ -46,6 +46,7 @@ class ProductImportWizard {
     $("#productImportButton").show();
     $("#productImportTemplate").attr("href", `${this.apiBase}/v2/imports/products/template`);
     $("#productImportFile").on("change", event => this.handleFileSelection(event));
+    $("#productImportPreviewButton").on("click", () => this.preview());
     $("#productImportModal").on("hidden.bs.modal", () => this.reset());
     return true;
   }
@@ -55,6 +56,7 @@ class ProductImportWizard {
     const result = validateProductImportFile(file);
     const info = this.$("#productImportFileInfo");
     this.$("#productImportPreviewButton").prop("disabled", !result.valid);
+    this.clearPreview();
     info.removeClass("alert-success alert-danger alert-warning");
     if (result.valid) {
       info.addClass("alert-success").text(`${result.name} (${result.displaySize}) is ready for preview.`);
@@ -64,7 +66,56 @@ class ProductImportWizard {
     return result;
   }
 
+  async preview() {
+    const input = this.$("#productImportFile")[0];
+    const file = input && input.files && input.files[0];
+    const validation = validateProductImportFile(file);
+    if (!validation.valid) return this.handleFileSelection({ target: input });
+    const button = this.$("#productImportPreviewButton");
+    button.prop("disabled", true).text("Validating...");
+    const body = new FormData();
+    body.append("file", file, file.name);
+    body.append("duplicatePolicy", "error");
+    if (this.user && this.user._id) body.append("createdBy", this.user._id);
+    try {
+      const response = await fetch(`${this.apiBase}/v2/imports/products/preview`, { method: "POST", body });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || "The workbook could not be validated.");
+      this.renderPreview(payload);
+      return payload;
+    } catch (error) {
+      this.clearPreview();
+      this.$("#productImportFileInfo").removeClass("alert-success alert-warning").addClass("alert-danger").text(error.message);
+      return null;
+    } finally {
+      button.prop("disabled", false).html('Refresh Preview <i class="fa fa-refresh"></i>');
+    }
+  }
+
+  renderPreview(result) {
+    const $ = this.$;
+    const rows = $("#productImportPreviewRows").empty();
+    (result.rows || []).forEach(row => {
+      const tr = $("<tr>");
+      const values = [row.rowNumber, row.action, row.normalized && row.normalized.sku, row.normalized && row.normalized.barcode, row.normalized && row.normalized.name, (row.errors || []).join("; ")];
+      values.forEach(value => $("<td>").text(value == null ? "" : String(value)).appendTo(tr));
+      if (row.action === "error") tr.addClass("danger");
+      tr.appendTo(rows);
+    });
+    $("#productImportSummary").text(`${result.totalRows} rows checked: ${result.validRows} valid, ${result.errorRows} errors, ${result.skippedRows} skipped.`);
+    $("#productImportPreviewLimit").text(result.previewTruncated ? "Showing the first 200 rows. The error report contains every validation error." : `Showing all ${(result.rows || []).length} preview rows.`);
+    $("#productImportErrorsDownload").attr("href", `${this.apiBase}/v2/imports/products/${result.jobId}/errors.csv`).toggle(Number(result.errorRows) > 0);
+    $("#productImportPreview").show();
+  }
+
+  clearPreview() {
+    this.$("#productImportPreview").hide();
+    this.$("#productImportPreviewRows").empty();
+    this.$("#productImportErrorsDownload").hide().attr("href", "#");
+  }
+
   reset() {
+    this.clearPreview();
     this.$("#productImportFile").val("");
     this.$("#productImportPreviewButton").prop("disabled", true);
     this.$("#productImportFileInfo")
