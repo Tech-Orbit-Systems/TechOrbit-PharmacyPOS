@@ -629,6 +629,13 @@
                             Use the official Excel template. Nothing is saved until preview validation succeeds and you confirm the import.
                         </div>
                         <div class="form-group">
+                            <label for="productImportType">Import type</label>
+                            <select id="productImportType" class="form-control">
+                                <option value="products">Product Master</option>
+                                <option value="opening-stock">Opening Stock (batch-aware)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <a id="productImportTemplate" class="btn btn-default" href="#">
                                 <i class="fa fa-download"></i> Download Excel Template
                             </a>

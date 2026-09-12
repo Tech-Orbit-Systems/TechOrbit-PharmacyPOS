@@ -69,6 +69,13 @@ class ProductImportWizard {
     $("#productImportButton").show();
     $("#productImportTemplate").attr("href", `${this.apiBase}/v2/imports/products/template`);
     $("#productImportFile").on("change", event => this.handleFileSelection(event));
+    $("#productImportType").on("change", event => {
+      const opening = event.target.value === "opening-stock";
+      $("#productImportDuplicatePolicy").closest(".form-group").toggle(!opening);
+      $("#productImportTitle").text(opening ? "Opening Stock Import" : "Product Master Import");
+      $("#productImportTemplate").attr("href", `${this.apiBase}/v2/imports/${event.target.value}/template`);
+      this.reset();
+    });
     $("#productImportDuplicatePolicy").on("change", event => {
       const policy = normalizeDuplicatePolicy(event.target.value);
       $("#productImportPolicyHelp").text(DUPLICATE_POLICY_HELP[policy]);
@@ -110,7 +117,8 @@ class ProductImportWizard {
     body.append("duplicatePolicy", normalizeDuplicatePolicy(this.$("#productImportDuplicatePolicy").val()));
     if (this.user && this.user._id) body.append("createdBy", this.user._id);
     try {
-      const response = await fetch(`${this.apiBase}/v2/imports/products/preview`, { method: "POST", body });
+      const importType = this.$("#productImportType").val() || "products";
+      const response = await fetch(`${this.apiBase}/v2/imports/${importType}/preview`, { method: "POST", body });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || "The workbook could not be validated.");
       this.renderPreview(payload);
@@ -140,7 +148,8 @@ class ProductImportWizard {
     });
     $("#productImportSummary").text(`${result.totalRows} rows checked: ${result.validRows} valid, ${result.errorRows} errors, ${result.skippedRows} skipped.`);
     $("#productImportPreviewLimit").text(result.previewTruncated ? "Showing the first 200 rows. The error report contains every validation error." : `Showing all ${(result.rows || []).length} preview rows.`);
-    $("#productImportErrorsDownload").attr("href", `${this.apiBase}/v2/imports/products/${result.jobId}/errors.csv`).toggle(Number(result.errorRows) > 0);
+    const importType = this.$("#productImportType").val() || "products";
+    $("#productImportErrorsDownload").attr("href", `${this.apiBase}/v2/imports/${importType}/${result.jobId}/errors.csv`).toggle(Number(result.errorRows) > 0);
     $("#productImportPreview").show();
     $("#productImportCommitButton").toggle(Number(result.errorRows) === 0).prop("disabled", Number(result.errorRows) !== 0);
   }
@@ -151,7 +160,8 @@ class ProductImportWizard {
     this.setStatus("committing");
     this.$("#productImportCommitButton").prop("disabled", true);
     try {
-      const response = await fetch(`${this.apiBase}/v2/imports/products/${this.currentJob.jobId}/commit`, { method: "POST" });
+      const importType = this.$("#productImportType").val() || "products";
+      const response = await fetch(`${this.apiBase}/v2/imports/${importType}/${this.currentJob.jobId}/commit`, { method: "POST" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || "The import could not be completed.");
       this.setStatus("success", `${payload.committedRows} products imported successfully; ${payload.skippedRows} skipped.`);
