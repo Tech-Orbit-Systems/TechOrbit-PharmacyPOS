@@ -8,6 +8,7 @@ const DOMPurify = require("dompurify");
 const _ = require("lodash");
 const { SqliteCounterClient } = require("./sqlite-counter-client");
 const { catalogProductToCart, buildSqliteSale } = require("./counter-sale-mapper");
+const { ProductImportWizard } = require("./product-import-wizard");
 let fs = require("fs");
 let path = require("path");
 let moment = require("moment");
@@ -267,6 +268,8 @@ if (auth == undefined) {
     if (0 == user.perm_settings) {
       $(".p_five").hide();
     }
+
+    new ProductImportWizard({ $, user, apiBase: api }).init();
 
     function loadProducts() {
       $.get(api + "inventory/products", function (data) {

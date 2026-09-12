@@ -41,6 +41,9 @@
                                 <i class="fa fa-plus"></i>
                             </button>
                         </div>
+                        <button id="productImportButton" data-toggle="modal" data-target="#productImportModal" type="button" class="btn btn-primary waves-effect waves-light product-import-admin" style="display:none">
+                            <span class="btn-label"><i class="fa fa-upload"></i></span> Import
+                        </button>
                         <div class="btn-group p_two">
                             <button id="categoryModal" data-toggle="modal" data-target="#Categories" type="button" class="btn btn-success waves-effect waves-light">
                                 <span class="btn-label"><i class="glyphicon glyphicon-th"></i> </span> Categories
@@ -604,6 +607,44 @@
                             </thead>
                             <tbody id="product_list"></tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="productImportModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="productImportTitle" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                        <h4 class="modal-title" id="productImportTitle"><i class="fa fa-upload"></i> Product Master Import</h4>
+                    </div>
+                    <div class="modal-body p-20">
+                        <div class="row text-center m-b-20" aria-label="Import progress">
+                            <div class="col-xs-3"><strong class="text-primary">1. Select file</strong></div>
+                            <div class="col-xs-3 text-muted">2. Preview</div>
+                            <div class="col-xs-3 text-muted">3. Review</div>
+                            <div class="col-xs-3 text-muted">4. Import</div>
+                        </div>
+                        <div class="alert alert-info">
+                            Use the official Excel template. Nothing is saved until preview validation succeeds and you confirm the import.
+                        </div>
+                        <div class="form-group">
+                            <a id="productImportTemplate" class="btn btn-default" href="#">
+                                <i class="fa fa-download"></i> Download Excel Template
+                            </a>
+                        </div>
+                        <div class="form-group">
+                            <label for="productImportFile">Completed Excel file (.xlsx)</label>
+                            <input id="productImportFile" type="file" class="form-control" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                            <p class="help-block">Maximum file size: 8 MB. The original file remains unchanged.</p>
+                        </div>
+                        <div id="productImportFileInfo" class="alert alert-warning" role="status">No file selected.</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                        <button id="productImportPreviewButton" type="button" class="btn btn-primary" disabled>
+                            Continue to Preview <i class="fa fa-arrow-right"></i>
+                        </button>
                     </div>
                 </div>
             </div>
