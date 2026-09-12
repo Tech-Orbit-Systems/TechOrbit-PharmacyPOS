@@ -1,0 +1,3 @@
+CREATE TABLE StockAdjustments(id INTEGER PRIMARY KEY,adjustment_type TEXT NOT NULL CHECK(adjustment_type IN('gain','loss','disposal')),idempotency_key TEXT NOT NULL UNIQUE,occurred_at TEXT NOT NULL,reason TEXT NOT NULL,created_by INTEGER REFERENCES Users(id),role_code TEXT,created_at TEXT NOT NULL);
+CREATE TABLE StockAdjustmentItems(id INTEGER PRIMARY KEY,adjustment_id INTEGER NOT NULL REFERENCES StockAdjustments(id),product_id INTEGER NOT NULL REFERENCES Products(id),batch_id INTEGER NOT NULL REFERENCES ProductBatches(id),quantity_delta NUMERIC NOT NULL CHECK(quantity_delta<>0),previous_quantity NUMERIC NOT NULL,new_quantity NUMERIC NOT NULL CHECK(new_quantity>=0));
+CREATE INDEX idx_stock_adjustment_items_batch ON StockAdjustmentItems(batch_id,adjustment_id);
