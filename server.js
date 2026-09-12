@@ -19,6 +19,8 @@ const { createCustomerAccountsRouter } = require("./api/v2/sqlite-customer-accou
 const { createStockAdjustmentsRouter } = require("./api/v2/sqlite-stock-adjustments");
 const { createBackupsRouter } = require("./api/v2/sqlite-backups");
 const { createAuthRouter } = require("./api/v2/sqlite-auth");
+const { createPurchasesRouter } = require("./api/v2/sqlite-purchases");
+const { createReconciliationRouter } = require("./api/v2/sqlite-reconciliation");
 const { loadOrCreateSecret, createAuthMiddleware, requirePermission } = require("./infrastructure/security/session-auth");
 process.env.APPDATA = app.getPath('appData');
 process.env.APPNAME = pkg.name;
@@ -76,6 +78,8 @@ express.use("/api/v2/closing", ...secure("closing.create"), createCashClosingRou
 express.use("/api/v2/customer-accounts", ...secure("dues.manage"), createCustomerAccountsRouter({ getDatabase }));
 express.use("/api/v2/stock-adjustments", ...secure("stock.adjust"), createStockAdjustmentsRouter({ getDatabase }));
 express.use("/api/v2/backups", ...secure("backup.manage"), createBackupsRouter({ getDatabase, getDatabaseFile: getSqliteFilename, getBackupDir: () => path.join(process.env.APPDATA, process.env.APPNAME, "backups") }));
+express.use("/api/v2/purchases", ...secure("purchase.manage"), createPurchasesRouter({ getDatabase }));
+express.use("/api/v2/reconciliation", ...secure("audit.view"), createReconciliationRouter({ getDatabase }));
 express.use("/api", require("./api/transactions"));
 
 server.listen(PORT, () => {
