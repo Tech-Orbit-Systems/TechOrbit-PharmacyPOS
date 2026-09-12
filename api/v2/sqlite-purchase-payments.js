@@ -1,0 +1,3 @@
+const express=require("express");const {PurchasePaymentsService}=require("../../infrastructure/sqlite/services/purchase-payments");
+function createPurchasePaymentsRouter({getDatabase}){const router=express.Router();router.get("/payables",(req,res)=>{try{res.json(new PurchasePaymentsService(getDatabase()).listOpen(req.query.supplierId?Number(req.query.supplierId):null));}catch(error){res.status(422).json({error:"PAYABLE_QUERY_FAILED",message:error.message});}});router.post("/",(req,res)=>{try{const result=new PurchasePaymentsService(getDatabase()).post(req.body);res.status(result.idempotent?200:201).json(result);}catch(error){res.status(422).json({error:"PURCHASE_PAYMENT_FAILED",message:error.message});}});return router;}
+module.exports={createPurchasePaymentsRouter};
