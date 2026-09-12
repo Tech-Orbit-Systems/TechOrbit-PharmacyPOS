@@ -648,6 +648,10 @@
                             <p class="help-block">Maximum file size: 8 MB. The original file remains unchanged.</p>
                         </div>
                         <div id="productImportFileInfo" class="alert alert-warning" role="status">No file selected.</div>
+                        <div id="productImportStatus" style="display:none" aria-live="polite">
+                            <div class="progress m-b-5"><div id="productImportProgressBar" class="progress-bar progress-bar-striped active" style="width:100%"></div></div>
+                            <p id="productImportStatusText" class="text-muted"></p>
+                        </div>
                         <div id="productImportPreview" style="display:none">
                             <hr>
                             <div class="row m-b-15">
@@ -667,6 +671,9 @@
                         <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                         <button id="productImportPreviewButton" type="button" class="btn btn-primary" disabled>
                             Continue to Preview <i class="fa fa-arrow-right"></i>
+                        </button>
+                        <button id="productImportCommitButton" type="button" class="btn btn-success" style="display:none" disabled>
+                            <i class="fa fa-check"></i> Confirm Import
                         </button>
                     </div>
                 </div>

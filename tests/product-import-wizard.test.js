@@ -3,6 +3,7 @@ const {
   canManageProductImport,
   formatFileSize,
   normalizeDuplicatePolicy,
+  importStatusPresentation,
   validateProductImportFile,
 } = require("../assets/js/product-import-wizard");
 
@@ -45,6 +46,13 @@ describe("product import wizard", () => {
     expect(normalizeDuplicatePolicy("update")).toBe("update");
     expect(normalizeDuplicatePolicy("delete")).toBe("error");
     expect(normalizeDuplicatePolicy()).toBe("error");
+  });
+
+  test("maps import lifecycle to clear status and busy state", () => {
+    expect(importStatusPresentation("validating")).toMatchObject({ busy: true, style: "progress-bar-info" });
+    expect(importStatusPresentation("ready")).toMatchObject({ busy: false, style: "progress-bar-success" });
+    expect(importStatusPresentation("blocked")).toMatchObject({ busy: false, style: "progress-bar-danger" });
+    expect(importStatusPresentation("unknown")).toMatchObject({ busy: false, style: "progress-bar-danger" });
   });
 
   test("rejects filenames that only contain the xlsx suffix as part of another extension", () => {
