@@ -52,6 +52,8 @@ Current increments completed: atomic sales/catalog APIs, default-off counter wir
 
 ## Phase 5 — UI modernization
 
+Pre-UI backend readiness gate completed on 2026-09-13. Begin UI/UX discussion before adding or changing front-end screens. The UI must remain a client of tested v2 contracts.
+
 - Establish design tokens and reusable components after workflows and schema are stable.
 - Redesign incrementally without changing domain behavior.
 - Optimize keyboard and barcode-scanner operation for pharmacy counters.

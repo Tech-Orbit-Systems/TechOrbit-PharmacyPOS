@@ -1,5 +1,11 @@
 # Test Results
 
+## 2026-09-13 - Pre-UI readiness gate
+
+- Customer accounts/returns, stock adjustments, backup/restore, session security and reconciliation verified.
+- Full regression result before final Windows package: 31 suites and 99 tests passed.
+- Security enforcement is feature-gated until the final UI adopts signed v2 sessions.
+
 ## 2026-09-12 - Operations backend
 
 - Supplier payments: partial/final payment, idempotency, overpayment rollback and ledger reconciliation verified.

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-13 - Pre-UI backend readiness
+
+- Added customer receivable collection and batch-traceable customer returns.
+- Added controlled stock adjustments and expired/damaged disposal.
+- Added checksummed SQLite backup, integrity verification and offline restore rehearsal.
+- Added signed v2 sessions, strong password changes, permission middleware and local-only CORS.
+- Added purchase API completeness and cross-ledger reconciliation reporting.
+
 ## 2026-09-12 - Pharmacy operations backend
 
 - Added idempotent supplier payable settlements with partial/final reconciliation.
