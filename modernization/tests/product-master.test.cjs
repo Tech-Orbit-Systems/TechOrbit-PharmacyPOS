@@ -1,0 +1,20 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const {randomUUID}=require('node:crypto');
+const {openDatabase}=require('../../infrastructure/sqlite/database');const {seedDemo}=require('../desktop/demo.cjs');const {Gateway}=require('../desktop/gateway.cjs');
+test('P029 product master validates, paginates, protects history, retries and permissions',async()=>{
+ const db=openDatabase({filename:':memory:'});try{seedDemo(db);const g=new Gateway(db,{demo:true});await g.call('login',{username:'demo',password:'TechOrbit-Demo-2026!'});
+ const input={createKey:'TO-'+randomUUID(),name:'Master Test',barcode:'0000009001',genericName:'Test Generic',manufacturer:'Test maker',category:'Test',productType:'medicine',dosageForm:'Tablet',strength:'10mg',packDescription:'Test',baseUnit:'tablet',defaultSalePriceMinor:1250,boxSalePriceMinor:null,stripSalePriceMinor:null,minimumStock:5,reorderLevel:10,defaultSupplierId:null,prescriptionRequired:true,controlledMedicine:false,gstRateBasisPoints:1800,taxStatus:'taxable',active:true,notes:'Isolated fixture'};
+ const r=await g.call('productSave',input);assert.ok(r.product.id);assert.equal(r.product.barcode,'0000009001');assert.equal(r.units[0].selling_price_minor,1250);
+ assert.equal((await g.call('productSave',input)).product.id,r.product.id);await assert.rejects(g.call('productSave',{...input,name:'Changed replay'}),/reference/);
+ await assert.rejects(g.call('productSave',{...input,createKey:'TO-'+randomUUID(),name:'Other'}),/Barcode/);
+ const dup={...input,createKey:'TO-'+randomUUID(),barcode:'0000009002'};assert.equal((await g.call('productSave',dup)).needsConfirmation,true);assert.ok((await g.call('productSave',{...dup,confirmDuplicateName:true})).product.id);
+ const edit={...r.product,name:'Master Edited',active:false,defaultSalePriceMinor:1550,taxStatus:'exempt',gstRateBasisPoints:1800};const updated=await g.call('productSave',edit);assert.equal(updated.product.gstRateBasisPoints,0);assert.equal(updated.units[0].selling_price_minor,1550);
+ assert.equal(await g.call('barcode',{barcode:input.barcode}),null);assert.equal((await g.call('productList',{q:'Master Edited',state:'inactive',page:1})).total,1);
+ await assert.rejects(g.call('productSave',edit),/changed since/);await assert.rejects(g.call('productSave',{...updated.product,baseUnit:'box'}),/base unit/);
+ for(const patch of [{defaultSalePriceMinor:-1},{gstRateBasisPoints:10001},{minimumStock:NaN},{defaultSupplierId:999999},{active:'yes'}])await assert.rejects(g.call('productSave',{...input,createKey:'TO-'+randomUUID(),barcode:null,...patch}));
+ const count=db.prepare('SELECT COUNT(*) n FROM Products').get().n;db.exec("CREATE TRIGGER fail_product_audit BEFORE INSERT ON AuditLog WHEN NEW.action='product.create' BEGIN SELECT RAISE(ABORT,'test failure'); END");await assert.rejects(g.call('productSave',{...input,createKey:'TO-'+randomUUID(),name:'Rollback',barcode:'00999'}));assert.equal(db.prepare('SELECT COUNT(*) n FROM Products').get().n,count);db.exec('DROP TRIGGER fail_product_audit');
+ for(let i=0;i<26;i++)await g.call('productSave',{...input,createKey:'TO-'+randomUUID(),name:'Paged '+i,barcode:null});assert.equal((await g.call('productList',{q:'Paged',state:'all',page:1})).items.length,25);assert.equal((await g.call('productList',{q:'Paged',state:'all',page:2})).items.length,1);
+ assert.equal((await g.call('productList',{q:'%',state:'all',page:1})).total,0);
+ for(const unit of ['strip','box']){const pack={...input,createKey:'TO-'+randomUUID(),name:'Base '+unit,barcode:null,baseUnit:unit,[unit+'SalePriceMinor']:1300};await assert.rejects(g.call('productSave',pack),/must match/);const saved=await g.call('productSave',{...pack,[unit+'SalePriceMinor']:1250});assert.equal(saved.units[0].selling_price_minor,saved.product.defaultSalePriceMinor);}
+ db.prepare("UPDATE Users SET role_id=(SELECT id FROM Roles WHERE code='cashier') WHERE username='demo'").run();for(const command of ['productList','productDetail','productSave','productSuppliers'])await assert.rejects(g.call(command,{id:r.product.id}),/role/);
+ }finally{db.close()}
+});

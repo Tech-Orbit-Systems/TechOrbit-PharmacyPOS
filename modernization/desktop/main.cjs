@@ -55,6 +55,7 @@ app.whenReady().then(() => {
     (_contents, _permission, callback) => callback(false),
   );
   for (const command of [
+    "productList", "productDetail", "productSave", "productSuppliers",
     "shiftStatus",
     "createCustomer",
     "login",

@@ -1033,3 +1033,9 @@ body:has(.scrim) {
 .invoice td select{max-width:135px;min-width:100px}
 .pos-grid{height:calc(100vh - 435px);min-height:310px}
 @media(max-width:1250px){.totals-group{flex-basis:100%}.payment-bar{gap:10px}.pos-grid{height:calc(100vh - 490px)}.price-mode{display:none}.credit-controls{gap:14px}.topbar{gap:10px}}
+/* Product Master reuses the approved theme tokens and shared dialog. */
+.master-toolbar,.master-pagination,.product-flags{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:18px 0}
+.master-toolbar>label{display:flex;align-items:center;gap:10px;flex:1;min-width:260px}.master-toolbar input{width:100%}
+.master-table{overflow:auto}.master-table table{width:100%;border-collapse:collapse}.master-table td,.master-table th{padding:13px 16px;text-align:left}.master-table td small{display:block;margin-top:4px}.master-table td:first-child{min-width:200px}
+.product-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 22px}.product-fields label{display:flex;flex-direction:column;gap:6px}.product-fields input,.product-fields select{width:100%;min-width:0}.product-flags label{display:flex;align-items:center;gap:8px}.product-form>p{line-height:1.5}.scrim:has(.product-form) .dialog{width:min(940px,95vw);max-height:90vh;overflow:auto}.product-form>button{margin-top:12px}
+@media(max-width:700px){.product-fields{grid-template-columns:1fr}}

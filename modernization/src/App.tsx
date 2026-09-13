@@ -18,6 +18,7 @@ import { Dashboard } from "./Dashboard";
 import { POS } from "./POS";
 import { dateLabel } from "./shared";
 import { ShiftStatus } from './ShiftStatus';
+import { Products } from './Products';
 const nav = [
   ["Dashboard", LayoutDashboard],
   ["Point of Sale", ShoppingCart],
@@ -143,7 +144,7 @@ export function App() {
               key={label}
               title={label}
               disabled={
-                !["Dashboard", "Point of Sale", "Settings"].includes(label)
+                !["Dashboard", "Point of Sale", "Settings", "Products"].includes(label)
               }
               aria-current={page === label ? "page" : undefined}
               onClick={() => setPage(label)}
@@ -190,6 +191,7 @@ export function App() {
           <div hidden={page !== "Point of Sale"}>
             <POS user={user} />
           </div>
+          {page === 'Products' && <Products/>}
           {page === "Settings" && (
             <>
               <h1>Settings</h1>

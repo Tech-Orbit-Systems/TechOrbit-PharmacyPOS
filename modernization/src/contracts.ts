@@ -97,6 +97,10 @@ export interface DashboardData {
   recent: any[];
 }
 export interface Api {
+  productList(input:{q:string;state:string;page:number}):Promise<{items:ProductSummary[];total:number;page:number;pageSize:number}>;
+  productDetail(input:{id:number}):Promise<ProductMasterResult>;
+  productSave(input:Record<string,unknown>):Promise<ProductMasterResult>;
+  productSuppliers():Promise<{id:number;name:string}[]>;
   shiftStatus():Promise<{id:number;opened_at:string;device_id:string}|null>;
   createCustomer(input:{name:string;phone:string}):Promise<{id:number;name:string;phone:string}>;
   login(input: { username: string; password: string }): Promise<User>;
@@ -122,3 +126,5 @@ declare global {
     pharmacy: Api;
   }
 }
+export interface ProductSummary {id:number;sku:string|null;name:string;barcode:string|null;generic_name:string|null;manufacturer:string|null;strength:string|null;base_unit:string;default_sale_price_minor:number;active:number}
+export interface ProductMasterResult {product?:Record<string,string|number|boolean|null>;units?:Product['units'];needsConfirmation?:boolean;duplicates?:{id:number;name:string}[]}

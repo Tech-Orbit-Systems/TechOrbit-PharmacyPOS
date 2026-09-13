@@ -70,6 +70,16 @@ class Gateway {
     }
     if (active.must_change_password)
       throw Error("Change your temporary password first");
+    if (['productList','productDetail','productSave','productSuppliers'].includes(command)) {
+      this.authorize('settings.manage');
+      const master=new (require('./product-master.cjs').ProductMaster)(this.db);
+      try {
+        if(command==='productList')return master.list(input);
+        if(command==='productDetail')return master.detail(input.id);
+        if(command==='productSuppliers')return master.suppliers();
+        return master.save(input,this.session.id);
+      } catch(error){if(error.code?.startsWith('SQLITE'))throw Error('Product could not be saved. Check values and retry.');throw error;}
+    }
     if(command==='shiftStatus'){
       this.authorize('sale.create');
       return this.db.prepare("SELECT id,opened_at,device_id FROM CashShifts WHERE user_id=? AND device_id='modern-desktop' AND status='open' ORDER BY opened_at DESC LIMIT 1").get(this.session.id)||null;
