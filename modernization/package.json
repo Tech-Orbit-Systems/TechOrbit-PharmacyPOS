@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc --noEmit && vite build",
     "dev": "vite --host 127.0.0.1",
-    "desktop": "../node_modules/.bin/electron desktop/main.cjs",
+    "desktop": "node ../node_modules/electron/cli.js desktop/main.cjs",
     "test": "node --test tests/*.test.cjs",
     "test:e2e": "playwright test"
   },
