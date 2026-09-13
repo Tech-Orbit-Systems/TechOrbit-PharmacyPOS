@@ -25,6 +25,7 @@ test("approved screens: ranges, Digital, holds, posting and identical dark geome
       page.getByRole("heading", { name: "Dashboard", exact: true }),
     ).toBeVisible();
     await expect(page.getByText("Loading sales…")).toHaveCount(0);
+    await expect(page.getByRole('status', {name:'Shift open', exact:true})).toBeVisible();
     for (const label of ["1 Month", "6 Months", "1 Year", "7 Days"]) {
       await page.getByRole("button", { name: label, exact: true }).click();
       await expect(page.getByLabel("Net sales chart")).toHaveAttribute(
@@ -48,6 +49,7 @@ test("approved screens: ranges, Digital, holds, posting and identical dark geome
       .getByRole("button", { name: "Point of Sale", exact: true })
       .click();
     const search = page.getByLabel("Scan barcode or search medicine");
+    await expect(page.getByRole('status', {name:'Shift open', exact:true})).toBeVisible();
     await search.fill("0012345678901");
     await search.press("Enter");
     await expect(page.getByLabel("Quantity line 1")).toHaveValue("1");
@@ -98,6 +100,38 @@ test("approved screens: ranges, Digital, holds, posting and identical dark geome
     ).toBeVisible();
     await page.getByRole("button", { name: "Close dialog" }).click();
     await expect(page.getByText("Ready for your next sale")).toBeVisible();
+    await page.getByRole('button',{name:'Add customer',exact:true}).click();
+    await page.getByLabel('Customer name',{exact:true}).fill('UI Credit Customer');
+    await page.getByLabel('Phone number',{exact:true}).fill('03019876543');
+    await page.getByRole('button',{name:'Save customer',exact:true}).click();
+    await expect(page.getByRole('dialog',{name:'Add customer',exact:true})).toHaveCount(0);
+    await expect(page.getByLabel('Customer',{exact:true}).locator('option:checked')).toHaveText(/UI Credit Customer/);
+    await search.fill('0012345678901'); await search.press('Enter');
+    await page.getByLabel('Unit line 1',{exact:true}).selectOption('tablet');
+    await expect(page.getByLabel('Unit line 1',{exact:true})).toHaveValue('tablet');
+    await page.getByLabel('Unit line 1',{exact:true}).selectOption('box');
+    await page.getByLabel('Payment type',{exact:true}).selectOption('partial');
+    await page.getByLabel('Received now PKR',{exact:true}).fill('200');
+    await page.getByLabel('Credit due date',{exact:true}).fill('2099-12-31');
+    await page.getByRole('button',{name:'Digital',exact:true}).click();
+    await expect(page.locator('.credit-due strong')).toHaveText('1,000');
+    await page.screenshot({path:path.resolve(__dirname,'../evidence/pos-partial-credit.png')});
+    await page.getByRole('button',{name:/Pay & Print/}).click();
+    await expect(page.getByText('Received PKR 200',{exact:true})).toBeVisible();
+    await expect(page.getByText('Remaining credit PKR 1,000',{exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'Close dialog'}).click();
+    await search.fill('0012345678903'); await search.press('Enter');
+    await page.getByLabel('Unit line 1',{exact:true}).selectOption('pack');
+    await page.getByLabel('Payment type',{exact:true}).selectOption('credit');
+    await expect(page.getByRole('button',{name:/Pay & Print/})).toBeDisabled();
+    await page.getByLabel('Customer',{exact:true}).selectOption({label:'UI Credit Customer'});
+    await page.getByLabel('Credit due date',{exact:true}).fill('2099-12-31');
+    await expect(page.locator('.credit-due strong')).toHaveText('500');
+    await expect(page.getByRole('button',{name:'Cash',exact:true})).toBeDisabled();
+    await page.getByRole('button',{name:/Pay & Print/}).click();
+    await expect(page.getByText('Received PKR 0',{exact:true})).toBeVisible();
+    await expect(page.getByText('Remaining credit PKR 500',{exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'Close dialog'}).click();
     await page.getByRole("button", { name: "Dashboard", exact: true }).click();
     await expect(page.getByLabel("Net sales chart")).toHaveAttribute(
       "aria-busy",

@@ -55,6 +55,8 @@ app.whenReady().then(() => {
     (_contents, _permission, callback) => callback(false),
   );
   for (const command of [
+    "shiftStatus",
+    "createCustomer",
     "login",
     "logout",
     "changePassword",

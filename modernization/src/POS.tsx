@@ -19,8 +19,15 @@ import type {
   Receipt,
   SaleInput,
   User,
+  CreditMode,
 } from "./contracts";
 import { money, Dialog } from "./shared";
+import { AddCustomer } from './AddCustomer';
+function unitLabel(product:Product,unit:Product['units'][number]){
+ const single=product.units.reduce((a,b)=>a.base_quantity<b.base_quantity?a:b);
+ const count=unit.base_quantity/single.base_quantity;
+ return unit.unit_name+(count>1?` (${Number(count.toFixed(4))} ${single.unit_name})`:'');
+}
 const newKey = () => `TO-${crypto.randomUUID()}`;
 export function POS({ user }: { user: User }) {
   const storageKey = `techorbit.drafts.${user.demo ? "review" : "live"}.${user.id}`;
@@ -32,6 +39,9 @@ export function POS({ user }: { user: User }) {
         discount: string;
         method: Payment;
         key: string;
+        creditMode?:CreditMode;
+        received?:string;
+        dueDate?:string;
       }[]
     >(() => {
       try {
@@ -49,6 +59,10 @@ export function POS({ user }: { user: User }) {
     [customer, setCustomer] = useState<number | null>(null),
     [discount, setDiscount] = useState("0"),
     [method, setMethod] = useState<Payment>("cash"),
+    [creditMode,setCreditMode]=useState<CreditMode>('paid'),
+    [received,setReceived]=useState('0'),
+    [dueDate,setDueDate]=useState(''),
+    [showAddCustomer,setShowAddCustomer]=useState(false),
     [quote, setQuote] = useState<Quote | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -62,6 +76,9 @@ export function POS({ user }: { user: User }) {
   const input: SaleInput = {
     key,
     paymentMethod: method,
+    creditMode,
+    paidMinor:creditMode==='partial'?Math.round(Number(received)*100):0,
+    dueDate,
     customerId: customer,
     discountMinor: Math.round(Number(discount) * 100),
     items: lines.map((l) => ({
@@ -71,6 +88,7 @@ export function POS({ user }: { user: User }) {
     })),
   };
   const inputKey = JSON.stringify(input);
+  const creditReady=creditMode==='paid'||Boolean(customer&&dueDate&&quote&&(creditMode==='credit'||quote.balanceDueMinor>=0));
   useEffect(() => {
     window.pharmacy
       .customers()
@@ -178,7 +196,7 @@ export function POS({ user }: { user: User }) {
   }
   function hold() {
     if (!lines.length || busy) return;
-    setHeld((old) => [...old, { lines, customer, discount, method, key }]);
+    setHeld((old) => [...old, { lines, customer, discount, method, key,creditMode,received,dueDate }]);
     reset();
   }
   function reset() {
@@ -187,13 +205,14 @@ export function POS({ user }: { user: User }) {
     setDiscount("0");
     setCustomer(null);
     setMethod("cash");
+    setCreditMode('paid');setReceived('0');setDueDate('');
     setKey(newKey());
     setQuery("");
     setError("");
     scan.current?.focus();
   }
   async function pay() {
-    if (postLock.current || !quote || quoting || !lines.length) return;
+    if (postLock.current || !quote || quoting || !lines.length || !creditReady) return;
     postLock.current = true;
     setBusy(true);
     setError("");
@@ -214,7 +233,7 @@ export function POS({ user }: { user: User }) {
         !scan.current ||
         scan.current.closest("[hidden]") ||
         receipt ||
-        showHeld
+        showHeld || showAddCustomer
       )
         return;
       if (e.key === "F2") {
@@ -286,8 +305,9 @@ export function POS({ user }: { user: User }) {
               </option>
             ))}
           </select>
-          <span className="price-mode">
-            Price mode <b>Retail</b>
+          <button className="add-customer" onClick={()=>setShowAddCustomer(true)}><Plus size={16}/>Add customer</button>
+          <span className="price-mode" title="Retail is the price list. Credit and partial payment are selected below.">
+            Pricing <b>Retail</b>
           </span>
         </div>
         <div className="pos-grid">
@@ -351,7 +371,7 @@ export function POS({ user }: { user: User }) {
                           }
                         >
                           {line.product.units.map((u) => (
-                            <option key={u.unit_name}>{u.unit_name}</option>
+                            <option key={u.unit_name} value={u.unit_name}>{unitLabel(line.product,u)}</option>
                           ))}
                         </select>
                       </td>
@@ -479,6 +499,7 @@ export function POS({ user }: { user: User }) {
               {selected && (
                 <div className="batch-card">
                   <h3>{selected.name}</h3>
+                  <p className="packing-info">Sale units: {selected.units.map(u=>unitLabel(selected,u)).join(' · ')}</p>
                   <table>
                     <thead>
                       <tr>
@@ -495,7 +516,7 @@ export function POS({ user }: { user: User }) {
                             <small>{i === 0 ? "FEFO" : ""}</small>
                           </td>
                           <td>{b.expiry_date || "None"}</td>
-                          <td>{b.quantity_on_hand}</td>
+                          <td>{Number(b.quantity_on_hand.toFixed(4))} {selected.baseUnit}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -516,8 +537,18 @@ export function POS({ user }: { user: User }) {
             </p>
           </section>
         </div>
+        <div className="panel credit-controls">
+          <label>Payment type<select aria-label="Payment type" value={creditMode} onChange={e=>setCreditMode(e.target.value as CreditMode)}><option value="paid">Paid in full</option><option value="partial">Partial payment</option><option value="credit">Full credit</option></select></label>
+          {creditMode!=='paid'&&<>
+            {creditMode==='partial'&&<label>Received now (PKR)<input aria-label="Received now PKR" type="number" min="0.01" step="0.01" value={received} onChange={e=>setReceived(e.target.value)}/></label>}
+            <label>Due date<input aria-label="Credit due date" type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)}/></label>
+            <div className="credit-due" aria-live="polite"><small>Remaining credit (PKR)</small><strong>{quote?money(quote.balanceDueMinor):'—'}</strong></div>
+            {!customer&&<span className="warning">Select or add a customer for credit.</span>}
+          </>}
+          {creditMode==='paid'&&<small>Choose Cash, Card or Digital below.</small>}
+        </div>
         <div className="panel payment-bar" data-testid="payment-bar">
-          <div>
+          <div className="totals-group" data-testid="totals-group"><div>
             <small>Subtotal (PKR)</small>
             <strong>{money(quote?.grossMinor ?? 0)}</strong>
           </div>
@@ -538,6 +569,7 @@ export function POS({ user }: { user: User }) {
               {quoting ? "…" : money(quote?.finalTotalMinor ?? 0)}
             </strong>
           </div>
+          </div>
           <div className="payment-methods">
             {(
               [
@@ -548,6 +580,7 @@ export function POS({ user }: { user: User }) {
             ).map(([value, label, Icon]) => (
               <button
                 key={value}
+                disabled={creditMode==='credit'}
                 aria-pressed={method === value}
                 onClick={() => setMethod(value)}
               >
@@ -562,7 +595,7 @@ export function POS({ user }: { user: User }) {
           </button>
           <button
             className="primary pay"
-            disabled={!quote || quoting || !lines.length}
+            disabled={!quote || quoting || !lines.length || !creditReady}
             onClick={() => void pay()}
           >
             <Printer size={16} />
@@ -590,6 +623,7 @@ export function POS({ user }: { user: User }) {
           </span>
         )}
       </div>
+      {showAddCustomer&&<AddCustomer onClose={()=>setShowAddCustomer(false)} onSaved={c=>{setCustomers(old=>[...old.filter(x=>x.id!==c.id),c]);setCustomer(c.id)}}/>}
       {showHeld && (
         <Dialog title="Held sales" onClose={() => setShowHeld(false)}>
           {held.map((h, i) => (
@@ -597,14 +631,22 @@ export function POS({ user }: { user: User }) {
               className="held-row"
               key={h.key}
               disabled={lines.length > 0}
-              onClick={() => {
-                setLines(h.lines);
+              onClick={async () => {
+                try {
+                const refreshed=await Promise.all(h.lines.map(async line=>{
+                  const product=line.product.barcode?await window.pharmacy.barcode({barcode:line.product.barcode}):(await window.pharmacy.search({q:line.product.name})).find(p=>p.id===line.product.id);
+                  if(!product)throw Error('A held product is no longer available. Review its product record.');
+                  return {...line,product};
+                }));
+                setLines(refreshed);
                 setCustomer(h.customer);
                 setDiscount(h.discount);
                 setMethod(h.method);
+                setCreditMode(h.creditMode||'paid');setReceived(h.received||'0');setDueDate(h.dueDate||'');
                 setKey(h.key);
                 setHeld((old) => old.filter((_, j) => j !== i));
                 setShowHeld(false);
+                }catch(e){setError((e as Error).message);setShowHeld(false)}
               }}
             >
               Resume sale {i + 1} · {h.lines.length} lines
@@ -631,6 +673,9 @@ export function POS({ user }: { user: User }) {
               </p>
             ))}
             <h3>Total PKR {money(receipt.totals.finalTotalMinor)}</h3>
+            <p>Received PKR {money(receipt.payment.amountPaidMinor)}</p>
+            <p>Remaining credit PKR {money(receipt.payment.balanceDueMinor)}</p>
+            {receipt.payment.balanceDueMinor>0&&<p>Due date: {receipt.payment.dueDate}</p>}
             <p>
               Payment:{" "}
               {receipt.payment.method === "bank_transfer"

@@ -1,5 +1,6 @@
 export type Theme = "light" | "dark" | "system";
 export type Payment = "cash" | "card" | "digital";
+export type CreditMode = 'paid' | 'partial' | 'credit';
 export interface Product {
   id: number;
   name: string;
@@ -30,6 +31,9 @@ export interface Line {
   quantity: number;
 }
 export interface SaleInput {
+  creditMode?:CreditMode;
+  paidMinor?:number;
+  dueDate?:string;
   key: string;
   paymentMethod: Payment;
   discountMinor: number;
@@ -44,6 +48,8 @@ export interface User {
   demo: boolean;
 }
 export interface Quote {
+  amountPaidMinor:number;
+  balanceDueMinor:number;
   grossMinor: number;
   invoiceDiscountMinor: number;
   gstMinor: number;
@@ -69,7 +75,7 @@ export interface Receipt {
     roundingMinor: number;
     invoiceDiscountMinor: number;
   };
-  payment: { method: string };
+  payment: { method: string;amountPaidMinor:number;balanceDueMinor:number;dueDate:string|null };
 }
 export interface DashboardData {
   range: { from: string; to: string; monthly: boolean };
@@ -91,6 +97,8 @@ export interface DashboardData {
   recent: any[];
 }
 export interface Api {
+  shiftStatus():Promise<{id:number;opened_at:string;device_id:string}|null>;
+  createCustomer(input:{name:string;phone:string}):Promise<{id:number;name:string;phone:string}>;
   login(input: { username: string; password: string }): Promise<User>;
   logout(): Promise<unknown>;
   changePassword(input: {

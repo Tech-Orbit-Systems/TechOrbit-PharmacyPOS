@@ -70,6 +70,14 @@ class Gateway {
     }
     if (active.must_change_password)
       throw Error("Change your temporary password first");
+    if(command==='shiftStatus'){
+      this.authorize('sale.create');
+      return this.db.prepare("SELECT id,opened_at,device_id FROM CashShifts WHERE user_id=? AND device_id='modern-desktop' AND status='open' ORDER BY opened_at DESC LIMIT 1").get(this.session.id)||null;
+    }
+    if(command==='createCustomer'){
+      this.authorize('sale.create');
+      return require('./customer-create.cjs').createCustomer(this.db,input,this.session.id);
+    }
     if (command === "dashboard") {
       this.authorize("sale.create");
       return dashboard(this.db, input, {
@@ -129,6 +137,9 @@ class Gateway {
       if (!Number.isSafeInteger(input.discountMinor) || input.discountMinor < 0)
         throw Error("Enter a valid discount");
       if (input.discountMinor > 0) this.authorize("sale.discount");
+      const creditMode=input.creditMode||'paid';
+      if(!['paid','partial','credit'].includes(creditMode))throw Error('Choose a valid payment type');
+      if(creditMode==='partial'&&(!Number.isSafeInteger(input.paidMinor)||input.paidMinor<=0))throw Error('Partial payment received must be greater than zero');
       const sale = {
         invoiceNumber: String(input.key || ""),
         idempotencyKey: String(input.key || ""),
@@ -145,6 +156,13 @@ class Gateway {
         roleCode: this.session.roleCode,
         deviceId: "modern-desktop",
       };
+      if(command==='post'&&creditMode!=='paid'){
+        if(!sale.customerId)throw Error('Select or add a customer for a credit sale');
+        const due=String(input.dueDate||'');
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(due)||Number.isNaN(Date.parse(due))||new Date(due+'T00:00:00Z').toISOString().slice(0,10)!==due||due<dayKey(new Date()))throw Error('Choose a valid due date, today or later');
+        sale.paymentMethod='credit';sale.collectionMethod=input.paymentMethod;
+        sale.amountPaidMinor=creditMode==='credit'?0:input.paidMinor;sale.dueDate=due;
+      }
       if (!/^TO-[a-f0-9-]{36}$/.test(sale.idempotencyKey))
         throw Error("Invalid sale reference");
       if (command === "post") {
@@ -155,8 +173,11 @@ class Gateway {
           if (old.created_by !== this.session.id)
             throw Error("Sale reference belongs to another user");
           const saved = new SalesQueryService(this.db).getById(old.id);
+          const collection = this.db.prepare("SELECT method FROM MoneyMovements WHERE reference_type='sale' AND reference_id=? ORDER BY id LIMIT 1").get(String(old.id));
           const same =
+            (creditMode !== 'partial' || collection?.method === sale.collectionMethod) &&
             saved.payment_method === sale.paymentMethod &&
+            (creditMode==='paid'||(saved.amount_paid_minor===sale.amountPaidMinor&&saved.due_date===sale.dueDate)) &&
             saved.customer_id === (sale.customerId || null) &&
             saved.invoice_discount_minor === sale.invoiceDiscountValue &&
             JSON.stringify(
@@ -178,7 +199,10 @@ class Gateway {
       // Reuse authoritative tax, rounding and FEFO logic, rolling back every quote write.
       this.db.exec("SAVEPOINT modern_quote");
       try {
-        return new SalesPostingService(this.db).post(sale);
+        const quote=new SalesPostingService(this.db).post(sale);
+        const received=creditMode==='credit'?0:creditMode==='partial'?input.paidMinor:quote.finalTotalMinor;
+        if(received>quote.finalTotalMinor)throw Error('Received amount cannot exceed the sale total');
+        return {...quote,amountPaidMinor:received,balanceDueMinor:quote.finalTotalMinor-received};
       } finally {
         this.db.exec("ROLLBACK TO modern_quote; RELEASE modern_quote");
       }

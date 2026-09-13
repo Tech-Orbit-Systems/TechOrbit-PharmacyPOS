@@ -17,6 +17,7 @@ import type { Theme, User } from "./contracts";
 import { Dashboard } from "./Dashboard";
 import { POS } from "./POS";
 import { dateLabel } from "./shared";
+import { ShiftStatus } from './ShiftStatus';
 const nav = [
   ["Dashboard", LayoutDashboard],
   ["Point of Sale", ShoppingCart],
@@ -178,6 +179,7 @@ export function App() {
           </span>
           <span className="top-spacer" />
           <span>{dateLabel(new Date().toISOString())}</span>
+          <ShiftStatus/>
           <span className="user-avatar">{user.displayName[0]}</span>
           <span>{user.displayName}</span>
         </header>

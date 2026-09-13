@@ -9,7 +9,7 @@ const {
   SalesPostingService,
 } = require("../../infrastructure/sqlite/services/sales-posting");
 const { dayKey, addDays } = require("./ranges.cjs");
-function seedDemo(db) {
+function seedInitial(db) {
   if (db.prepare("SELECT COUNT(*) n FROM Users").get().n) return;
   const now = new Date().toISOString(),
     today = dayKey(now);
@@ -88,4 +88,21 @@ function seedDemo(db) {
     "INSERT INTO CashShifts(user_id,device_id,opened_at,opening_cash_minor,status,created_at) VALUES(?,'modern-desktop',?,3240000,'open',?)",
   ).run(userId, now, now);
 }
-module.exports = { seedDemo };
+function seedDemo(db){seedInitial(db);upgradeDemoUnits(db);}
+function upgradeDemoUnits(db){
+ const key='review.demoUnits.v2';
+ if(db.prepare('SELECT 1 FROM Settings WHERE key=?').get(key))return;
+ // Add demo pack choices without changing the stock base, costs or posted history.
+ // These ratios are illustrative demo data, never manufacturer defaults for live products.
+ db.transaction(()=>{
+  const packs=[
+   ['0012345678901',[['tablet',0.1,1200],['box',10,120000]]],
+   ['0012345678902',[['tablet',0.1,1600],['box',10,160000]]],
+   ['0012345678903',[['pack',10,50000],['box',100,500000]]],
+   ['0012345678904',[['strip',10,60000],['box',100,600000]]]
+  ];
+  for(const [barcode,units] of packs){const product=db.prepare('SELECT id FROM Products WHERE barcode=?').get(barcode);if(!product)continue;for(const [name,multiplier,price] of units)db.prepare('INSERT OR IGNORE INTO ProductUnits(product_id,unit_name,base_quantity,selling_price_minor,is_default_sale_unit,allows_fractional_quantity) VALUES(?,?,?,?,0,0)').run(product.id,name,multiplier,price);}
+  db.prepare('INSERT INTO Settings(key,value_json,updated_at) VALUES(?,?,?)').run(key,'true',new Date().toISOString());
+ })();
+}
+module.exports = { seedDemo, upgradeDemoUnits };
