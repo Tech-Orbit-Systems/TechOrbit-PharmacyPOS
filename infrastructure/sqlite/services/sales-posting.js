@@ -1,6 +1,6 @@
 const { roundPayableToRupee } = require("../../domain/utils");
 
-const METHODS = new Set(["cash","card","bank_transfer","mobile_wallet","other","credit"]);
+const METHODS = new Set(["cash","card","digital","bank_transfer","mobile_wallet","other","credit"]);
 
 class SalesPostingService {
   constructor(db) { this.db=db; this.postTransaction=db.transaction((sale)=>this.postInternal(sale)); }
