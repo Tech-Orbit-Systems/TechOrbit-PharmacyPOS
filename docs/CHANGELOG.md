@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-13 - Modern Product Master and packing (P029 / P030)
+
+- P029: searchable product list/editor, duplicate warnings, preserved inactive history, audited transactional saves and role checks. Evidence: [P029](p029-product-master.md).
+- P030: per-product unit ratios, default sale unit, whole-PKR price calculation from a selected source unit, manual overrides and fractional/sealed-unit validation. Existing stock/history locks old ratios. Evidence: [P030](p030-packing.md).
+- Both are isolated modern review-app features, not a production data cutover or full release signoff.
+
 ## 2026-09-13 - Pre-UI backend readiness
 
 - Added customer receivable collection and batch-traceable customer returns.

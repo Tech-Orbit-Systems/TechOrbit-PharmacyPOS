@@ -1,5 +1,12 @@
 # Test Results
 
+## 2026-09-13 - P029 / P030 modern application regression
+
+- Final P030 baseline: root 31 suites / 99 tests passed; modern 9 tests passed; TypeScript/Vite build passed; 3 actual Electron tests passed (20.7 seconds).
+- Product editor performs three create/edit/deactivate repetitions. Packing E2E configures a custom pack, derives prices, reopens persisted values, checks dark mode, scans the configured default and posts a sale/receipt.
+- Fixed a product-test filter expectation, base/pack price conflict validation and packing-dialog horizontal overflow; retested. Final light/dark evidence visually inspected.
+- See [P029 evidence](p029-product-master.md) and [P030 evidence](p030-packing.md) for scope and limitations. Full 85-scenario three-run acceptance and physical hardware tests remain open.
+
 ## 2026-09-13 - Pre-UI readiness gate
 
 - Customer accounts/returns, stock adjustments, backup/restore, session security and reconciliation verified.

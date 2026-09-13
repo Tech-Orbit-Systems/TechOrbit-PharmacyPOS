@@ -1039,3 +1039,7 @@ body:has(.scrim) {
 .master-table{overflow:auto}.master-table table{width:100%;border-collapse:collapse}.master-table td,.master-table th{padding:13px 16px;text-align:left}.master-table td small{display:block;margin-top:4px}.master-table td:first-child{min-width:200px}
 .product-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 22px}.product-fields label{display:flex;flex-direction:column;gap:6px}.product-fields input,.product-fields select{width:100%;min-width:0}.product-flags label{display:flex;align-items:center;gap:8px}.product-form>p{line-height:1.5}.scrim:has(.product-form) .dialog{width:min(940px,95vw);max-height:90vh;overflow:auto}.product-form>button{margin-top:12px}
 @media(max-width:700px){.product-fields{grid-template-columns:1fr}}
+.scrim:has(.packing-form) .dialog{width:min(1000px,95vw);max-height:90vh;overflow:auto}
+.packing-rows fieldset{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr) auto auto auto;gap:12px;align-items:end;border:1px solid var(--border);margin:12px 0;padding:12px;min-width:0}
+.packing-form label{display:flex;flex-direction:column;gap:7px;min-width:0}.packing-form input,.packing-form select{max-width:100%;min-width:0}.packing-form input:not([type=checkbox]):not([type=radio]){width:100%}.packing-calculate{display:flex;gap:12px;align-items:end;margin-top:16px}
+@media(max-width:1100px){.packing-rows fieldset{grid-template-columns:1fr 1fr 1fr}}

@@ -70,6 +70,12 @@ class Gateway {
     }
     if (active.must_change_password)
       throw Error("Change your temporary password first");
+    if (['packingDetail','packingSave'].includes(command)) {
+      this.authorize('settings.manage');
+      const service=new (require('./packing.cjs').Packing)(this.db);
+      try{return command==='packingDetail'?service.detail(input.id):service.save(input,this.session.id);}
+      catch(error){if(error.code?.startsWith('SQLITE'))throw Error('Packing could not be saved. Check values and retry.');throw error;}
+    }
     if (['productList','productDetail','productSave','productSuppliers'].includes(command)) {
       this.authorize('settings.manage');
       const master=new (require('./product-master.cjs').ProductMaster)(this.db);

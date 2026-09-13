@@ -97,6 +97,8 @@ export interface DashboardData {
   recent: any[];
 }
 export interface Api {
+  packingDetail(input:{id:number}):Promise<ProductMasterResult & {historyLocked:boolean}>;
+  packingSave(input:Record<string,unknown>):Promise<ProductMasterResult & {historyLocked:boolean}>;
   productList(input:{q:string;state:string;page:number}):Promise<{items:ProductSummary[];total:number;page:number;pageSize:number}>;
   productDetail(input:{id:number}):Promise<ProductMasterResult>;
   productSave(input:Record<string,unknown>):Promise<ProductMasterResult>;
