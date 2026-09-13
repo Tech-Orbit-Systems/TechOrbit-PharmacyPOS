@@ -1,63 +1,34 @@
-# Roadmap
+# Delivery roadmap
 
-## Phase 0 — Clean baseline
+The master Excel tracker owns feature status, dependencies, test evidence and sequencing. This file summarizes it; it must not override it. Historical roadmap text is preserved in `history/2026-09-13/roadmap.md`.
 
-- Preserve MIT attribution and upstream remote.
-- Make original application launch reliably with npm-based setup.
-- Capture deterministic smoke-test evidence and add API integration tests.
-- Document data locations, backup/restore behavior, and security risks.
+## Current checkpoint
 
-## Phase 1 — SQLite foundation (complete)
+SQLite foundations and the approved Dashboard/POS review increment are delivered. The operational NeDB database has not been migrated. A modern production installer and complete release acceptance are pending.
 
-- Select a maintained SQLite driver compatible with the supported Electron/Node runtime.
-- Create numbered migrations and the pharmacy schema described in `architecture.md`.
-- Add foreign keys, unique constraints, indexes, checks, and transaction helpers.
-- Implement repository contracts and tests for Products, ProductBatches, Purchases, InventoryMovements, Sales, and SaleItems first.
+## Authorized sequence
 
-Completed foundation: migration runner, Products, Suppliers, ProductBatches, Purchases, PurchaseItems, InventoryMovements, repositories, purchase receipt transaction, and packaged native SQLite verification.
+The user authorized decision-independent packages first, with decision-dependent work discussed afterward. P006 stays pending until actual scope/owner decisions are recorded. It is not a blanket blocker to already confirmed functional requirements.
 
-## Phase 2 — NeDB migration (dry-run foundation complete; production cutover blocked)
+1. P005: reconcile documentation and maintain one current delivery status.
+2. P029: modern Product Master list/editor and validation, reusing the backend.
+3. P030: product-specific packing, default units and price configuration. No universal manufacturer ratio or silent historical stock rebase.
+4. P031: explicit generic alternatives by generic/strength/form/valid stock; no automatic substitution.
+5. P032: batch inventory, physical/sellable quantities, expiry and protected costing.
+6. P033: separate manual/bulk opening stock with product-specific history lock.
+7. P034: modern Product Excel/CSV import using existing validated contracts.
+8. P035: controlled stock corrections and damaged/expired disposal.
+9. P036: supplier and purchase receiving workflows, bonus/effective cost and payables.
+10. Continue tracker phases: counter completeness, accounts/returns, closing/reports, settings/security/backup, reliability, full acceptance, real-data rehearsal, installer/pilot and explicit go-live.
 
-- Build a dry-run importer with record counts, rejected-row report, and checksums.
-- Map legacy product quantity/expiry into initial batches and opening-balance movements.
-- Reconcile sales totals and stock before cutover.
-- Produce rollback and restore instructions.
+## Important distinctions
 
-Before production rehearsal, correct the legacy `stock` flag mapping and expand the schema for the finalized product, unit, batch-receipt, costing, and accounting requirements in `master-specification.md` and `specification-alignment.md`.
+- Product import backend, legacy wizard and opening-stock backend already exist; modern integration is pending, not a new backend rewrite.
+- Legacy `stock` mapping and initial domain-schema conflicts have fixture-tested corrections. Actual production mapping/reconciliation still requires owner-approved source data.
+- UI discussion is no longer globally parked: the blue Dashboard/POS design is approved. Reuse the same design system for scoped screens; do not invent a redesign.
+- Closing foundation does not satisfy digital reconciliation/revisions or corrected return/tax-aware six-month totals. Track P055–P058 explicitly.
+- Historical packaging and dependency-audit results are dated evidence, not proof of current modern production readiness.
 
-## Phase 2A — Domain schema expansion (complete)
+## Work-package gate
 
-- Expand Product Master and configurable units/base-unit conversions.
-- Separate physical batches from purchase receipt lots for traceability, bonus stock, effective cost, and supplier returns.
-- Add Users, Roles, Permissions, Settings, AuditLog, Payments/MoneyMovements, Receivables, and Payables.
-- Add idempotency keys and posted/reversed transaction states.
-- Update the importer and contract tests before any live-data migration.
-
-## Phase 3 — Pharmacy operations
-
-Backend increments completed: supplier payable settlement, supplier purchase returns, expense ledger, cash shifts and rolling six-month period closing. Front-end implementation is intentionally parked pending the dedicated UI/UX discussion.
-
-- Supplier and purchase receiving workflows.
-- Batch/expiry/FEFO stock handling.
-- Returns, expenses, cash shifts and closing.
-- Role-based permissions and immutable audit log.
-
-Current increments completed: atomic sales/catalog APIs, default-off counter wiring, and the Product Master XLSX bulk-import backend (template, preview, validation, duplicate policy, atomic commit, errors, audit, and 5,000-row test). Legacy NeDB remains the default. Next increment: build the admin Product Import wizard and downloadable error report, then implement the separate batch-aware Opening Stock import workflow.
-
-## Phase 4 — Security and reliability
-
-- Remove default password, harden Electron context isolation, narrow CORS, validate all API inputs.
-- Dependency upgrade program and automated backup/restore verification.
-- Integration and end-to-end test suite, printer adapter tests, crash recovery.
-
-## Phase 5 — UI modernization
-
-Pre-UI backend readiness gate completed on 2026-09-13. Begin UI/UX discussion before adding or changing front-end screens. The UI must remain a client of tested v2 contracts.
-
-- Establish design tokens and reusable components after workflows and schema are stable.
-- Redesign incrementally without changing domain behavior.
-- Optimize keyboard and barcode-scanner operation for pharmacy counters.
-
-## Phase 6 — Release
-
-- Signed Windows installer, versioned migrations, release notes, support runbook, and disaster-recovery rehearsal.
+Implement, run relevant automated and desktop E2E tests, regress previous flows, fix/retest, commit/push, then update the same Excel tracker. No package is reported complete while its push or tracker update remains outstanding. Test real operational data only through an approved isolated copy.
