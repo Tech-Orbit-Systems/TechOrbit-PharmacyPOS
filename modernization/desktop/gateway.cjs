@@ -116,6 +116,18 @@ class Gateway {
         dayKey(new Date()),
       );
     }
+    if (command === "alternativeSearch" || command === "alternativeSelect") {
+      this.authorize("medicine.alternatives");
+      const service = new (require("../../infrastructure/sqlite/services/generic-alternatives").GenericAlternativesService)(this.db);
+      if (command === "alternativeSearch")
+        return service.view({ productId: input.productId, userId: this.session.id, roleCode: this.session.roleCode });
+      return service.select({
+        sourceProductId: input.sourceProductId,
+        alternativeProductId: input.alternativeProductId,
+        userId: this.session.id,
+        roleCode: this.session.roleCode,
+      });
+    }
     if (command === "customers") {
       this.authorize("sale.create");
       return this.db

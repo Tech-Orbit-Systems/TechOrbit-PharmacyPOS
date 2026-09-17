@@ -20,6 +20,7 @@ import type {
   SaleInput,
   User,
   CreditMode,
+  AlternativeResult,
 } from "./contracts";
 import { money, Dialog } from "./shared";
 import { AddCustomer } from './AddCustomer';
@@ -68,6 +69,8 @@ export function POS({ user }: { user: User }) {
     [busy, setBusy] = useState(false),
     [quoting, setQuoting] = useState(false),
     [receipt, setReceipt] = useState<Receipt | null>(null),
+    [alternatives,setAlternatives]=useState<AlternativeResult|null>(null),
+    [alternativeBusy,setAlternativeBusy]=useState(false),
     [tab, setTab] = useState("Products");
   const scan = useRef<HTMLInputElement>(null),
     seq = useRef(0),
@@ -193,6 +196,21 @@ export function POS({ user }: { user: User }) {
     } catch (e) {
       setError((e as Error).message);
     }
+  }
+  async function showAlternatives(product:Product){
+    setError('');setAlternativeBusy(true);
+    try{setAlternatives(await window.pharmacy.alternativeSearch({productId:product.id}));}
+    catch(e){setError((e as Error).message);}
+    finally{setAlternativeBusy(false);}
+  }
+  async function addAlternative(product:Product){
+    if(!alternatives)return;
+    setAlternativeBusy(true);setError('');
+    try{
+      const verified=await window.pharmacy.alternativeSelect({sourceProductId:alternatives.source.id,alternativeProductId:product.id});
+      add(verified);setAlternatives(null);
+    }catch(e){setError((e as Error).message);}
+    finally{setAlternativeBusy(false);}
   }
   function hold() {
     if (!lines.length || busy) return;
@@ -341,6 +359,7 @@ export function POS({ user }: { user: User }) {
                             Prescription check required
                           </small>
                         )}
+                        <button className="alternative-link" disabled={alternativeBusy} onClick={()=>void showAlternatives(line.product)}>View alternatives</button>
                       </td>
                       <td>
                         <small>
@@ -528,6 +547,7 @@ export function POS({ user }: { user: User }) {
                   >
                     Add medicine
                   </button>
+                  <button className="full" disabled={alternativeBusy} onClick={()=>void showAlternatives(selected)}>View alternatives</button>
                 </div>
               )}
             </div>
@@ -611,6 +631,21 @@ export function POS({ user }: { user: User }) {
           </button>
         </div>
       </fieldset>
+      {alternatives&&<Dialog title={`Alternatives for ${alternatives.source.name}`} onClose={()=>{if(!alternativeBusy)setAlternatives(null)}}>
+        <div className="alternatives-dialog">
+          <p>Matches use generic, strength and dosage form with valid unexpired stock. Nothing is replaced automatically.</p>
+          <dl><div><dt>Generic</dt><dd>{alternatives.source.genericName}</dd></div><div><dt>Strength</dt><dd>{alternatives.source.strength||'Not configured'}</dd></div><div><dt>Dosage form</dt><dd>{alternatives.source.dosageForm||'Not configured'}</dd></div></dl>
+          {!alternatives.items.length&&<p>No eligible alternative currently has valid stock.</p>}
+          <div className="alternative-list">{alternatives.items.map(product=>{
+            const unit=product.units[0],expiry=product.batches.find(batch=>batch.expiry_date)?.expiry_date||'No expiry recorded';
+            return <article key={product.id}>
+              <div><strong>{product.name}</strong><small>{[product.manufacturer,product.strength,product.dosageForm].filter(Boolean).join(' · ')}</small><small>{product.sellableBaseQuantity} {product.baseUnit} available · Nearest expiry {expiry}</small>
+              {(product.prescriptionRequired||product.controlledMedicine)&&<span className="warning">{product.controlledMedicine?'Controlled medicine warning':'Prescription-required warning'}</span>}</div>
+              <div><strong>{unit?.selling_price_minor==null?'Price not configured':`PKR ${money(unit.selling_price_minor)} / ${unit.unit_name}`}</strong><button className="primary" disabled={alternativeBusy||!unit||unit.selling_price_minor==null} onClick={()=>void addAlternative(product)}>Add alternative</button></div>
+            </article>;
+          })}</div>
+        </div>
+      </Dialog>}
       <div className="shortcut-row">
         <span>F2 Search</span>
         <span>F3 Hold sale</span>

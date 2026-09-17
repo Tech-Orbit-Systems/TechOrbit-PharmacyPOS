@@ -20,12 +20,13 @@ function seedInitial(db) {
     .prepare("SELECT id FROM Users WHERE username='demo'")
     .get().id;
   const products = [
-    ["Panadol 500 mg", "Paracetamol", "Strip", 12000, "0012345678901"],
-    ["Cetirizine 10 mg", "Cetirizine", "Strip", 16000, "0012345678902"],
-    ["ORS sachet", "Oral rehydration salts", "Sachet", 5000, "0012345678903"],
-    ["Amoxicillin 500 mg", "Amoxicillin", "Capsule", 6000, "0012345678904"],
+    ["Panadol 500 mg", "Paracetamol", "Strip", 12000, "0012345678901", "500 mg", "Tablet", "GSK", false, false],
+    ["Paracetamol Health 500 mg", "Paracetamol", "Strip", 11000, "0012345678911", "500 mg", "Tablet", "Health Labs", true, false],
+    ["Cetirizine 10 mg", "Cetirizine", "Strip", 16000, "0012345678902", "10 mg", "Tablet", "Demo Pharma", true, false],
+    ["ORS sachet", "Oral rehydration salts", "Sachet", 5000, "0012345678903", "", "Sachet", "Demo Pharma", false, false],
+    ["Amoxicillin 500 mg", "Amoxicillin", "Capsule", 6000, "0012345678904", "500 mg", "Capsule", "Demo Pharma", true, false],
   ];
-  for (const [name, genericName, unit, price, barcode] of products) {
+  for (const [name, genericName, unit, price, barcode, strength, dosageForm, manufacturer, prescriptionRequired, controlledMedicine] of products) {
     const p = new ProductsRepository(db).create({
       name,
       genericName,
@@ -33,6 +34,11 @@ function seedInitial(db) {
       baseUnit: unit.toLowerCase(),
       defaultSalePriceMinor: price,
       minimumStock: 20,
+      strength,
+      dosageForm,
+      manufacturer,
+      prescriptionRequired,
+      controlledMedicine,
     });
     new ProductUnitsRepository(db).configure(p.id, [
       {

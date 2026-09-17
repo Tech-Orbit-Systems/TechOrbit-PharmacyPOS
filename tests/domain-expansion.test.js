@@ -25,7 +25,9 @@ describe("Expanded pharmacy domain schema", () => {
     expect(allowed).toContain("closing.create");
     expect(allowed).not.toContain("purchase.manage");
     expect(allowed).not.toContain("report.cost");
-    expect(db.prepare(`SELECT count(*) count FROM RolePermissions rp JOIN Roles r ON r.id=rp.role_id WHERE r.code='admin'`).get().count).toBe(20);
+    expect(db.prepare(`SELECT count(*) count FROM RolePermissions rp JOIN Roles r ON r.id=rp.role_id WHERE r.code='admin'`).get().count).toBe(21);
+    expect(db.prepare(`SELECT count(*) count FROM RolePermissions rp JOIN Roles r ON r.id=rp.role_id JOIN Permissions p ON p.id=rp.permission_id WHERE r.code='pharmacist' AND p.code='medicine.alternatives'`).get().count).toBe(1);
+    expect(db.prepare(`SELECT count(*) count FROM RolePermissions rp JOIN Roles r ON r.id=rp.role_id JOIN Permissions p ON p.id=rp.permission_id WHERE r.code='cashier' AND p.code='medicine.alternatives'`).get().count).toBe(0);
   });
 
   test("normalizes exact, month-year and legacy escaped expiry dates", () => {

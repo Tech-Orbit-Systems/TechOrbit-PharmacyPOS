@@ -64,6 +64,8 @@ app.whenReady().then(() => {
     "dashboard",
     "search",
     "barcode",
+    "alternativeSearch",
+    "alternativeSelect",
     "customers",
     "ledger",
     "quote",

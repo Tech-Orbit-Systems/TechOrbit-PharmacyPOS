@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-18 - Generic alternatives (P031)
+
+- Added permission-controlled, audited alternatives by generic, strength, dosage form and valid stock.
+- Added explicit POS selection without automatic substitution, with prescription/controlled warnings retained.
+- Root 101 tests, modern 10 tests, production UI build and all 4 Electron E2E tests pass. The apparent GPU failure was isolated to the restricted command sandbox; the approved GUI test profile passed without a runtime installation or application workaround. Evidence: [P031](p031-generic-alternatives.md).
+
 ## 2026-09-13 - Modern Product Master and packing (P029 / P030)
 
 - P029: searchable product list/editor, duplicate warnings, preserved inactive history, audited transactional saves and role checks. Evidence: [P029](p029-product-master.md).

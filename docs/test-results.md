@@ -166,3 +166,14 @@ No production data was used. Disposable records have names prefixed `TechOrbit S
 - HTTP template download, multipart preview, commit, and repeat-commit conflict passed.
 - Automated result: 15 suites, 65 tests passed.
 - Production dependency audit: 0 vulnerabilities.
+
+## Generic alternatives — 2026-09-18
+
+- Root regression: 32 suites / 101 tests passed.
+- Modern checks: 10 tests passed.
+- TypeScript and Vite production build passed.
+- Matching verifies generic, strength, dosage form, valid stock and expiry exclusions.
+- Permission checks verify Cashier denial and Pharmacist/Admin access; view and explicit selection audit records pass.
+- P031 Electron E2E passed three explicit-selection repetitions in 8.4 seconds using an isolated temporary database.
+- Full modern Electron regression passed 4/4 tests in 26.0 seconds, including P029 Product Master, P030 packing, P031 alternatives and the prior Dashboard/POS flow.
+- The earlier `0xC0000135` GPU subprocess exit was caused by the restricted command sandbox. No runtime installation or production application GPU flag was required.

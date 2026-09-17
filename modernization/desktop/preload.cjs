@@ -10,6 +10,8 @@ const methods = [
   "dashboard",
   "search",
   "barcode",
+  "alternativeSearch",
+  "alternativeSelect",
   "customers",
   "ledger",
   "quote",

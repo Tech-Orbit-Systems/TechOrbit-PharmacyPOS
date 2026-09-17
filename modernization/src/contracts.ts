@@ -5,6 +5,9 @@ export interface Product {
   id: number;
   name: string;
   genericName: string;
+  manufacturer: string;
+  strength: string;
+  dosageForm: string;
   barcode: string;
   baseUnit: string;
   sellableBaseQuantity: number;
@@ -118,6 +121,8 @@ export interface Api {
   }): Promise<DashboardData>;
   search(input: { q: string }): Promise<Product[]>;
   barcode(input: { barcode: string }): Promise<Product | null>;
+  alternativeSearch(input: { productId: number }): Promise<AlternativeResult>;
+  alternativeSelect(input: { sourceProductId: number; alternativeProductId: number }): Promise<Product>;
   customers(): Promise<{ id: number; name: string; phone: string }[]>;
   ledger(input: { type: string }): Promise<any[]>;
   quote(input: SaleInput): Promise<Quote>;
@@ -130,3 +135,4 @@ declare global {
 }
 export interface ProductSummary {id:number;sku:string|null;name:string;barcode:string|null;generic_name:string|null;manufacturer:string|null;strength:string|null;base_unit:string;default_sale_price_minor:number;active:number}
 export interface ProductMasterResult {product?:Record<string,string|number|boolean|null>;units?:Product['units'];needsConfirmation?:boolean;duplicates?:{id:number;name:string}[]}
+export interface AlternativeResult {source:{id:number;name:string;genericName:string;strength:string;dosageForm:string};items:Product[]}
