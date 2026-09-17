@@ -12,6 +12,8 @@ const methods = [
   "barcode",
   "alternativeSearch",
   "alternativeSelect",
+  "inventoryList",
+  "inventoryDetail",
   "customers",
   "ledger",
   "quote",

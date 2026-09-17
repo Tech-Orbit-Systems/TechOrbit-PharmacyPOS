@@ -177,3 +177,11 @@ No production data was used. Disposable records have names prefixed `TechOrbit S
 - P031 Electron E2E passed three explicit-selection repetitions in 8.4 seconds using an isolated temporary database.
 - Full modern Electron regression passed 4/4 tests in 26.0 seconds, including P029 Product Master, P030 packing, P031 alternatives and the prior Dashboard/POS flow.
 - The earlier `0xC0000135` GPU subprocess exit was caused by the restricted command sandbox. No runtime installation or production application GPU flag was required.
+# P032 targeted acceptance — 2026-09-18
+
+- `npx jest tests/inventory-live-stock.test.js --runInBand`: 1 suite / 1 test passed.
+- `node --test tests/inventory.test.cjs`: 1 test passed.
+- `npm run build` in `modernization`: TypeScript and Vite production build passed.
+- `npx playwright test e2e/inventory.spec.cjs`: 1 isolated Electron E2E passed; the tested desktop flow completed in 7.3 seconds.
+- Verified expired physical stock remains visible with zero sellable quantity, cost fields are permission-protected, filters/search work and batch movement detail opens.
+- Owner decision: one successful E2E run is sufficient; regression should cover only the changed module and directly affected flows instead of repeatedly testing unrelated accepted modules.

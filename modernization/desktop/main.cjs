@@ -66,6 +66,8 @@ app.whenReady().then(() => {
     "barcode",
     "alternativeSearch",
     "alternativeSelect",
+    "inventoryList",
+    "inventoryDetail",
     "customers",
     "ledger",
     "quote",

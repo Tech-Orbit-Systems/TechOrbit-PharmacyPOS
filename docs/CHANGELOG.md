@@ -166,3 +166,9 @@ All notable Tech Orbit baseline and migration changes are recorded here.
 - Added atomic product and unit commit, audit logging, duplicate-file protection, and SQLite optimize hook.
 - Added bounded multipart API upload and 5,000-row performance coverage.
 - Scoped ExcelJS transitive UUID to a patched compatible version; production audit remains clean.
+# 2026-09-18 — P032 modern batch live-stock screen
+
+- Added permission-controlled batch inventory list and detail views.
+- Added physical versus sellable quantity, expiry and stock statuses, movement/supplier traceability, protected cost/value fields, filters and pagination.
+- Passed targeted backend/gateway tests, production UI build and one isolated Electron E2E run.
+- Recorded the owner decision to use one successful E2E run and avoid unrelated repeated regression.

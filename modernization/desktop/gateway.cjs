@@ -90,6 +90,12 @@ class Gateway {
       this.authorize('sale.create');
       return this.db.prepare("SELECT id,opened_at,device_id FROM CashShifts WHERE user_id=? AND device_id='modern-desktop' AND status='open' ORDER BY opened_at DESC LIMIT 1").get(this.session.id)||null;
     }
+    if (command === 'inventoryList' || command === 'inventoryDetail') {
+      this.authorize('inventory.view');
+      const service = new (require('../../infrastructure/sqlite/services/inventory-live-stock').InventoryLiveStockService)(this.db);
+      const options = { asOfDate: dayKey(new Date()), costVisible: this.permission('report.cost') };
+      return command === 'inventoryList' ? service.list(input, options) : service.detail(input, options);
+    }
     if(command==='createCustomer'){
       this.authorize('sale.create');
       return require('./customer-create.cjs').createCustomer(this.db,input,this.session.id);

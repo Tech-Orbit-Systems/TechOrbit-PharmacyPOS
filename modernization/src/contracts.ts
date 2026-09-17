@@ -100,6 +100,8 @@ export interface DashboardData {
   recent: any[];
 }
 export interface Api {
+  inventoryList(input:{q:string;stock:string;expiry:string;page:number}):Promise<InventoryResult>;
+  inventoryDetail(input:{batchId:number}):Promise<{batch:InventoryBatch;movements:InventoryMovement[];costVisible:boolean}>;
   packingDetail(input:{id:number}):Promise<ProductMasterResult & {historyLocked:boolean}>;
   packingSave(input:Record<string,unknown>):Promise<ProductMasterResult & {historyLocked:boolean}>;
   productList(input:{q:string;state:string;page:number}):Promise<{items:ProductSummary[];total:number;page:number;pageSize:number}>;
@@ -136,3 +138,13 @@ declare global {
 export interface ProductSummary {id:number;sku:string|null;name:string;barcode:string|null;generic_name:string|null;manufacturer:string|null;strength:string|null;base_unit:string;default_sale_price_minor:number;active:number}
 export interface ProductMasterResult {product?:Record<string,string|number|boolean|null>;units?:Product['units'];needsConfirmation?:boolean;duplicates?:{id:number;name:string}[]}
 export interface AlternativeResult {source:{id:number;name:string;genericName:string;strength:string;dosageForm:string};items:Product[]}
+export interface InventoryBatch {
+  id:number;productId:number;name:string;genericName:string|null;manufacturer:string|null;baseUnit:string;
+  batchNumber:string|null;manufacturingDate:string|null;expiryDate:string|null;supplierName:string|null;
+  openingQuantity:number;purchasedQuantity:number;bonusQuantity:number;soldQuantity:number;
+  customerReturnQuantity:number;supplierReturnQuantity:number;adjustmentQuantity:number;disposedQuantity:number;
+  physicalQuantity:number;sellableQuantity:number;minimumStock:number;reorderLevel:number;
+  stockStatus:string;expiryStatus:string;effectiveCostMinor:number|null;stockValueMinor:number|null;
+}
+export interface InventoryMovement {id:number;movement_type:string;quantity_delta:number;reference_type:string;reference_id:string|null;occurred_at:string;note:string|null;user_name:string|null}
+export interface InventoryResult {items:InventoryBatch[];total:number;page:number;pageSize:number;costVisible:boolean;asOfDate:string}
