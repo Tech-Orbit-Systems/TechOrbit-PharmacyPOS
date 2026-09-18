@@ -1,0 +1,15 @@
+const {ProductImportService}=require('../../infrastructure/sqlite/services/product-import');
+const {HEADERS,parseProductFile,createProductTemplate}=require('../../infrastructure/import/product-import-files');
+
+const safe=value=>{const text=String(value??'');return /^[=+\-@]/.test(text)?"'"+text:text};
+const csvCell=value=>'"'+safe(value).replace(/"/g,'""')+'"';
+class ProductImportDesktop{
+ constructor(db){this.db=db;this.service=new ProductImportService(db)}
+ file(input){const name=String(input.name||'').slice(0,200);if(!/\.(xlsx|csv)$/i.test(name))throw Error('Choose an XLSX or CSV product file');const buffer=Buffer.from(String(input.base64||''),'base64');if(!buffer.length||buffer.length>8*1024*1024)throw Error('Product file must be between 1 byte and 8 MB');return{name,buffer}}
+ async inspect(input){const {name,buffer}=this.file(input),rows=await parseProductFile(buffer,name);if(!rows.length)throw Error('Import file has no product rows');if(rows.length>5000)throw Error('A maximum of 5000 product rows is allowed per import');const headers=[...new Set(rows.flatMap(row=>Object.keys(row)))];return{headers,totalRows:rows.length,sampleRows:rows.slice(0,5),suggestedMapping:Object.fromEntries(HEADERS.filter(header=>headers.includes(header)).map(header=>[header,header]))}}
+ async preview(input,userId){const {name,buffer}=this.file(input),sourceRows=await parseProductFile(buffer,name);if(sourceRows.length>5000)throw Error('A maximum of 5000 product rows is allowed per import');const mapping=input.mapping&&typeof input.mapping==='object'?input.mapping:{};if(!mapping.name)throw Error('Map a source column to product name');const used=new Set();for(const source of Object.values(mapping)){if(!source)continue;if(used.has(source))throw Error('Each source column can only be mapped once');used.add(source)}const rows=sourceRows.map(row=>Object.fromEntries(Object.entries(mapping).filter(([,source])=>source).map(([target,source])=>[target,row[source]])));return this.service.preview({rows,sourceName:name,sourceBuffer:buffer,duplicatePolicy:String(input.duplicatePolicy||'error'),createdBy:userId})}
+ async template(){const buffer=await createProductTemplate();return{name:'TechOrbit-Product-Import-Template.xlsx',mime:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',base64:buffer.toString('base64')}}
+ errors(input){const id=Number(input.jobId),rows=this.db.prepare('SELECT row_number,errors_json,raw_json FROM ImportRows WHERE import_job_id=? AND action=\'error\' ORDER BY row_number').all(id);if(!this.db.prepare("SELECT id FROM ImportJobs WHERE id=? AND import_type='product_master'").get(id))throw Error('Product import job was not found');const body=[['row_number','errors','raw_data'],...rows.map(row=>[row.row_number,JSON.parse(row.errors_json).join('; '),row.raw_json])].map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n';return{name:`product-import-errors-${id}.csv`,mime:'text/csv;charset=utf-8',base64:Buffer.from(body).toString('base64')}}
+ commit(input){return this.service.commit(Number(input.jobId))}
+}
+module.exports={ProductImportDesktop};

@@ -193,3 +193,12 @@ No production data was used. Disposable records have names prefixed `TechOrbit S
 - `npx playwright test e2e/opening-stock.spec.cjs`: 1 isolated Electron E2E passed; the tested desktop flow completed in 6.7 seconds.
 - Verified manual preview/commit, batch opening quantity, product-specific lock, MM/YYYY last-day conversion, Excel template generation, CSV leading-zero preservation, atomic behavior and permission denial.
 - Unrelated previously accepted modules were not rerun, following the confirmed targeted-testing cadence.
+
+# P034 targeted acceptance — 2026-09-18
+
+- `npx jest tests/product-import.test.js tests/product-import-files.test.js tests/product-import-error-report.test.js --runInBand`: 3 suites / 8 tests passed.
+- `node --test tests/product-import.test.cjs`: 1 test passed.
+- `npm run build` in `modernization`: TypeScript and Vite production build passed.
+- `npx playwright test e2e/product-import.spec.cjs`: 1 isolated Electron E2E passed; the tested desktop flow completed in 6.6 seconds.
+- Verified XLSX template delivery, CSV/XLSX parsing, explicit mapping, duplicate error/skip/update policies, preview, error export, atomic commit, permissions, and leading-zero identifiers.
+- Unrelated previously accepted modules were not rerun, following the confirmed targeted-testing cadence.

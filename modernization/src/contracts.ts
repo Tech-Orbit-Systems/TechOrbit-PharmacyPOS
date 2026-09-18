@@ -100,6 +100,11 @@ export interface DashboardData {
   recent: any[];
 }
 export interface Api {
+  productImportInspect(input:{name:string;base64:string}):Promise<ProductImportInspection>;
+  productImportPreview(input:{name:string;base64:string;mapping:Record<string,string>;duplicatePolicy:string}):Promise<ProductImportPreview>;
+  productImportTemplate(input?:undefined):Promise<DownloadFile>;
+  productImportErrors(input:{jobId:number}):Promise<DownloadFile>;
+  productImportCommit(input:{jobId:number}):Promise<{jobId:number;status:string;committedRows:number;skippedRows:number}>;
   openingStockProducts(input:{q:string}):Promise<OpeningStockProduct[]>;
   openingStockPreviewManual(input:Record<string,unknown>):Promise<OpeningStockPreview>;
   openingStockPreviewFile(input:{name:string;base64:string}):Promise<OpeningStockPreview>;
@@ -156,3 +161,7 @@ export interface InventoryResult {items:InventoryBatch[];total:number;page:numbe
 export interface OpeningStockProduct {id:number;sku:string|null;barcode:string|null;name:string;generic_name:string|null;product_type:string;base_unit:string;locked:boolean;units:{unit_name:string;base_quantity:number;allows_fractional_quantity:number}[]}
 export interface OpeningStockPreviewRow {rowNumber:number;action:string;errors:string[];normalized:{productId:number|null;sku:string|null;barcode:string|null;name:string|null;batchNumber:string|null;expiryDate:string|null;entryDate:string;unit:string;quantity:number;baseQuantity:number;unitCostMinor:number;note:string|null}}
 export interface OpeningStockPreview {jobId:number;totalRows:number;validRows:number;errorRows:number;skippedRows:number;rows:OpeningStockPreviewRow[]}
+export interface DownloadFile {name:string;mime:string;base64:string}
+export interface ProductImportInspection {headers:string[];totalRows:number;sampleRows:Record<string,unknown>[];suggestedMapping:Record<string,string>}
+export interface ProductImportPreviewRow {rowNumber:number;action:string;errors:string[];normalized:{sku:string|null;barcode:string|null;name:string|null;manufacturer:string|null;baseUnit:string}}
+export interface ProductImportPreview {jobId:number;totalRows:number;validRows:number;errorRows:number;skippedRows:number;rows:ProductImportPreviewRow[]}

@@ -178,3 +178,9 @@ All notable Tech Orbit baseline and migration changes are recorded here.
 - Added product-specific history locks, month/year expiry normalization, leading-zero-safe CSV parsing, atomic commit and separate manual/import audit actions.
 - Corrected batch `opening_quantity` recording so Inventory quantity history reflects committed opening stock.
 - Passed targeted opening-stock tests, production UI build and one isolated Electron E2E run.
+# 2026-09-18 — P034 product import
+
+- Connected Product Master to an administrator-only XLSX/CSV import workflow.
+- Added file inspection, explicit field mapping, duplicate policy selection, validation preview, safe error CSV export, and atomic commit.
+- Preserved leading-zero product identifiers through template, CSV, preview, and commit paths.
+- Added focused backend, desktop gateway, production build, and one-pass Electron acceptance coverage.

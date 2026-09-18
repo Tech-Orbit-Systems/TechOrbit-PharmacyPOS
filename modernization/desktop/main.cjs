@@ -56,6 +56,7 @@ app.whenReady().then(() => {
   );
   for (const command of [
   "productList", "productDetail", "productSave", "productSuppliers", "packingDetail", "packingSave",
+    "productImportInspect", "productImportPreview", "productImportTemplate", "productImportErrors", "productImportCommit",
     "shiftStatus",
     "createCustomer",
     "login",
@@ -85,7 +86,7 @@ app.whenReady().then(() => {
         event.senderFrame.url !== entryUrl
       )
         throw Error("Untrusted sender");
-      const requestLimit = command === "openingStockPreviewFile" ? 6000000 : 100000;
+      const requestLimit = ["openingStockPreviewFile","productImportInspect","productImportPreview"].includes(command) ? 12000000 : 100000;
       if (JSON.stringify(input ?? {}).length > requestLimit)
         throw Error("Request too large");
       return new Promise((resolve, reject) => {

@@ -86,6 +86,15 @@ class Gateway {
         return master.save(input,this.session.id);
       } catch(error){if(error.code?.startsWith('SQLITE'))throw Error('Product could not be saved. Check values and retry.');throw error;}
     }
+    if(['productImportInspect','productImportPreview','productImportTemplate','productImportErrors','productImportCommit'].includes(command)){
+      this.authorize('settings.manage');
+      const service=new (require('./product-import.cjs').ProductImportDesktop)(this.db);
+      if(command==='productImportInspect')return service.inspect(input);
+      if(command==='productImportPreview')return service.preview(input,this.session.id);
+      if(command==='productImportTemplate')return service.template();
+      if(command==='productImportErrors')return service.errors(input);
+      return service.commit(input);
+    }
     if(command==='shiftStatus'){
       this.authorize('sale.create');
       return this.db.prepare("SELECT id,opened_at,device_id FROM CashShifts WHERE user_id=? AND device_id='modern-desktop' AND status='open' ORDER BY opened_at DESC LIMIT 1").get(this.session.id)||null;
