@@ -112,6 +112,8 @@ export interface Api {
   openingStockCommit(input:{jobId:number}):Promise<{jobId:number;status:string;committedRows:number}>;
   inventoryList(input:{q:string;stock:string;expiry:string;page:number}):Promise<InventoryResult>;
   inventoryDetail(input:{batchId:number}):Promise<{batch:InventoryBatch;movements:InventoryMovement[];costVisible:boolean}>;
+  stockAdjustmentDetail(input:{batchId:number}):Promise<StockAdjustmentBatch>;
+  stockAdjustmentPost(input:{batchId:number;mode:string;quantity:number;reason:string;occurredAt:string;idempotencyKey:string}):Promise<{adjustmentId:number;itemCount:number;idempotent:boolean}>;
   packingDetail(input:{id:number}):Promise<ProductMasterResult & {historyLocked:boolean}>;
   packingSave(input:Record<string,unknown>):Promise<ProductMasterResult & {historyLocked:boolean}>;
   productList(input:{q:string;state:string;page:number}):Promise<{items:ProductSummary[];total:number;page:number;pageSize:number}>;
@@ -157,6 +159,7 @@ export interface InventoryBatch {
   stockStatus:string;expiryStatus:string;effectiveCostMinor:number|null;stockValueMinor:number|null;
 }
 export interface InventoryMovement {id:number;movement_type:string;quantity_delta:number;reference_type:string;reference_id:string|null;occurred_at:string;note:string|null;user_name:string|null}
+export interface StockAdjustmentBatch {batchId:number;batchNumber:string|null;expiryDate:string|null;physicalQuantity:number;name:string;genericName:string|null;baseUnit:string;controlledMedicine:boolean}
 export interface InventoryResult {items:InventoryBatch[];total:number;page:number;pageSize:number;costVisible:boolean;asOfDate:string}
 export interface OpeningStockProduct {id:number;sku:string|null;barcode:string|null;name:string;generic_name:string|null;product_type:string;base_unit:string;locked:boolean;units:{unit_name:string;base_quantity:number;allows_fractional_quantity:number}[]}
 export interface OpeningStockPreviewRow {rowNumber:number;action:string;errors:string[];normalized:{productId:number|null;sku:string|null;barcode:string|null;name:string|null;batchNumber:string|null;expiryDate:string|null;entryDate:string;unit:string;quantity:number;baseQuantity:number;unitCostMinor:number;note:string|null}}

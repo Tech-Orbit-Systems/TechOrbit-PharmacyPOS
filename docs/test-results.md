@@ -202,3 +202,13 @@ No production data was used. Disposable records have names prefixed `TechOrbit S
 - `npx playwright test e2e/product-import.spec.cjs`: 1 isolated Electron E2E passed; the tested desktop flow completed in 6.6 seconds.
 - Verified XLSX template delivery, CSV/XLSX parsing, explicit mapping, duplicate error/skip/update policies, preview, error export, atomic commit, permissions, and leading-zero identifiers.
 - Unrelated previously accepted modules were not rerun, following the confirmed targeted-testing cadence.
+
+# P035 targeted acceptance — 2026-09-18
+
+- `npx jest tests/stock-adjustments.test.js --runInBand`: 1 suite / 3 tests passed.
+- `node --test tests/stock-adjustment.test.cjs`: 1 test passed.
+- `npm run build` in `modernization`: TypeScript and Vite production build passed.
+- `npx playwright test e2e/stock-adjustment.spec.cjs`: final isolated Electron E2E passed once in 4.4 seconds.
+- Verified count correction, damage/loss, expiry/disposal, controlled-medicine authorization, reason and actor audit, idempotency, duplicate-batch rejection, negative-stock rollback and visible movement history.
+- The first E2E exposed missing reason visibility, which was fixed. A later locator ambiguity affected only the test and was corrected before the successful acceptance run.
+- Unrelated previously accepted modules were not rerun.

@@ -1,0 +1,7 @@
+const {StockAdjustmentsService}=require('../../infrastructure/sqlite/services/stock-adjustments');
+class StockAdjustmentDesktop{
+ constructor(db){this.db=db;this.service=new StockAdjustmentsService(db)}
+ detail(input){const row=this.db.prepare(`SELECT b.id,b.batch_number,b.expiry_date,b.quantity_on_hand,p.name,p.generic_name,p.base_unit,p.controlled_medicine FROM ProductBatches b JOIN Products p ON p.id=b.product_id WHERE b.id=?`).get(Number(input.batchId));if(!row)throw Error('Batch was not found');return{batchId:row.id,batchNumber:row.batch_number,expiryDate:row.expiry_date,physicalQuantity:Number(row.quantity_on_hand),name:row.name,genericName:row.generic_name,baseUnit:row.base_unit,controlledMedicine:Boolean(row.controlled_medicine)}}
+ post(input,user){const detail=this.detail(input),mode=String(input.mode||''),value=Number(input.quantity);if(!['count','loss','disposal'].includes(mode))throw Error('Choose a valid adjustment type');if(!Number.isFinite(value)||value<0)throw Error('Enter a valid quantity');let delta,type;if(mode==='count'){delta=value-detail.physicalQuantity;if(delta===0)throw Error('Counted quantity matches current stock');type=delta>0?'gain':'loss'}else{if(value<=0)throw Error('Quantity must be greater than zero');delta=-value;type=mode}return this.service.post({adjustmentType:type,idempotencyKey:String(input.idempotencyKey||''),occurredAt:input.occurredAt||null,reason:String(input.reason||''),createdBy:user.id,roleCode:user.roleCode,items:[{batchId:detail.batchId,quantityDelta:delta}]})}
+}
+module.exports={StockAdjustmentDesktop};

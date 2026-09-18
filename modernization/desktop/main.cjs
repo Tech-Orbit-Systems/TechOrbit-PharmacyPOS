@@ -69,6 +69,8 @@ app.whenReady().then(() => {
     "alternativeSelect",
     "inventoryList",
     "inventoryDetail",
+    "stockAdjustmentDetail",
+    "stockAdjustmentPost",
     "openingStockProducts",
     "openingStockPreviewManual",
     "openingStockPreviewFile",

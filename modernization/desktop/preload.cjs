@@ -15,6 +15,8 @@ const methods = [
   "alternativeSelect",
   "inventoryList",
   "inventoryDetail",
+  "stockAdjustmentDetail",
+  "stockAdjustmentPost",
   "openingStockProducts",
   "openingStockPreviewManual",
   "openingStockPreviewFile",

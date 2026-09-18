@@ -105,6 +105,11 @@ class Gateway {
       const options = { asOfDate: dayKey(new Date()), costVisible: this.permission('report.cost') };
       return command === 'inventoryList' ? service.list(input, options) : service.detail(input, options);
     }
+    if(command==='stockAdjustmentDetail'||command==='stockAdjustmentPost'){
+      this.authorize('stock.adjust');
+      const service=new (require('./stock-adjustment.cjs').StockAdjustmentDesktop)(this.db);
+      return command==='stockAdjustmentDetail'?service.detail(input):service.post(input,this.session);
+    }
     if (['openingStockProducts','openingStockPreviewManual','openingStockPreviewFile','openingStockTemplate','openingStockCommit'].includes(command)) {
       this.authorize('stock.adjust');
       const service=new (require('./opening-stock.cjs').OpeningStockDesktop)(this.db);

@@ -184,3 +184,9 @@ All notable Tech Orbit baseline and migration changes are recorded here.
 - Added file inspection, explicit field mapping, duplicate policy selection, validation preview, safe error CSV export, and atomic commit.
 - Preserved leading-zero product identifiers through template, CSV, preview, and commit paths.
 - Added focused backend, desktop gateway, production build, and one-pass Electron acceptance coverage.
+# 2026-09-18 — P035 stock adjustment and disposal
+
+- Added batch-level count correction, damage/loss and expiry/disposal workflows to Inventory.
+- Added signed change/result preview, required reason and confirmation, role checks, idempotency and negative-stock protection.
+- Kept batch updates, disposal totals, inventory movements and audit records atomic.
+- Displayed adjustment reasons in batch movement history and added focused backend, gateway, build and Electron acceptance coverage.
