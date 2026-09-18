@@ -1,6 +1,6 @@
 # P032 Modern Batch Live-Stock Screen
 
-Status: implemented and locally accepted on 2026-09-18. Push and canonical tracker completion remain pending.
+Status: completed, accepted and pushed in commit `3985519` on 2026-09-18. The canonical tracker is updated.
 
 ## Delivered
 
@@ -26,4 +26,3 @@ Per the owner decision on 2026-09-18, a single successful E2E run is sufficient 
 
 - P032 is read-only inventory monitoring. Opening stock, imports, adjustments/disposal and purchases remain P033-P036.
 - Full master acceptance and release gates remain separate from this package-level test.
-
