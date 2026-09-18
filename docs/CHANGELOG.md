@@ -172,3 +172,9 @@ All notable Tech Orbit baseline and migration changes are recorded here.
 - Added physical versus sellable quantity, expiry and stock statuses, movement/supplier traceability, protected cost/value fields, filters and pagination.
 - Passed targeted backend/gateway tests, production UI build and one isolated Electron E2E run.
 - Recorded the owner decision to use one successful E2E run and avoid unrelated repeated regression.
+# 2026-09-18 — P033 opening-stock manual and import UI
+
+- Added manual opening-stock entry and Excel/CSV preview/commit workflow inside Inventory.
+- Added product-specific history locks, month/year expiry normalization, leading-zero-safe CSV parsing, atomic commit and separate manual/import audit actions.
+- Corrected batch `opening_quantity` recording so Inventory quantity history reflects committed opening stock.
+- Passed targeted opening-stock tests, production UI build and one isolated Electron E2E run.

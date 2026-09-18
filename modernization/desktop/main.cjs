@@ -68,6 +68,11 @@ app.whenReady().then(() => {
     "alternativeSelect",
     "inventoryList",
     "inventoryDetail",
+    "openingStockProducts",
+    "openingStockPreviewManual",
+    "openingStockPreviewFile",
+    "openingStockTemplate",
+    "openingStockCommit",
     "customers",
     "ledger",
     "quote",
@@ -80,7 +85,8 @@ app.whenReady().then(() => {
         event.senderFrame.url !== entryUrl
       )
         throw Error("Untrusted sender");
-      if (JSON.stringify(input ?? {}).length > 100000)
+      const requestLimit = command === "openingStockPreviewFile" ? 6000000 : 100000;
+      if (JSON.stringify(input ?? {}).length > requestLimit)
         throw Error("Request too large");
       return new Promise((resolve, reject) => {
         const id = ++sequence;

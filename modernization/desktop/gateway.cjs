@@ -96,6 +96,15 @@ class Gateway {
       const options = { asOfDate: dayKey(new Date()), costVisible: this.permission('report.cost') };
       return command === 'inventoryList' ? service.list(input, options) : service.detail(input, options);
     }
+    if (['openingStockProducts','openingStockPreviewManual','openingStockPreviewFile','openingStockTemplate','openingStockCommit'].includes(command)) {
+      this.authorize('stock.adjust');
+      const service=new (require('./opening-stock.cjs').OpeningStockDesktop)(this.db);
+      if(command==='openingStockProducts')return service.products(input);
+      if(command==='openingStockPreviewManual')return service.previewManual(input,this.session.id);
+      if(command==='openingStockPreviewFile')return service.previewFile(input,this.session.id);
+      if(command==='openingStockTemplate')return service.template();
+      return service.commit(input);
+    }
     if(command==='createCustomer'){
       this.authorize('sale.create');
       return require('./customer-create.cjs').createCustomer(this.db,input,this.session.id);

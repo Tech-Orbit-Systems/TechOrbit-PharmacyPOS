@@ -185,3 +185,11 @@ No production data was used. Disposable records have names prefixed `TechOrbit S
 - `npx playwright test e2e/inventory.spec.cjs`: 1 isolated Electron E2E passed; the tested desktop flow completed in 7.3 seconds.
 - Verified expired physical stock remains visible with zero sellable quantity, cost fields are permission-protected, filters/search work and batch movement detail opens.
 - Owner decision: one successful E2E run is sufficient; regression should cover only the changed module and directly affected flows instead of repeatedly testing unrelated accepted modules.
+# P033 targeted acceptance — 2026-09-18
+
+- `npx jest tests/opening-stock-import.test.js --runInBand`: 1 suite / 3 tests passed.
+- `node --test tests/opening-stock.test.cjs`: 1 test passed.
+- `npm run build` in `modernization`: TypeScript and Vite production build passed.
+- `npx playwright test e2e/opening-stock.spec.cjs`: 1 isolated Electron E2E passed; the tested desktop flow completed in 6.7 seconds.
+- Verified manual preview/commit, batch opening quantity, product-specific lock, MM/YYYY last-day conversion, Excel template generation, CSV leading-zero preservation, atomic behavior and permission denial.
+- Unrelated previously accepted modules were not rerun, following the confirmed targeted-testing cadence.
