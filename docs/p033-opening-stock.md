@@ -1,6 +1,6 @@
 # P033 Opening-Stock Manual And Import UI
 
-Status: implemented and locally accepted on 2026-09-18. Push and canonical tracker completion remain pending.
+Status: completed, accepted and pushed in commit `36b449d` on 2026-09-18. The canonical tracker is updated.
 
 ## Delivered
 
@@ -28,4 +28,3 @@ Status: implemented and locally accepted on 2026-09-18. Push and canonical track
 - P033 does not create supplier purchases or payables.
 - Product-master import remains P034; adjustments/disposal remain P035; purchases remain P036.
 - Final release acceptance remains a separate gate.
-
