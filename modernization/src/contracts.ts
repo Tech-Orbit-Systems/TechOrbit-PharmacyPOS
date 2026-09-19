@@ -100,6 +100,13 @@ export interface DashboardData {
   recent: any[];
 }
 export interface Api {
+  supplierList(input:{q:string}):Promise<Supplier[]>;
+  supplierSave(input:SupplierInput):Promise<Supplier>;
+  purchaseProducts(input:{q:string}):Promise<PurchaseProduct[]>;
+  purchasePreview(input:PurchaseInput):Promise<PurchasePreview>;
+  purchasePost(input:PurchaseInput):Promise<PurchaseResult>;
+  purchaseHistory(input:{supplierId?:number}):Promise<PurchaseHistory[]>;
+  purchaseDetail(input:{id:number}):Promise<PurchaseDetail>;
   productImportInspect(input:{name:string;base64:string}):Promise<ProductImportInspection>;
   productImportPreview(input:{name:string;base64:string;mapping:Record<string,string>;duplicatePolicy:string}):Promise<ProductImportPreview>;
   productImportTemplate(input?:undefined):Promise<DownloadFile>;
@@ -165,6 +172,16 @@ export interface OpeningStockProduct {id:number;sku:string|null;barcode:string|n
 export interface OpeningStockPreviewRow {rowNumber:number;action:string;errors:string[];normalized:{productId:number|null;sku:string|null;barcode:string|null;name:string|null;batchNumber:string|null;expiryDate:string|null;entryDate:string;unit:string;quantity:number;baseQuantity:number;unitCostMinor:number;note:string|null}}
 export interface OpeningStockPreview {jobId:number;totalRows:number;validRows:number;errorRows:number;skippedRows:number;rows:OpeningStockPreviewRow[]}
 export interface DownloadFile {name:string;mime:string;base64:string}
+export interface Supplier {id:number;name:string;phone:string|null;email:string|null;address:string|null;active:number;purchase_count?:number;balance_minor?:number}
+export interface SupplierInput {id?:number;name:string;phone:string;email:string;address:string;active:boolean}
+export interface PurchaseProduct {id:number;name:string;generic_name:string|null;product_type:string;base_unit:string;default_sale_price_minor:number;units:{unitName:string;baseQuantity:number;sellingPriceMinor:number|null;default:number}[]}
+export interface PurchaseLineInput {productId:number;purchaseUnit:string;purchasedQuantity:number;bonusQuantity:number;unitCostMinor:number;salePriceMinor:number;batchNumber:string;expiryDate:string;manufacturingDate:string;updateSellingPrice:boolean}
+export interface PurchaseInput {supplierId:number;invoiceNumber:string;purchasedAt:string;paymentMethod:string;amountPaidMinor:number;dueDate:string;notes:string;idempotencyKey:string;items:PurchaseLineInput[]}
+export interface PurchasePreviewLine {line:number;productId:number;name:string;purchaseUnit:string;purchasedQuantity:number;bonusQuantity:number;baseQuantityReceived:number;lineTotalMinor:number;effectiveUnitCostMinor:number;batchNumber:string|null;expiryDate:string|null}
+export interface PurchasePreview extends PurchaseInput {lines:PurchasePreviewLine[];totalMinor:number;balanceDueMinor:number}
+export interface PurchaseResult {purchaseId:number;totalMinor:number;amountPaidMinor:number;balanceDueMinor:number;idempotent:boolean}
+export interface PurchaseHistory {id:number;invoice_number:string;purchased_at:string;total_minor:number;amount_paid_minor:number;balance_due_minor:number;payment_method:string;due_date:string|null;supplier_name:string;item_count:number}
+export interface PurchaseDetail extends PurchaseHistory {notes:string|null;items:{id:number;product_name:string;purchase_unit:string;purchased_quantity:number;bonus_quantity:number;batch_number:string|null;expiry_date:string|null;base_quantity_received:number;effective_unit_cost_minor:number;line_total_minor:number}[]}
 export interface ProductImportInspection {headers:string[];totalRows:number;sampleRows:Record<string,unknown>[];suggestedMapping:Record<string,string>}
 export interface ProductImportPreviewRow {rowNumber:number;action:string;errors:string[];normalized:{sku:string|null;barcode:string|null;name:string|null;manufacturer:string|null;baseUnit:string}}
 export interface ProductImportPreview {jobId:number;totalRows:number;validRows:number;errorRows:number;skippedRows:number;rows:ProductImportPreviewRow[]}

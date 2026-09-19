@@ -28,6 +28,25 @@ class SuppliersRepository {
   listActive() {
     return this.db.prepare("SELECT * FROM Suppliers WHERE active = 1 ORDER BY name, id").all();
   }
+
+  save(supplier) {
+    if (!supplier?.name?.trim()) throw new Error("Supplier name is required");
+    const values = {
+      name: supplier.name.trim(),
+      phone: supplier.phone?.trim() || null,
+      email: supplier.email?.trim() || null,
+      address: supplier.address?.trim() || null,
+      active: supplier.active === false ? 0 : 1,
+      updatedAt: new Date().toISOString(),
+    };
+    if (!supplier.id) return this.create(values);
+    if (!Number.isSafeInteger(supplier.id) || supplier.id < 1 || !this.findById(supplier.id)) {
+      throw new Error("Supplier was not found");
+    }
+    this.db.prepare(`UPDATE Suppliers SET name=@name,phone=@phone,email=@email,address=@address,
+      active=@active,updated_at=@updatedAt WHERE id=@id`).run({ ...values, id: supplier.id });
+    return this.findById(supplier.id);
+  }
 }
 
 module.exports = { SuppliersRepository };

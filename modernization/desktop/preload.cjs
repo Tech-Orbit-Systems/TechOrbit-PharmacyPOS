@@ -17,6 +17,7 @@ const methods = [
   "inventoryDetail",
   "stockAdjustmentDetail",
   "stockAdjustmentPost",
+  "supplierList", "supplierSave", "purchaseProducts", "purchasePreview", "purchasePost", "purchaseHistory", "purchaseDetail",
   "openingStockProducts",
   "openingStockPreviewManual",
   "openingStockPreviewFile",

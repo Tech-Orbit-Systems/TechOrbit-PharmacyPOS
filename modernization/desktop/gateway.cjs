@@ -110,6 +110,19 @@ class Gateway {
       const service=new (require('./stock-adjustment.cjs').StockAdjustmentDesktop)(this.db);
       return command==='stockAdjustmentDetail'?service.detail(input):service.post(input,this.session);
     }
+    if(['supplierList','supplierSave','purchaseProducts','purchasePreview','purchasePost','purchaseHistory','purchaseDetail'].includes(command)){
+      this.authorize('purchase.manage');
+      const service=new (require('./purchases.cjs').PurchasesDesktop)(this.db);
+      try{
+        if(command==='supplierList')return service.suppliers(input);
+        if(command==='supplierSave')return service.saveSupplier(input,this.session);
+        if(command==='purchaseProducts')return service.products(input);
+        if(command==='purchasePreview')return service.preview(input);
+        if(command==='purchasePost')return service.post(input,this.session);
+        if(command==='purchaseHistory')return service.history(input);
+        return service.detail(input);
+      }catch(error){if(error.code?.startsWith('SQLITE'))throw Error('Purchase could not be saved. Check the supplier invoice number and retry.');throw error;}
+    }
     if (['openingStockProducts','openingStockPreviewManual','openingStockPreviewFile','openingStockTemplate','openingStockCommit'].includes(command)) {
       this.authorize('stock.adjust');
       const service=new (require('./opening-stock.cjs').OpeningStockDesktop)(this.db);
