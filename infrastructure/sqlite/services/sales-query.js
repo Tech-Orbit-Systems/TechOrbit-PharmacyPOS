@@ -24,12 +24,14 @@ class SalesQueryService {
   receipt(id) {
     const sale = this.getById(id);
     if (!sale) return null;
+    const acknowledgement=this.db.prepare(`SELECT a.*,u.display_name acknowledged_by_name FROM SaleWarningAcknowledgements a JOIN Users u ON u.id=a.acknowledged_by WHERE a.sale_id=?`).get(id);
     return {
       saleId:sale.id, invoiceNumber:sale.invoice_number, soldAt:sale.sold_at,
       customer:{name:sale.customer_name_snapshot,phone:sale.customer_phone_snapshot},
       payment:{method:sale.payment_method,status:sale.payment_status,amountPaidMinor:sale.amount_paid_minor,balanceDueMinor:sale.balance_due_minor,dueDate:sale.due_date},
       totals:{grossMinor:sale.gross_minor,lineDiscountMinor:sale.line_discount_minor,invoiceDiscountMinor:sale.invoice_discount_minor,taxableMinor:sale.taxable_minor,gstMinor:sale.gst_minor,exactTotalMinor:sale.exact_total_minor,roundingMinor:sale.rounding_minor,finalTotalMinor:sale.final_total_minor},
-      items:sale.items.map(item=>({lineNumber:item.line_number,productName:item.product_name_snapshot,genericName:item.generic_name_snapshot,saleUnit:item.sale_unit,quantity:item.entered_quantity,originalUnitPriceMinor:item.original_unit_price_minor,unitPriceMinor:item.charged_unit_price_minor,lineDiscountMinor:item.line_discount_minor,gstMinor:item.gst_minor,lineTotalMinor:item.line_total_minor,prescriptionWarning:Boolean(item.prescription_warning),controlledWarning:Boolean(item.controlled_warning)}))
+      items:sale.items.map(item=>({lineNumber:item.line_number,productName:item.product_name_snapshot,genericName:item.generic_name_snapshot,saleUnit:item.sale_unit,quantity:item.entered_quantity,originalUnitPriceMinor:item.original_unit_price_minor,unitPriceMinor:item.charged_unit_price_minor,lineDiscountMinor:item.line_discount_minor,gstMinor:item.gst_minor,lineTotalMinor:item.line_total_minor,prescriptionWarning:Boolean(item.prescription_warning),controlledWarning:Boolean(item.controlled_warning),nearExpiryWarning:Boolean(item.near_expiry_warning)})),
+      warningAcknowledgement:acknowledgement?{warnings:JSON.parse(acknowledgement.warnings_json),doctorName:acknowledgement.doctor_name,prescriptionReference:acknowledgement.prescription_reference,acknowledgedBy:acknowledgement.acknowledged_by_name,acknowledgedAt:acknowledgement.acknowledged_at}:null
     };
   }
 }

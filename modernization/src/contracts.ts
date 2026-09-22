@@ -48,6 +48,9 @@ export interface SaleInput {
   invoiceDiscountType: "fixed" | "percentage";
   invoiceDiscountValue: number;
   customerId: number | null;
+  warningAcknowledged?: boolean;
+  doctorName?: string;
+  prescriptionReference?: string;
   items: { productId: number; saleUnit: string; quantity: number; unitPriceMinor:number; discountType:"fixed"|"percentage"; discountValue:number; overrideBatchId:number|null; overrideReason:string }[];
 }
 export interface User {
@@ -74,7 +77,9 @@ export interface Quote {
     gstMinor:number;
     lineTotalMinor:number;
     allocations: { batchId: number; quantity: number }[];
+    warnings: { type: "near_expiry" | "prescription" | "controlled"; batchId?: number; expiryDate?: string }[];
   }[];
+  warnings: { lineNumber: number; productId: number; type: "near_expiry" | "prescription" | "controlled"; batchId?: number; expiryDate?: string }[];
 }
 export interface Receipt {
   invoiceNumber: string;
@@ -97,6 +102,7 @@ export interface Receipt {
     invoiceDiscountMinor: number;
   };
   payment: { method: string;amountPaidMinor:number;balanceDueMinor:number;dueDate:string|null };
+  warningAcknowledgement: null | { warnings:{lineNumber:number;productId:number;type:string;batchId?:number;expiryDate?:string}[];doctorName:string|null;prescriptionReference:string|null;acknowledgedBy:string;acknowledgedAt:string };
 }
 export interface DashboardData {
   range: { from: string; to: string; monthly: boolean };

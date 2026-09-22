@@ -212,6 +212,9 @@ class Gateway {
       const creditMode=input.creditMode||'paid';
       if(!['paid','partial','credit'].includes(creditMode))throw Error('Choose a valid payment type');
       if(creditMode==='partial'&&(!Number.isSafeInteger(input.paidMinor)||input.paidMinor<=0))throw Error('Partial payment received must be greater than zero');
+      const doctorName=String(input.doctorName||'').trim(),prescriptionReference=String(input.prescriptionReference||'').trim();
+      if(doctorName.length>150)throw Error('Doctor name must be 150 characters or fewer');
+      if(prescriptionReference.length>200)throw Error('Prescription reference must be 200 characters or fewer');
       const sale = {
         invoiceNumber: String(input.key || ""),
         idempotencyKey: String(input.key || ""),
@@ -231,6 +234,10 @@ class Gateway {
         createdBy: this.session.id,
         roleCode: this.session.roleCode,
         deviceId: "modern-desktop",
+        warningAcknowledged:Boolean(input.warningAcknowledged),
+        doctorName:doctorName||null,
+        prescriptionReference:prescriptionReference||null,
+        enforceWarningAcknowledgement:command==='post',
       };
       if(command==='post'&&creditMode!=='paid'){
         if(!sale.customerId)throw Error('Select or add a customer for a credit sale');
@@ -241,7 +248,7 @@ class Gateway {
       }
       if (!/^TO-[a-f0-9-]{36}$/.test(sale.idempotencyKey))
         throw Error("Invalid sale reference");
-      const requestFingerprint=crypto.createHash("sha256").update(JSON.stringify({items:sale.items,paymentMethod:sale.paymentMethod,customerId:sale.customerId,invoiceDiscountType:sale.invoiceDiscountType,invoiceDiscountValue:sale.invoiceDiscountValue,creditMode,amountPaidMinor:sale.amountPaidMinor||0,dueDate:sale.dueDate||null,collectionMethod:sale.collectionMethod||null})).digest("hex");
+      const requestFingerprint=crypto.createHash("sha256").update(JSON.stringify({items:sale.items,paymentMethod:sale.paymentMethod,customerId:sale.customerId,invoiceDiscountType:sale.invoiceDiscountType,invoiceDiscountValue:sale.invoiceDiscountValue,creditMode,amountPaidMinor:sale.amountPaidMinor||0,dueDate:sale.dueDate||null,collectionMethod:sale.collectionMethod||null,warningAcknowledged:sale.warningAcknowledged,doctorName:sale.doctorName,prescriptionReference:sale.prescriptionReference})).digest("hex");
       sale.requestFingerprint=requestFingerprint;
       if (command === "post") {
         const old = this.db

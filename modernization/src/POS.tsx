@@ -67,6 +67,9 @@ export function POS({ user }: { user: User }) {
     [creditMode,setCreditMode]=useState<CreditMode>('paid'),
     [received,setReceived]=useState('0'),
     [dueDate,setDueDate]=useState(''),
+    [doctorName,setDoctorName]=useState(''),
+    [prescriptionReference,setPrescriptionReference]=useState(''),
+    [warningAcknowledged,setWarningAcknowledged]=useState(false),
     [showAddCustomer,setShowAddCustomer]=useState(false),
     [quote, setQuote] = useState<Quote | null>(null),
     [error, setError] = useState(""),
@@ -100,6 +103,8 @@ export function POS({ user }: { user: User }) {
       overrideReason:l.overrideReason,
     })),
   };
+  const warnings=quote?.warnings??[];
+  const warningReady=!warnings.length||warningAcknowledged;
   const inputKey = JSON.stringify(input);
   const creditReady=creditMode==='paid'||Boolean(customer&&dueDate&&quote&&(creditMode==='credit'||quote.balanceDueMinor>=0));
   useEffect(() => {
@@ -235,18 +240,19 @@ export function POS({ user }: { user: User }) {
     setCustomer(null);
     setMethod("cash");
     setCreditMode('paid');setReceived('0');setDueDate('');
+    setDoctorName('');setPrescriptionReference('');setWarningAcknowledged(false);
     setKey(newKey());
     setQuery("");
     setError("");
     scan.current?.focus();
   }
   async function pay() {
-    if (postLock.current || !quote || quoting || !lines.length || !creditReady) return;
+    if (postLock.current || !quote || quoting || !lines.length || !creditReady || !warningReady) return;
     postLock.current = true;
     setBusy(true);
     setError("");
     try {
-      const result = await window.pharmacy.post(input);
+      const result = await window.pharmacy.post({...input,warningAcknowledged,doctorName,prescriptionReference});
       setReceipt(result);
       reset();
     } catch (e) {
@@ -569,6 +575,11 @@ export function POS({ user }: { user: User }) {
             </p>
           </section>
         </div>
+        {warnings.length>0&&<section className="panel warning-acknowledgement" aria-label="Sale warnings">
+          <div><AlertTriangle size={20}/><div><strong>Review required before sale</strong><p>{warnings.some(w=>w.type==='near_expiry')&&'Near-expiry stock will be supplied. '}{warnings.some(w=>w.type==='prescription')&&'Prescription-required medicine is included. '}{warnings.some(w=>w.type==='controlled')&&'Controlled medicine is included.'}</p></div></div>
+          <div className="prescription-fields"><label>Doctor name (optional)<input aria-label="Doctor name" maxLength={150} value={doctorName} onChange={e=>{setDoctorName(e.target.value);setWarningAcknowledged(false)}}/></label><label>Prescription / reference (optional)<input aria-label="Prescription reference" maxLength={200} value={prescriptionReference} onChange={e=>{setPrescriptionReference(e.target.value);setWarningAcknowledged(false)}}/></label></div>
+          <label className="warning-confirm"><input aria-label="Acknowledge sale warnings" type="checkbox" checked={warningAcknowledged} onChange={e=>setWarningAcknowledged(e.target.checked)}/>I reviewed these warnings and confirm the sale may continue.</label>
+        </section>}
         <div className="panel credit-controls">
           <label>Payment type<select aria-label="Payment type" value={creditMode} onChange={e=>setCreditMode(e.target.value as CreditMode)}><option value="paid">Paid in full</option><option value="partial">Partial payment</option><option value="credit">Full credit</option></select></label>
           {creditMode!=='paid'&&<>
@@ -629,7 +640,7 @@ export function POS({ user }: { user: User }) {
           </button>
           <button
             className="primary pay"
-            disabled={!quote || quoting || !lines.length || !creditReady}
+            disabled={!quote || quoting || !lines.length || !creditReady || !warningReady}
             onClick={() => void pay()}
           >
             <Printer size={16} />
@@ -729,6 +740,7 @@ export function POS({ user }: { user: User }) {
             <p>Received PKR {money(receipt.payment.amountPaidMinor)}</p>
             <p>Remaining credit PKR {money(receipt.payment.balanceDueMinor)}</p>
             {receipt.payment.balanceDueMinor>0&&<p>Due date: {receipt.payment.dueDate}</p>}
+            {receipt.warningAcknowledgement&&<p className="receipt-warning">Warnings acknowledged by {receipt.warningAcknowledgement.acknowledgedBy}{receipt.warningAcknowledgement.doctorName?` · Doctor ${receipt.warningAcknowledgement.doctorName}`:''}{receipt.warningAcknowledgement.prescriptionReference?` · Reference ${receipt.warningAcknowledgement.prescriptionReference}`:''}</p>}
             <p>
               Payment:{" "}
               {receipt.payment.method === "bank_transfer"
