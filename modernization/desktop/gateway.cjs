@@ -178,6 +178,13 @@ class Gateway {
         )
         .all();
     }
+    if(['invoiceSearch','invoiceDetail','customerHistory'].includes(command)){
+      const service=new (require('./sales-history.cjs').SalesHistoryDesktop)(this.db);
+      if(command==='customerHistory'){this.authorize('customer.history');return service.customerHistory(input);}
+      this.authorize('invoice.search');
+      if(command==='invoiceSearch')return service.search(input);
+      return service.detail(input,{canPrint:this.permission('receipt.print'),canViewCustomerHistory:this.permission('customer.history'),canStartReturn:this.permission('return.customer'),canViewAudit:this.permission('audit.view')});
+    }
     if (command === "ledger") {
       this.authorize("dues.manage");
       if (input.type === "customers")

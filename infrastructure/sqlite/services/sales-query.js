@@ -13,6 +13,22 @@ class SalesQueryService {
     return this.db.prepare(`SELECT s.* FROM Sales s ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY s.sold_at DESC,s.id DESC LIMIT ?`).all(...params,limit);
   }
 
+  searchPaged(filters={}){
+    const where=[],params=[];
+    const addLike=(sql,value)=>{if(value){where.push(sql);params.push(`%${String(value).trim().replace(/[\\%_]/g,'\\$&')}%`);}};
+    addLike("s.invoice_number LIKE ? ESCAPE '\\'",filters.invoiceNumber);
+    addLike("s.customer_phone_snapshot LIKE ? ESCAPE '\\'",filters.phone);
+    if(filters.paymentStatus){if(!['paid','partial','credit','reversed'].includes(filters.paymentStatus))throw Error('Choose a valid payment status');where.push('s.payment_status=?');params.push(filters.paymentStatus);}
+    if(filters.dateFrom){if(!/^\d{4}-\d{2}-\d{2}$/.test(filters.dateFrom))throw Error('Choose a valid from date');where.push('s.sold_at>=?');params.push(filters.dateFrom+'T00:00:00+05:00');}
+    if(filters.dateTo){if(!/^\d{4}-\d{2}-\d{2}$/.test(filters.dateTo))throw Error('Choose a valid to date');where.push('s.sold_at<?');const end=new Date(filters.dateTo+'T00:00:00Z');end.setUTCDate(end.getUTCDate()+1);params.push(end.toISOString().slice(0,10)+'T00:00:00+05:00');}
+    if(filters.dateFrom&&filters.dateTo&&filters.dateFrom>filters.dateTo)throw Error('From date cannot be after to date');
+    if(filters.product){where.push("EXISTS (SELECT 1 FROM SaleItems si WHERE si.sale_id=s.id AND (si.product_name_snapshot LIKE ? ESCAPE '\\' OR si.generic_name_snapshot LIKE ? ESCAPE '\\'))");const pattern=`%${String(filters.product).trim().replace(/[\\%_]/g,'\\$&')}%`;params.push(pattern,pattern);}
+    const page=Number(filters.page||1),pageSize=Math.min(Math.max(Number(filters.pageSize)||25,1),100);if(!Number.isSafeInteger(page)||page<1)throw Error('Choose a valid page');
+    const clause=where.length?'WHERE '+where.join(' AND '):'';const total=this.db.prepare(`SELECT COUNT(*) count FROM Sales s ${clause}`).get(...params).count;
+    const items=this.db.prepare(`SELECT s.id,s.invoice_number,s.sold_at,s.customer_name_snapshot,s.customer_phone_snapshot,s.payment_method,s.payment_status,s.final_total_minor,s.amount_paid_minor,s.balance_due_minor,s.due_date,(SELECT GROUP_CONCAT(si.product_name_snapshot, ', ') FROM SaleItems si WHERE si.sale_id=s.id ORDER BY si.line_number) products FROM Sales s ${clause} ORDER BY s.sold_at DESC,s.id DESC LIMIT ? OFFSET ?`).all(...params,pageSize,(page-1)*pageSize);
+    return{items,total:Number(total),page,pageSize};
+  }
+
   getById(id) {
     const sale = this.db.prepare("SELECT * FROM Sales WHERE id=?").get(id);
     if (!sale) return null;

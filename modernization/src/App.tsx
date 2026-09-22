@@ -12,6 +12,7 @@ import {
   Orbit,
   LogOut,
   Menu,
+  ReceiptText,
 } from "lucide-react";
 import type { Theme, User } from "./contracts";
 import { Dashboard } from "./Dashboard";
@@ -21,9 +22,11 @@ import { ShiftStatus } from './ShiftStatus';
 import { Products } from './Products';
 import { Inventory } from './Inventory';
 import { Purchases } from './Purchases';
+import { SalesHistory } from './SalesHistory';
 const nav = [
   ["Dashboard", LayoutDashboard],
   ["Point of Sale", ShoppingCart],
+  ["Sales History", ReceiptText],
   ["Products", Package],
   ["Inventory", Boxes],
   ["Purchases", Truck],
@@ -146,7 +149,7 @@ export function App() {
               key={label}
               title={label}
               disabled={
-                !["Dashboard", "Point of Sale", "Settings", "Products", "Inventory", "Purchases", "Suppliers"].includes(label)
+                !["Dashboard", "Point of Sale", "Sales History", "Settings", "Products", "Inventory", "Purchases", "Suppliers"].includes(label)
               }
               aria-current={page === label ? "page" : undefined}
               onClick={() => setPage(label)}
@@ -193,6 +196,7 @@ export function App() {
           <div hidden={page !== "Point of Sale"}>
             <POS user={user} />
           </div>
+          {page === 'Sales History'&&<SalesHistory/>}
           {page === 'Products' && <Products/>}
           {page === 'Inventory' && <Inventory/>}
           {page === 'Purchases' && <Purchases initialTab="purchases"/>}
