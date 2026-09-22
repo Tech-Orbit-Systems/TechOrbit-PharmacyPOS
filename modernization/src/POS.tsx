@@ -30,6 +30,7 @@ function unitLabel(product:Product,unit:Product['units'][number]){
  return unit.unit_name+(count>1?` (${Number(count.toFixed(4))} ${single.unit_name})`:'');
 }
 const newKey = () => `TO-${crypto.randomUUID()}`;
+const unitPrice=(product:Product,unitName:string)=>product.units.find(unit=>unit.unit_name===unitName)?.selling_price_minor??0;
 export function POS({ user }: { user: User }) {
   const storageKey = `techorbit.drafts.${user.demo ? "review" : "live"}.${user.id}`;
   const [lines, setLines] = useState<Line[]>([]),
@@ -38,6 +39,7 @@ export function POS({ user }: { user: User }) {
         lines: Line[];
         customer: number | null;
         discount: string;
+        discountType?:"fixed"|"percentage";
         method: Payment;
         key: string;
         creditMode?:CreditMode;
@@ -59,6 +61,7 @@ export function POS({ user }: { user: User }) {
     [customers, setCustomers] = useState<{ id: number; name: string }[]>([]),
     [customer, setCustomer] = useState<number | null>(null),
     [discount, setDiscount] = useState("0"),
+    [discountType,setDiscountType]=useState<"fixed"|"percentage">("fixed"),
     [method, setMethod] = useState<Payment>("cash"),
     [creditMode,setCreditMode]=useState<CreditMode>('paid'),
     [received,setReceived]=useState('0'),
@@ -83,11 +86,15 @@ export function POS({ user }: { user: User }) {
     paidMinor:creditMode==='partial'?Math.round(Number(received)*100):0,
     dueDate,
     customerId: customer,
-    discountMinor: Math.round(Number(discount) * 100),
+    invoiceDiscountType:discountType,
+    invoiceDiscountValue:discountType==='fixed'?Math.round(Number(discount)*100):Number(discount),
     items: lines.map((l) => ({
       productId: l.product.id,
       saleUnit: l.unit,
       quantity: l.quantity,
+      unitPriceMinor:Math.round(Number(l.unitPrice)*100),
+      discountType:l.discountType,
+      discountValue:l.discountType==='fixed'?Math.round(Number(l.discountValue)*100):Number(l.discountValue),
     })),
   };
   const inputKey = JSON.stringify(input);
@@ -179,7 +186,7 @@ export function POS({ user }: { user: User }) {
         (l) => l.product.id === product.id && l.unit === unit.unit_name,
       );
       return index < 0
-        ? [...old, { product, unit: unit.unit_name, quantity: 1 }]
+        ? [...old, { product, unit: unit.unit_name, quantity: 1,unitPrice:(Number(unit.selling_price_minor||0)/100).toFixed(2),discountType:'fixed',discountValue:'0' }]
         : old.map((l, i) =>
             i === index ? { ...l, quantity: l.quantity + 1 } : l,
           );
@@ -214,13 +221,14 @@ export function POS({ user }: { user: User }) {
   }
   function hold() {
     if (!lines.length || busy) return;
-    setHeld((old) => [...old, { lines, customer, discount, method, key,creditMode,received,dueDate }]);
+    setHeld((old) => [...old, { lines, customer, discount,discountType, method, key,creditMode,received,dueDate }]);
     reset();
   }
   function reset() {
     setLines([]);
     setQuote(null);
     setDiscount("0");
+    setDiscountType('fixed');
     setCustomer(null);
     setMethod("cash");
     setCreditMode('paid');setReceived('0');setDueDate('');
@@ -338,6 +346,7 @@ export function POS({ user }: { user: User }) {
                   <th>Unit</th>
                   <th>Qty</th>
                   <th className="number">Rate (PKR)</th>
+                  <th>Line discount</th>
                   <th className="number">Amount</th>
                   <th />
                 </tr>
@@ -383,7 +392,7 @@ export function POS({ user }: { user: User }) {
                             setLines((old) =>
                               old.map((l, i) =>
                                 i === index
-                                  ? { ...l, unit: e.target.value }
+                                  ? { ...l, unit: e.target.value,unitPrice:(unitPrice(l.product,e.target.value)/100).toFixed(2) }
                                   : l,
                               ),
                             )
@@ -446,16 +455,15 @@ export function POS({ user }: { user: User }) {
                         </div>
                       </td>
                       <td className="number">
-                        {u?.selling_price_minor == null
-                          ? "—"
-                          : money(u.selling_price_minor)}
+                        <input className="money-edit" aria-label={`Unit price line ${index + 1}`} type="number" min="0" step="0.01" value={line.unitPrice} onChange={e=>setLines(old=>old.map((l,i)=>i===index?{...l,unitPrice:e.target.value}:l))}/>
+                        {u?.selling_price_minor!=null&&Math.round(Number(line.unitPrice)*100)!==u.selling_price_minor&&<small>Original {money(u.selling_price_minor)}</small>}
+                      </td>
+                      <td>
+                        <div className="line-discount"><select aria-label={`Discount type line ${index + 1}`} value={line.discountType} onChange={e=>setLines(old=>old.map((l,i)=>i===index?{...l,discountType:e.target.value as "fixed"|"percentage"}:l))}><option value="fixed">PKR</option><option value="percentage">%</option></select><input aria-label={`Discount value line ${index + 1}`} type="number" min="0" step="0.01" value={line.discountValue} onChange={e=>setLines(old=>old.map((l,i)=>i===index?{...l,discountValue:e.target.value}:l))}/></div>
                       </td>
                       <td className="number">
-                        {u?.selling_price_minor == null
-                          ? "—"
-                          : money(
-                              Math.round(u.selling_price_minor * line.quantity),
-                            )}
+                        {quote?.items[index]?money(quote.items[index].lineTotalMinor):"—"}
+                        {quote?.items[index]&&<small>GST {money(quote.items[index].gstMinor)}</small>}
                       </td>
                       <td>
                         <button
@@ -573,9 +581,10 @@ export function POS({ user }: { user: User }) {
             <strong>{money(quote?.grossMinor ?? 0)}</strong>
           </div>
           <label className="discount">
-            Discount (PKR)
+            Invoice discount
+            <select aria-label="Invoice discount type" value={discountType} onChange={e=>setDiscountType(e.target.value as "fixed"|"percentage")}><option value="fixed">PKR fixed</option><option value="percentage">Percent</option></select>
             <input
-              aria-label="Discount PKR"
+              aria-label="Invoice discount value"
               type="number"
               min="0"
               step="0.01"
@@ -589,6 +598,7 @@ export function POS({ user }: { user: User }) {
               {quoting ? "…" : money(quote?.finalTotalMinor ?? 0)}
             </strong>
           </div>
+          <div className="pricing-breakdown" aria-live="polite"><span>Line discounts <b>{money(quote?.items.reduce((sum,item)=>sum+item.lineDiscountMinor,0)??0)}</b></span><span>Invoice discount <b>{money(quote?.invoiceDiscountMinor??0)}</b></span><span>GST <b>{money(quote?.gstMinor??0)}</b></span><span>Rounding <b>{money(quote?.roundingMinor??0)}</b></span></div>
           </div>
           <div className="payment-methods">
             {(
@@ -671,11 +681,11 @@ export function POS({ user }: { user: User }) {
                 const refreshed=await Promise.all(h.lines.map(async line=>{
                   const product=line.product.barcode?await window.pharmacy.barcode({barcode:line.product.barcode}):(await window.pharmacy.search({q:line.product.name})).find(p=>p.id===line.product.id);
                   if(!product)throw Error('A held product is no longer available. Review its product record.');
-                  return {...line,product};
+                  return {...line,product,unitPrice:line.unitPrice??(unitPrice(product,line.unit)/100).toFixed(2),discountType:line.discountType||'fixed',discountValue:line.discountValue??'0'};
                 }));
                 setLines(refreshed);
                 setCustomer(h.customer);
-                setDiscount(h.discount);
+                setDiscount(h.discount);setDiscountType(h.discountType||'fixed');
                 setMethod(h.method);
                 setCreditMode(h.creditMode||'paid');setReceived(h.received||'0');setDueDate(h.dueDate||'');
                 setKey(h.key);
@@ -703,11 +713,14 @@ export function POS({ user }: { user: User }) {
               <p className="receipt-line" key={i}>
                 <span>
                   {item.productName} × {item.quantity} {item.saleUnit}
+                  <small>Rate {money(item.unitPriceMinor)}{item.unitPriceMinor!==item.originalUnitPriceMinor?` (original ${money(item.originalUnitPriceMinor)})`:''} · Line discount {money(item.lineDiscountMinor)} · GST {money(item.gstMinor)}</small>
                 </span>
                 <b>{money(item.lineTotalMinor)}</b>
               </p>
             ))}
             <h3>Total PKR {money(receipt.totals.finalTotalMinor)}</h3>
+            <p>Line discounts PKR {money(receipt.totals.lineDiscountMinor)} · Invoice discount PKR {money(receipt.totals.invoiceDiscountMinor)}</p>
+            <p>GST PKR {money(receipt.totals.gstMinor)} · Rounding PKR {money(receipt.totals.roundingMinor)}</p>
             <p>Received PKR {money(receipt.payment.amountPaidMinor)}</p>
             <p>Remaining credit PKR {money(receipt.payment.balanceDueMinor)}</p>
             {receipt.payment.balanceDueMinor>0&&<p>Due date: {receipt.payment.dueDate}</p>}

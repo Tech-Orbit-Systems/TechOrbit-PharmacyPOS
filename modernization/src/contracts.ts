@@ -32,6 +32,9 @@ export interface Line {
   product: Product;
   unit: string;
   quantity: number;
+  unitPrice: string;
+  discountType: "fixed" | "percentage";
+  discountValue: string;
 }
 export interface SaleInput {
   creditMode?:CreditMode;
@@ -39,9 +42,11 @@ export interface SaleInput {
   dueDate?:string;
   key: string;
   paymentMethod: Payment;
-  discountMinor: number;
+  discountMinor?: number;
+  invoiceDiscountType: "fixed" | "percentage";
+  invoiceDiscountValue: number;
   customerId: number | null;
-  items: { productId: number; saleUnit: string; quantity: number }[];
+  items: { productId: number; saleUnit: string; quantity: number; unitPriceMinor:number; discountType:"fixed"|"percentage"; discountValue:number }[];
 }
 export interface User {
   id: number;
@@ -60,6 +65,12 @@ export interface Quote {
   finalTotalMinor: number;
   items: {
     productId: number;
+    originalUnitPriceMinor:number;
+    chargedUnitPriceMinor:number;
+    grossMinor:number;
+    lineDiscountMinor:number;
+    gstMinor:number;
+    lineTotalMinor:number;
     allocations: { batchId: number; quantity: number }[];
   }[];
 }
@@ -70,10 +81,15 @@ export interface Receipt {
     productName: string;
     saleUnit: string;
     quantity: number;
+    originalUnitPriceMinor:number;
+    unitPriceMinor:number;
+    lineDiscountMinor:number;
+    gstMinor:number;
     lineTotalMinor: number;
   }[];
   totals: {
     finalTotalMinor: number;
+    lineDiscountMinor:number;
     gstMinor: number;
     roundingMinor: number;
     invoiceDiscountMinor: number;

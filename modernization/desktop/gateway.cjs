@@ -204,24 +204,28 @@ class Gateway {
         throw Error("Add between 1 and 200 sale lines");
       if (!["cash", "card", "digital"].includes(input.paymentMethod))
         throw Error("Choose Cash, Card or Digital");
-      if (!Number.isSafeInteger(input.discountMinor) || input.discountMinor < 0)
-        throw Error("Enter a valid discount");
-      if (input.discountMinor > 0) this.authorize("sale.discount");
+      const invoiceDiscountType=input.invoiceDiscountType||"fixed";
+      const invoiceDiscountValue=input.invoiceDiscountValue??input.discountMinor??0;
+      if(!["fixed","percentage"].includes(invoiceDiscountType))throw Error("Choose a valid invoice discount type");
+      if(!Number.isFinite(invoiceDiscountValue)||invoiceDiscountValue<0||(invoiceDiscountType==="fixed"&&!Number.isSafeInteger(invoiceDiscountValue))||(invoiceDiscountType==="percentage"&&invoiceDiscountValue>100))throw Error("Enter a valid invoice discount");
+      if(invoiceDiscountValue>0)this.authorize("sale.discount");
       const creditMode=input.creditMode||'paid';
       if(!['paid','partial','credit'].includes(creditMode))throw Error('Choose a valid payment type');
       if(creditMode==='partial'&&(!Number.isSafeInteger(input.paidMinor)||input.paidMinor<=0))throw Error('Partial payment received must be greater than zero');
       const sale = {
         invoiceNumber: String(input.key || ""),
         idempotencyKey: String(input.key || ""),
-        items: input.items.map((i) => ({
-          productId: i.productId,
-          saleUnit: i.saleUnit,
-          quantity: i.quantity,
-        })),
+        items: input.items.map((i) => {
+          const item={productId:i.productId,saleUnit:i.saleUnit,quantity:i.quantity};
+          if(i.unitPriceMinor!=null){if(!Number.isSafeInteger(i.unitPriceMinor)||i.unitPriceMinor<0)throw Error("Enter a valid unit price");this.authorize("sale.price_edit");item.unitPriceMinor=i.unitPriceMinor;}
+          const type=i.discountType||"fixed",value=i.discountValue||0;
+          if(!["fixed","percentage"].includes(type)||!Number.isFinite(value)||value<0||(type==="fixed"&&!Number.isSafeInteger(value))||(type==="percentage"&&value>100))throw Error("Enter a valid line discount");
+          if(value>0)this.authorize("sale.discount");item.discountType=type;item.discountValue=value;return item;
+        }),
         paymentMethod: input.paymentMethod,
         customerId: input.customerId || null,
-        invoiceDiscountType: "fixed",
-        invoiceDiscountValue: input.discountMinor,
+        invoiceDiscountType,
+        invoiceDiscountValue,
         createdBy: this.session.id,
         roleCode: this.session.roleCode,
         deviceId: "modern-desktop",
@@ -235,13 +239,17 @@ class Gateway {
       }
       if (!/^TO-[a-f0-9-]{36}$/.test(sale.idempotencyKey))
         throw Error("Invalid sale reference");
+      const requestFingerprint=crypto.createHash("sha256").update(JSON.stringify({items:sale.items,paymentMethod:sale.paymentMethod,customerId:sale.customerId,invoiceDiscountType:sale.invoiceDiscountType,invoiceDiscountValue:sale.invoiceDiscountValue,creditMode,amountPaidMinor:sale.amountPaidMinor||0,dueDate:sale.dueDate||null,collectionMethod:sale.collectionMethod||null})).digest("hex");
+      sale.requestFingerprint=requestFingerprint;
       if (command === "post") {
         const old = this.db
-          .prepare("SELECT id,created_by FROM Sales WHERE idempotency_key=?")
+          .prepare("SELECT id,created_by,request_fingerprint FROM Sales WHERE idempotency_key=?")
           .get(sale.idempotencyKey);
         if (old) {
           if (old.created_by !== this.session.id)
             throw Error("Sale reference belongs to another user");
+          if(old.request_fingerprint&&old.request_fingerprint!==requestFingerprint)throw Error("This reference was already posted with different details. Review the completed sale before starting a new one.");
+          if(old.request_fingerprint)return new SalesQueryService(this.db).receipt(old.id);
           const saved = new SalesQueryService(this.db).getById(old.id);
           const collection = this.db.prepare("SELECT method FROM MoneyMovements WHERE reference_type='sale' AND reference_id=? ORDER BY id LIMIT 1").get(String(old.id));
           const same =

@@ -1024,15 +1024,15 @@ body:has(.scrim) {
 .credit-controls input,.credit-controls select{min-width:150px}
 .credit-due strong{display:block;font-size:22px;margin-top:4px;color:var(--amber)}
 .payment-bar{flex-wrap:wrap;padding:16px!important;gap:14px}
-.totals-group{display:grid;grid-template-columns:minmax(110px,1fr) minmax(125px,1fr) minmax(135px,1.15fr);gap:20px;align-items:center;margin-right:auto;flex:1;min-width:430px}
+.totals-group{display:grid;grid-template-columns:minmax(100px,.8fr) minmax(170px,1.1fr) minmax(125px,1fr) minmax(230px,1.4fr);gap:12px;align-items:center;margin-right:auto;flex:1 0 100%;min-width:650px}
 .totals-group>div,.totals-group>.discount{width:auto;min-width:0;padding:10px 12px}
 .totals-group strong{font-size:25px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .totals-group small,.totals-group label{font-size:12px}
-.totals-group .discount input{padding:10px;font-size:16px}
+.totals-group .discount{display:grid;grid-template-columns:1fr 1fr;gap:6px}.totals-group .discount select{grid-column:1/-1}.totals-group .discount input{padding:10px;font-size:16px}.pricing-breakdown{display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;font-size:11px}.pricing-breakdown span{white-space:nowrap}.pricing-breakdown b{font-size:12px!important;display:inline!important;margin:0!important}.invoice .money-edit{width:82px;padding:6px}.invoice td small{display:block;margin-top:4px}.line-discount{display:grid;grid-template-columns:60px 70px;gap:4px}.line-discount select,.line-discount input{min-width:0!important;width:100%;padding:6px!important}
 .payment-methods{margin-left:0}.packing-info{font-size:11px;line-height:1.7}
 .invoice td select{max-width:135px;min-width:100px}
 .pos-grid{height:calc(100vh - 435px);min-height:310px}
-@media(max-width:1250px){.totals-group{flex-basis:100%}.payment-bar{gap:10px}.pos-grid{height:calc(100vh - 490px)}.price-mode{display:none}.credit-controls{gap:14px}.topbar{gap:10px}}
+@media(max-width:1250px){.totals-group{flex-basis:100%;min-width:0}.payment-bar{gap:10px}.pos-grid{height:calc(100vh - 510px)}.price-mode{display:none}.credit-controls{gap:14px}.topbar{gap:10px}}
 /* Product Master reuses the approved theme tokens and shared dialog. */
 .master-toolbar,.master-pagination,.product-flags{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:18px 0}
 .master-toolbar>label{display:flex;align-items:center;gap:10px;flex:1;min-width:260px}.master-toolbar input{width:100%}

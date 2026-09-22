@@ -37,11 +37,11 @@ class SalesPostingService {
     const saleResult=this.db.prepare(`INSERT INTO Sales
       (invoice_number,idempotency_key,sold_at,customer_id,customer_name_snapshot,customer_phone_snapshot,payment_method,payment_status,
        gross_minor,line_discount_minor,invoice_discount_minor,taxable_minor,gst_minor,exact_total_minor,rounding_minor,final_total_minor,
-       amount_paid_minor,balance_due_minor,due_date,cogs_minor,status,created_by,created_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,'posted',?,?)`).run(sale.invoiceNumber.trim(),sale.idempotencyKey.trim(),soldAt,
+       amount_paid_minor,balance_due_minor,due_date,cogs_minor,status,created_by,created_at,request_fingerprint)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,'posted',?,?,?)`).run(sale.invoiceNumber.trim(),sale.idempotencyKey.trim(),soldAt,
       sale.customerId||null,customer?.name||null,customer?.phone||null,method,balanceDueMinor===0?"paid":amountPaidMinor>0?"partial":"credit",
       grossMinor,lineDiscountMinor,invoiceDiscountMinor,taxableMinor,gstMinor,exactTotalMinor,finalTotalMinor-exactTotalMinor,finalTotalMinor,
-      amountPaidMinor,balanceDueMinor,sale.dueDate||null,sale.createdBy||null,now);
+      amountPaidMinor,balanceDueMinor,sale.dueDate||null,sale.createdBy||null,now,sale.requestFingerprint||null);
     const saleId=Number(saleResult.lastInsertRowid); let totalCogs=0; const postedItems=[];
     for(const item of items){ const allocation=this.allocateFefo(item.product.id,item.baseQuantity,saleDate); const cogsMinor=allocation.reduce((s,a)=>s+a.cogsMinor,0); totalCogs+=cogsMinor;
       const itemResult=this.db.prepare(`INSERT INTO SaleItems
@@ -56,11 +56,11 @@ class SalesPostingService {
       for(const a of allocation){ this.db.prepare("UPDATE ProductBatches SET quantity_on_hand=quantity_on_hand-?,updated_at=? WHERE id=?").run(a.quantity,now,a.batch.id);
         this.db.prepare(`INSERT INTO SaleItemAllocations(sale_item_id,batch_id,base_quantity,expiry_date_snapshot,unit_cost_minor_snapshot,cogs_minor) VALUES (?,?,?,?,?,?)`).run(saleItemId,a.batch.id,a.quantity,a.batch.expiry_date,a.batch.unit_cost_minor,a.cogsMinor);
         this.db.prepare(`INSERT INTO InventoryMovements(product_id,batch_id,movement_type,quantity_delta,reference_type,reference_id,occurred_at,user_id,note) VALUES (?,?,'sale',?,'sale',?,?,?,'FEFO allocation')`).run(item.product.id,a.batch.id,-a.quantity,String(saleId),soldAt,sale.createdBy||null); }
-      postedItems.push({saleItemId,productId:item.product.id,baseQuantity:item.baseQuantity,cogsMinor,allocations:allocation.map(a=>({batchId:a.batch.id,quantity:a.quantity}))}); }
+      postedItems.push({saleItemId,productId:item.product.id,baseQuantity:item.baseQuantity,originalUnitPriceMinor:item.originalUnitPriceMinor,chargedUnitPriceMinor:item.chargedUnitPriceMinor,grossMinor:item.grossMinor,lineDiscountMinor:item.lineDiscountMinor,gstMinor:item.gstMinor,lineTotalMinor:item.lineTotalMinor,cogsMinor,allocations:allocation.map(a=>({batchId:a.batch.id,quantity:a.quantity}))}); }
     this.db.prepare("UPDATE Sales SET cogs_minor=? WHERE id=?").run(totalCogs,saleId);
     if(amountPaidMinor>0) this.db.prepare(`INSERT INTO MoneyMovements(direction,method,amount_minor,reference_type,reference_id,occurred_at,user_id,note) VALUES ('in',? ,?,'sale',?,?,?,'Sale collection')`).run(collectionMethod,amountPaidMinor,String(saleId),soldAt,sale.createdBy||null);
     if(balanceDueMinor>0) this.db.prepare(`INSERT INTO Receivables(customer_id,source_type,source_id,original_minor,balance_minor,due_date,status,created_at,updated_at) VALUES (?,'sale',?,?,?,?,?,?,?)`).run(sale.customerId,String(saleId),balanceDueMinor,balanceDueMinor,sale.dueDate,amountPaidMinor>0?"partial":"unpaid",now,now);
-    this.db.prepare(`INSERT INTO AuditLog(occurred_at,user_id,role_code,action,entity_type,entity_id,new_json,device_id) VALUES (?,?,?,'sale.post','sale',?,?,?)`).run(now,sale.createdBy||null,sale.roleCode||null,String(saleId),JSON.stringify({invoiceNumber:sale.invoiceNumber,finalTotalMinor,amountPaidMinor,balanceDueMinor,totalCogs}),sale.deviceId||null);
+    this.db.prepare(`INSERT INTO AuditLog(occurred_at,user_id,role_code,action,entity_type,entity_id,new_json,device_id) VALUES (?,?,?,'sale.post','sale',?,?,?)`).run(now,sale.createdBy||null,sale.roleCode||null,String(saleId),JSON.stringify({invoiceNumber:sale.invoiceNumber,finalTotalMinor,amountPaidMinor,balanceDueMinor,totalCogs,invoiceDiscountType:sale.invoiceDiscountType||null,invoiceDiscountValue:sale.invoiceDiscountValue||0,invoiceDiscountMinor,pricing:items.map(item=>({lineNumber:item.lineNumber,productId:item.product.id,originalUnitPriceMinor:item.originalUnitPriceMinor,chargedUnitPriceMinor:item.chargedUnitPriceMinor,lineDiscountType:item.lineDiscountType||null,lineDiscountValue:item.lineDiscountValue||0,lineDiscountMinor:item.lineDiscountMinor}))}),sale.deviceId||null);
     return {saleId,invoiceNumber:sale.invoiceNumber,grossMinor,lineDiscountMinor,invoiceDiscountMinor,taxableMinor,gstMinor,exactTotalMinor,roundingMinor:finalTotalMinor-exactTotalMinor,finalTotalMinor,amountPaidMinor,balanceDueMinor,cogsMinor:totalCogs,items:postedItems};
   }
   normalizeItem(item,lineNumber){ const product=this.db.prepare("SELECT * FROM Products WHERE id=? AND active=1").get(item.productId); if(!product) throw new Error("Active product was not found");
