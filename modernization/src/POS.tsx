@@ -32,6 +32,7 @@ function unitLabel(product:Product,unit:Product['units'][number]){
 const newKey = () => `TO-${crypto.randomUUID()}`;
 const unitPrice=(product:Product,unitName:string)=>product.units.find(unit=>unit.unit_name===unitName)?.selling_price_minor??0;
 export function POS({ user }: { user: User }) {
+  const canOverrideBatch=['pharmacist','manager','admin'].includes(user.roleCode);
   const storageKey = `techorbit.drafts.${user.demo ? "review" : "live"}.${user.id}`;
   const [lines, setLines] = useState<Line[]>([]),
     [held, setHeld] = useState<
@@ -95,6 +96,8 @@ export function POS({ user }: { user: User }) {
       unitPriceMinor:Math.round(Number(l.unitPrice)*100),
       discountType:l.discountType,
       discountValue:l.discountType==='fixed'?Math.round(Number(l.discountValue)*100):Number(l.discountValue),
+      overrideBatchId:l.overrideBatchId,
+      overrideReason:l.overrideReason,
     })),
   };
   const inputKey = JSON.stringify(input);
@@ -186,7 +189,7 @@ export function POS({ user }: { user: User }) {
         (l) => l.product.id === product.id && l.unit === unit.unit_name,
       );
       return index < 0
-        ? [...old, { product, unit: unit.unit_name, quantity: 1,unitPrice:(Number(unit.selling_price_minor||0)/100).toFixed(2),discountType:'fixed',discountValue:'0' }]
+        ? [...old, { product, unit: unit.unit_name, quantity: 1,unitPrice:(Number(unit.selling_price_minor||0)/100).toFixed(2),discountType:'fixed',discountValue:'0',overrideBatchId:null,overrideReason:'' }]
         : old.map((l, i) =>
             i === index ? { ...l, quantity: l.quantity + 1 } : l,
           );
@@ -383,6 +386,7 @@ export function POS({ user }: { user: User }) {
                                 .join(" / ")
                             : "FEFO at checkout"}
                         </small>
+                        {canOverrideBatch&&<div className="batch-override"><small className="override-label">Manual allocation</small><select aria-label={`Batch allocation line ${index + 1}`} value={line.overrideBatchId??''} onChange={e=>setLines(old=>old.map((l,i)=>i===index?{...l,overrideBatchId:e.target.value?Number(e.target.value):null,overrideReason:e.target.value?l.overrideReason:''}:l))}><option value="">Automatic FEFO</option>{line.product.batches.map((batch,i)=><option key={batch.id} value={batch.id}>{i===0?'Suggested · ':''}{batch.batch_number||'#'+batch.id} · {batch.expiry_date||'No expiry'} · {Number(batch.quantity_on_hand)} {line.product.baseUnit}</option>)}</select>{line.overrideBatchId&&<input aria-label={`Batch override reason line ${index + 1}`} required maxLength={500} placeholder="Reason for manual batch" value={line.overrideReason} onChange={e=>setLines(old=>old.map((l,i)=>i===index?{...l,overrideReason:e.target.value}:l))}/>}</div>}
                       </td>
                       <td>
                         <select
@@ -561,7 +565,7 @@ export function POS({ user }: { user: User }) {
             </div>
             <p className="finder-note">
               <AlertTriangle size={14} />
-              Earliest valid expiry is allocated automatically.
+              {lines.some(line=>line.overrideBatchId)?'Authorized manual batch allocation is active; any remainder follows FEFO.':'Earliest valid expiry is allocated automatically.'}
             </p>
           </section>
         </div>
@@ -681,7 +685,8 @@ export function POS({ user }: { user: User }) {
                 const refreshed=await Promise.all(h.lines.map(async line=>{
                   const product=line.product.barcode?await window.pharmacy.barcode({barcode:line.product.barcode}):(await window.pharmacy.search({q:line.product.name})).find(p=>p.id===line.product.id);
                   if(!product)throw Error('A held product is no longer available. Review its product record.');
-                  return {...line,product,unitPrice:line.unitPrice??(unitPrice(product,line.unit)/100).toFixed(2),discountType:line.discountType||'fixed',discountValue:line.discountValue??'0'};
+                  const selected=line.overrideBatchId&&product.batches.some(batch=>batch.id===line.overrideBatchId)?line.overrideBatchId:null;
+                  return {...line,product,unitPrice:line.unitPrice??(unitPrice(product,line.unit)/100).toFixed(2),discountType:line.discountType||'fixed',discountValue:line.discountValue??'0',overrideBatchId:selected,overrideReason:selected?(line.overrideReason||''):''};
                 }));
                 setLines(refreshed);
                 setCustomer(h.customer);

@@ -1029,7 +1029,7 @@ body:has(.scrim) {
 .totals-group strong{font-size:25px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .totals-group small,.totals-group label{font-size:12px}
 .totals-group .discount{display:grid;grid-template-columns:1fr 1fr;gap:6px}.totals-group .discount select{grid-column:1/-1}.totals-group .discount input{padding:10px;font-size:16px}.pricing-breakdown{display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;font-size:11px}.pricing-breakdown span{white-space:nowrap}.pricing-breakdown b{font-size:12px!important;display:inline!important;margin:0!important}.invoice .money-edit{width:82px;padding:6px}.invoice td small{display:block;margin-top:4px}.line-discount{display:grid;grid-template-columns:60px 70px;gap:4px}.line-discount select,.line-discount input{min-width:0!important;width:100%;padding:6px!important}
-.payment-methods{margin-left:0}.packing-info{font-size:11px;line-height:1.7}
+.payment-methods{margin-left:0}.packing-info{font-size:11px;line-height:1.7}.batch-override{display:grid;gap:5px;margin-top:7px}.batch-override .override-label{color:var(--amber);font-weight:600}.batch-override select,.batch-override input{width:100%;max-width:220px!important;min-width:150px!important;font-size:10px!important;padding:5px!important}.batch-override input{border-color:var(--amber)}
 .invoice td select{max-width:135px;min-width:100px}
 .pos-grid{height:calc(100vh - 435px);min-height:310px}
 @media(max-width:1250px){.totals-group{flex-basis:100%;min-width:0}.payment-bar{gap:10px}.pos-grid{height:calc(100vh - 510px)}.price-mode{display:none}.credit-controls{gap:14px}.topbar{gap:10px}}

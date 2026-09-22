@@ -220,7 +220,9 @@ class Gateway {
           if(i.unitPriceMinor!=null){if(!Number.isSafeInteger(i.unitPriceMinor)||i.unitPriceMinor<0)throw Error("Enter a valid unit price");this.authorize("sale.price_edit");item.unitPriceMinor=i.unitPriceMinor;}
           const type=i.discountType||"fixed",value=i.discountValue||0;
           if(!["fixed","percentage"].includes(type)||!Number.isFinite(value)||value<0||(type==="fixed"&&!Number.isSafeInteger(value))||(type==="percentage"&&value>100))throw Error("Enter a valid line discount");
-          if(value>0)this.authorize("sale.discount");item.discountType=type;item.discountValue=value;return item;
+          if(value>0)this.authorize("sale.discount");item.discountType=type;item.discountValue=value;
+          if(i.overrideBatchId!=null){this.authorize("batch.override");const batchId=Number(i.overrideBatchId),reason=String(i.overrideReason||'').trim();if(!Number.isSafeInteger(batchId)||batchId<1)throw Error("Choose a valid batch");if(!reason)throw Error("Enter a reason for manual batch selection");if(reason.length>500)throw Error("Batch override reason must be 500 characters or fewer");item.overrideBatchId=batchId;item.overrideReason=reason;}
+          return item;
         }),
         paymentMethod: input.paymentMethod,
         customerId: input.customerId || null,

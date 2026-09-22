@@ -35,6 +35,8 @@ export interface Line {
   unitPrice: string;
   discountType: "fixed" | "percentage";
   discountValue: string;
+  overrideBatchId: number | null;
+  overrideReason: string;
 }
 export interface SaleInput {
   creditMode?:CreditMode;
@@ -46,7 +48,7 @@ export interface SaleInput {
   invoiceDiscountType: "fixed" | "percentage";
   invoiceDiscountValue: number;
   customerId: number | null;
-  items: { productId: number; saleUnit: string; quantity: number; unitPriceMinor:number; discountType:"fixed"|"percentage"; discountValue:number }[];
+  items: { productId: number; saleUnit: string; quantity: number; unitPriceMinor:number; discountType:"fixed"|"percentage"; discountValue:number; overrideBatchId:number|null; overrideReason:string }[];
 }
 export interface User {
   id: number;
