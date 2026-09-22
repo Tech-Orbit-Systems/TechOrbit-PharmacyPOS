@@ -46,6 +46,7 @@ export function POS({ user }: { user: User }) {
         creditMode?:CreditMode;
         received?:string;
         dueDate?:string;
+        cashTendered?:string;
       }[]
     >(() => {
       try {
@@ -70,6 +71,7 @@ export function POS({ user }: { user: User }) {
     [doctorName,setDoctorName]=useState(''),
     [prescriptionReference,setPrescriptionReference]=useState(''),
     [warningAcknowledged,setWarningAcknowledged]=useState(false),
+    [cashTendered,setCashTendered]=useState(''),
     [showAddCustomer,setShowAddCustomer]=useState(false),
     [quote, setQuote] = useState<Quote | null>(null),
     [error, setError] = useState(""),
@@ -90,6 +92,7 @@ export function POS({ user }: { user: User }) {
     paidMinor:creditMode==='partial'?Math.round(Number(received)*100):0,
     dueDate,
     customerId: customer,
+    cashTenderedMinor:creditMode==='paid'&&method==='cash'&&cashTendered!==''?Math.round(Number(cashTendered)*100):null,
     invoiceDiscountType:discountType,
     invoiceDiscountValue:discountType==='fixed'?Math.round(Number(discount)*100):Number(discount),
     items: lines.map((l) => ({
@@ -229,7 +232,7 @@ export function POS({ user }: { user: User }) {
   }
   function hold() {
     if (!lines.length || busy) return;
-    setHeld((old) => [...old, { lines, customer, discount,discountType, method, key,creditMode,received,dueDate }]);
+    setHeld((old) => [...old, { lines, customer, discount,discountType, method, key,creditMode,received,dueDate,cashTendered }]);
     reset();
   }
   function reset() {
@@ -239,7 +242,7 @@ export function POS({ user }: { user: User }) {
     setDiscountType('fixed');
     setCustomer(null);
     setMethod("cash");
-    setCreditMode('paid');setReceived('0');setDueDate('');
+    setCreditMode('paid');setReceived('0');setDueDate('');setCashTendered('');
     setDoctorName('');setPrescriptionReference('');setWarningAcknowledged(false);
     setKey(newKey());
     setQuery("");
@@ -248,6 +251,8 @@ export function POS({ user }: { user: User }) {
   }
   async function pay() {
     if (postLock.current || !quote || quoting || !lines.length || !creditReady || !warningReady) return;
+    const cashReady=creditMode!=='paid'||method!=='cash'||(input.cashTenderedMinor!=null&&input.cashTenderedMinor>=quote.finalTotalMinor);
+    if(!cashReady)return;
     postLock.current = true;
     setBusy(true);
     setError("");
@@ -634,13 +639,14 @@ export function POS({ user }: { user: User }) {
               </button>
             ))}
           </div>
+          {creditMode==='paid'&&method==='cash'&&<div className="cash-tender"><label>Cash tendered (PKR)<input aria-label="Cash tendered PKR" type="number" min="0" step="0.01" value={cashTendered} onChange={e=>setCashTendered(e.target.value)}/></label><div><small>Change (PKR)</small><strong>{quote&&input.cashTenderedMinor!=null&&input.cashTenderedMinor>=quote.finalTotalMinor?money(input.cashTenderedMinor-quote.finalTotalMinor):'—'}</strong></div></div>}
           <button onClick={hold} disabled={!lines.length}>
             <Pause size={15} />
             Hold sale <kbd>F3</kbd>
           </button>
           <button
             className="primary pay"
-            disabled={!quote || quoting || !lines.length || !creditReady || !warningReady}
+            disabled={!quote || quoting || !lines.length || !creditReady || !warningReady || (creditMode==='paid'&&method==='cash'&&(input.cashTenderedMinor==null||input.cashTenderedMinor<quote.finalTotalMinor))}
             onClick={() => void pay()}
           >
             <Printer size={16} />
@@ -703,7 +709,7 @@ export function POS({ user }: { user: User }) {
                 setCustomer(h.customer);
                 setDiscount(h.discount);setDiscountType(h.discountType||'fixed');
                 setMethod(h.method);
-                setCreditMode(h.creditMode||'paid');setReceived(h.received||'0');setDueDate(h.dueDate||'');
+                setCreditMode(h.creditMode||'paid');setReceived(h.received||'0');setDueDate(h.dueDate||'');setCashTendered(h.cashTendered||'');
                 setKey(h.key);
                 setHeld((old) => old.filter((_, j) => j !== i));
                 setShowHeld(false);
@@ -738,6 +744,7 @@ export function POS({ user }: { user: User }) {
             <p>Line discounts PKR {money(receipt.totals.lineDiscountMinor)} · Invoice discount PKR {money(receipt.totals.invoiceDiscountMinor)}</p>
             <p>GST PKR {money(receipt.totals.gstMinor)} · Rounding PKR {money(receipt.totals.roundingMinor)}</p>
             <p>Received PKR {money(receipt.payment.amountPaidMinor)}</p>
+            {receipt.payment.cashTenderedMinor!=null&&<p>Cash tendered PKR {money(receipt.payment.cashTenderedMinor)} · Change PKR {money(receipt.payment.cashChangeMinor||0)}</p>}
             <p>Remaining credit PKR {money(receipt.payment.balanceDueMinor)}</p>
             {receipt.payment.balanceDueMinor>0&&<p>Due date: {receipt.payment.dueDate}</p>}
             {receipt.warningAcknowledgement&&<p className="receipt-warning">Warnings acknowledged by {receipt.warningAcknowledgement.acknowledgedBy}{receipt.warningAcknowledgement.doctorName?` · Doctor ${receipt.warningAcknowledgement.doctorName}`:''}{receipt.warningAcknowledgement.prescriptionReference?` · Reference ${receipt.warningAcknowledgement.prescriptionReference}`:''}</p>}

@@ -51,6 +51,7 @@ export interface SaleInput {
   warningAcknowledged?: boolean;
   doctorName?: string;
   prescriptionReference?: string;
+  cashTenderedMinor?: number | null;
   items: { productId: number; saleUnit: string; quantity: number; unitPriceMinor:number; discountType:"fixed"|"percentage"; discountValue:number; overrideBatchId:number|null; overrideReason:string }[];
 }
 export interface User {
@@ -68,6 +69,8 @@ export interface Quote {
   gstMinor: number;
   roundingMinor: number;
   finalTotalMinor: number;
+  cashTenderedMinor:number|null;
+  cashChangeMinor:number|null;
   items: {
     productId: number;
     originalUnitPriceMinor:number;
@@ -101,7 +104,7 @@ export interface Receipt {
     roundingMinor: number;
     invoiceDiscountMinor: number;
   };
-  payment: { method: string;amountPaidMinor:number;balanceDueMinor:number;dueDate:string|null };
+  payment: { method: string;amountPaidMinor:number;balanceDueMinor:number;dueDate:string|null;cashTenderedMinor:number|null;cashChangeMinor:number|null };
   warningAcknowledgement: null | { warnings:{lineNumber:number;productId:number;type:string;batchId?:number;expiryDate?:string}[];doctorName:string|null;prescriptionReference:string|null;acknowledgedBy:string;acknowledgedAt:string };
 }
 export interface DashboardData {
