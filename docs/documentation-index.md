@@ -6,6 +6,13 @@
 4. Current versioned implementation: `source/docs/architecture.md`, `roadmap.md`, package-specific evidence, and actual source/tests.
 5. Dated changelog/test entries and `source/docs/history/` are historical records; newer evidence supersedes their status claims without deleting them.
 
+Codex entry points:
+
+- `../AGENTS.md`: permanent repository rules and completion gate.
+- `PHARMACY_POS_MASTER_SPEC.md`: concise versioned system specification.
+- `PROJECT_STATUS.md`: latest concise audit/status summary.
+- `TEST_SCENARIOS.md`: practical scenario catalogue; tracker run fields remain authoritative.
+
 The workspace-level early audit/architecture/roadmap copies are historical and are not an independently maintained status source. Use this index and current versioned docs instead. Do not maintain competing 'latest' trackers.
 
 ## P005 verification
