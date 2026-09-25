@@ -13,7 +13,7 @@ test('P039 requires warning acknowledgement and preserves optional prescription 
     await gateway.call('login',{username:'demo',password:'TechOrbit-Demo-2026!'});
     db.prepare('UPDATE Products SET prescription_required=1,controlled_medicine=1 WHERE barcode=?').run('0012345678901');
     const product=await gateway.call('barcode',{barcode:'0012345678901'}),unit=product.units[0];
-    const input={key:`TO-${randomUUID()}`,paymentMethod:'cash',creditMode:'paid',customerId:null,invoiceDiscountType:'fixed',invoiceDiscountValue:0,items:[{productId:product.id,saleUnit:unit.unit_name,quantity:1,unitPriceMinor:unit.selling_price_minor,discountType:'fixed',discountValue:0,overrideBatchId:null,overrideReason:''}]};
+    const input={key:`TO-${randomUUID()}`,paymentMethod:'cash',creditMode:'paid',cashTenderedMinor:1000000,customerId:null,invoiceDiscountType:'fixed',invoiceDiscountValue:0,items:[{productId:product.id,saleUnit:unit.unit_name,quantity:1,unitPriceMinor:unit.selling_price_minor,discountType:'fixed',discountValue:0,overrideBatchId:null,overrideReason:''}]};
     const quote=await gateway.call('quote',input);
     assert.deepEqual(new Set(quote.warnings.map(x=>x.type)),new Set(['near_expiry','prescription','controlled']));
     await assert.rejects(gateway.call('post',input),/Acknowledge all medicine and expiry warnings/);

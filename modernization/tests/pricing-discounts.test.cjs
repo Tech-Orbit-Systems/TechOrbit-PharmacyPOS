@@ -12,7 +12,7 @@ test('P037 quotes and posts edited price plus line and invoice discounts with an
   await gateway.call('login',{username:'demo',password:'TechOrbit-Demo-2026!'});
   const product=await gateway.call('barcode',{barcode:'0012345678901'}),unit=product.units[0];
   const original=unit.selling_price_minor,charged=original+345;
-  const input={key:`TO-${randomUUID()}`,paymentMethod:'cash',creditMode:'paid',customerId:null,invoiceDiscountType:'percentage',invoiceDiscountValue:10,items:[{productId:product.id,saleUnit:unit.unit_name,quantity:2,unitPriceMinor:charged,discountType:'fixed',discountValue:100}]};
+  const input={key:`TO-${randomUUID()}`,paymentMethod:'cash',creditMode:'paid',cashTenderedMinor:1000000,warningAcknowledged:true,customerId:null,invoiceDiscountType:'percentage',invoiceDiscountValue:10,items:[{productId:product.id,saleUnit:unit.unit_name,quantity:2,unitPriceMinor:charged,discountType:'fixed',discountValue:100}]};
   const quote=await gateway.call('quote',input);
   assert.equal(quote.items[0].originalUnitPriceMinor,original);assert.equal(quote.items[0].chargedUnitPriceMinor,charged);
   assert.equal(quote.items[0].grossMinor,charged*2);assert.equal(quote.items[0].lineDiscountMinor,100);

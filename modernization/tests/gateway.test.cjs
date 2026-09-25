@@ -20,6 +20,7 @@ test("real SQLite quote rollback, digital sale, retry and dashboard", async () =
     const input = {
       key: "TO-12345678-1234-1234-1234-123456789abc",
       paymentMethod: "digital",
+      warningAcknowledged: true,
       discountMinor: 0,
       items: [{ productId: products.id, saleUnit: "Strip", quantity: 2 }],
     };

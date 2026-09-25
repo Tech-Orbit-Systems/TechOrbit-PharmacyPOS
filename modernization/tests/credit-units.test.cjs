@@ -8,7 +8,7 @@ test('single/bulk unit pricing and stock, shift, customer, full and partial cred
   const p=await g.call('barcode',{barcode:'0012345678901'});assert.deepEqual(p.units.map(u=>u.unit_name).sort(),['box','strip','tablet']);
   const ors=await g.call('barcode',{barcode:'0012345678903'});assert.deepEqual(ors.units.map(u=>u.unit_name).sort(),['box','pack','sachet']);
   const amox=await g.call('barcode',{barcode:'0012345678904'});assert.deepEqual(amox.units.map(u=>u.unit_name).sort(),['box','capsule','strip']);
-  const sale=(unit='tablet',quantity=1,extra={})=>({key:'TO-'+crypto.randomUUID(),paymentMethod:'cash',discountMinor:0,items:[{productId:p.id,saleUnit:unit,quantity}],...extra});
+  const sale=(unit='tablet',quantity=1,extra={})=>{const value={key:'TO-'+crypto.randomUUID(),paymentMethod:'cash',warningAcknowledged:true,discountMinor:0,items:[{productId:p.id,saleUnit:unit,quantity}],...extra};if((value.creditMode||'paid')==='paid'&&value.paymentMethod==='cash')value.cashTenderedMinor=1000000;return value};
   assert.equal((await g.call('quote',sale())).finalTotalMinor,1200);
   assert.equal((await g.call('quote',sale('strip'))).finalTotalMinor,12000);
   assert.equal((await g.call('quote',sale('box'))).finalTotalMinor,120000);
