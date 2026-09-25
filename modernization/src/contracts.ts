@@ -85,19 +85,32 @@ export interface Quote {
   warnings: { lineNumber: number; productId: number; type: "near_expiry" | "prescription" | "controlled"; batchId?: number; expiryDate?: string }[];
 }
 export interface Receipt {
+  version:number;
+  saleId:number;
   invoiceNumber: string;
   soldAt: string;
+  profile:{pharmacyName:string;address:string|null;phone:string|null;taxRegistration:string|null;footer:string};
+  cashier:{id:number|null;name:string;roleCode:string};
+  customer:{name:string|null;phone:string|null};
   items: {
+    lineNumber:number;
     productName: string;
+    genericName:string|null;
     saleUnit: string;
     quantity: number;
     originalUnitPriceMinor:number;
     unitPriceMinor:number;
+    grossMinor:number;
     lineDiscountMinor:number;
+    invoiceDiscountMinor:number;
+    gstRateBasisPoints:number;
     gstMinor:number;
     lineTotalMinor: number;
   }[];
   totals: {
+    grossMinor:number;
+    taxableMinor:number;
+    exactTotalMinor:number;
     finalTotalMinor: number;
     lineDiscountMinor:number;
     gstMinor: number;
@@ -218,4 +231,4 @@ export interface ProductImportPreview {jobId:number;totalRows:number;validRows:n
 export interface InvoiceSearchInput {invoiceNumber:string;product:string;phone:string;paymentStatus:string;dateFrom:string;dateTo:string;page:number}
 export interface InvoiceSummary {id:number;invoice_number:string;sold_at:string;customer_name_snapshot:string|null;customer_phone_snapshot:string|null;payment_method:string;payment_status:string;final_total_minor:number;amount_paid_minor:number;balance_due_minor:number;due_date:string|null;products:string|null}
 export interface InvoiceSearchResult {items:InvoiceSummary[];total:number;page:number;pageSize:number}
-export interface InvoiceDetail {saleId:number;invoiceNumber:string;soldAt:string;status:string;customer:{id:number|null;name:string|null;phone:string|null};payment:{method:string;status:string;amountPaidMinor:number;balanceDueMinor:number;dueDate:string|null;cashTenderedMinor:number|null;cashChangeMinor:number|null};totals:{grossMinor:number;lineDiscountMinor:number;invoiceDiscountMinor:number;taxableMinor:number;gstMinor:number;exactTotalMinor:number;roundingMinor:number;finalTotalMinor:number};items:{id:number;lineNumber:number;productName:string;genericName:string|null;saleUnit:string;quantity:number;baseQuantity:number;unitPriceMinor:number;lineDiscountMinor:number;gstMinor:number;lineTotalMinor:number;returnedBaseQuantity:number;returnedMinor:number;returnableBaseQuantity:number}[];receivable:{id:number;balance_minor:number;due_date:string;status:string}|null;payments:{id:number;amount_minor:number;method:string;collected_at:string}[];returns:{id:number;returned_at:string;total_minor:number;receivable_credit_minor:number;refund_minor:number;reason:string}[];audit:{id:number;occurred_at:string;action:string;role_code:string|null;reason:string|null;new_json:unknown}[];actions:{canPrint:boolean;canViewCustomerHistory:boolean;canStartReturn:boolean;canViewAudit:boolean}}
+export interface InvoiceDetail {saleId:number;invoiceNumber:string;soldAt:string;status:string;customer:{id:number|null;name:string|null;phone:string|null};payment:{method:string;status:string;amountPaidMinor:number;balanceDueMinor:number;dueDate:string|null;cashTenderedMinor:number|null;cashChangeMinor:number|null};totals:{grossMinor:number;lineDiscountMinor:number;invoiceDiscountMinor:number;taxableMinor:number;gstMinor:number;exactTotalMinor:number;roundingMinor:number;finalTotalMinor:number};receipt:Receipt;items:{id:number;lineNumber:number;productName:string;genericName:string|null;saleUnit:string;quantity:number;baseQuantity:number;unitPriceMinor:number;lineDiscountMinor:number;gstMinor:number;lineTotalMinor:number;returnedBaseQuantity:number;returnedMinor:number;returnableBaseQuantity:number}[];receivable:{id:number;balance_minor:number;due_date:string;status:string}|null;payments:{id:number;amount_minor:number;method:string;collected_at:string}[];returns:{id:number;returned_at:string;total_minor:number;receivable_credit_minor:number;refund_minor:number;reason:string}[];audit:{id:number;occurred_at:string;action:string;role_code:string|null;reason:string|null;new_json:unknown}[];actions:{canPrint:boolean;canViewCustomerHistory:boolean;canStartReturn:boolean;canViewAudit:boolean}}

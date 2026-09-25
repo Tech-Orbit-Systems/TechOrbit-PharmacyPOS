@@ -999,7 +999,9 @@ body:has(.scrim) {
     display: block;
   }
   .page:has(.receipt),
-  .workspace:has(.receipt) {
+  .workspace:has(.receipt),
+  .page:has(.historical-receipt-print),
+  .workspace:has(.historical-receipt-print) {
     display: block !important;
   }
   .workspace:has(.receipt) > header,
@@ -1010,6 +1012,25 @@ body:has(.scrim) {
   .shortcut-row {
     display: none !important;
   }
+}
+
+.scrim:has(.historical-receipt-shell) .dialog{width:min(760px,96vw)}
+.receipt-preview-actions{display:flex;justify-content:space-between;gap:12px;margin-bottom:18px}
+.historical-receipt-print{display:grid;grid-template-columns:repeat(2,minmax(0,80mm));gap:18px;justify-content:center;align-items:start}
+.historical-receipt{width:80mm;max-width:100%;box-sizing:border-box;background:#fff;color:#111;border:1px solid #cbd5e1;padding:14px;font-family:Arial,sans-serif;font-size:12px;line-height:1.35}
+.historical-receipt p,.historical-receipt dl{margin:0}.receipt-brand{text-align:center;border-bottom:1px dashed #475569;padding-bottom:10px}.receipt-brand h2{font-size:18px;margin:0 0 5px;overflow-wrap:anywhere}.receipt-brand p{font-size:11px}.receipt-brand>strong{display:inline-block;margin-top:8px;text-transform:uppercase;font-size:11px;letter-spacing:.08em}
+.receipt-meta{padding:9px 0;border-bottom:1px dashed #475569}.receipt-meta>div,.receipt-totals>div{display:flex;justify-content:space-between;gap:12px}.receipt-meta dt,.receipt-totals dt{color:#334155}.receipt-meta dd,.receipt-totals dd{margin:0;text-align:right;font-weight:600;overflow-wrap:anywhere}
+.receipt-items section{padding:9px 0;border-bottom:1px dashed #94a3b8}.receipt-items section>div{display:flex;justify-content:space-between;gap:12px}.receipt-product{display:block!important}.receipt-product strong,.receipt-product small{display:block;overflow-wrap:anywhere}.receipt-items small{display:block;color:#475569}
+.receipt-totals{padding:9px 0;border-bottom:1px dashed #475569}.receipt-grand{font-size:16px;border-top:1px solid #111;border-bottom:1px solid #111;margin:6px 0;padding:5px 0}.historical-receipt footer{text-align:center;padding-top:10px}.historical-receipt footer small{color:#475569}
+
+@media(max-width:760px){.historical-receipt-print{grid-template-columns:minmax(0,80mm)}}
+@media print{
+  @page{size:80mm auto;margin:4mm}
+  .workspace:has(.historical-receipt-print)>header,.workspace:has(.historical-receipt-print)>footer,.sales-history-page>.page-title,.sales-history-page>.invoice-filters,.sales-history-page>.inventory-table,.sales-history-page>.pager,.receipt-preview-actions{display:none!important}
+  .scrim:has(.historical-receipt-shell) .dialog{width:80mm!important;padding:0!important}
+  .historical-receipt-print{display:block!important}
+  .historical-receipt{width:72mm!important;border:0!important;padding:0!important;break-after:page;page-break-after:always}
+  .historical-receipt:last-child{break-after:auto;page-break-after:auto}
 }
 
 /* Shared geometry for both themes: widen totals instead of compressing values. */
