@@ -15,6 +15,8 @@ const {SalesPostingService}=require('../infrastructure/sqlite/services/sales-pos
 const {CustomerReturnsService}=require('../infrastructure/sqlite/services/customer-returns');
 const {CustomerAccountsService}=require('../infrastructure/sqlite/services/customer-accounts');
 const {ExpensesService}=require('../infrastructure/sqlite/services/expenses');
+const {profitLoss,reportEntries,reportCsv,reportXlsx,reportPdf}=require('../modernization/desktop/reports.cjs');
+const {dashboard}=require('../modernization/desktop/dashboard.cjs');
 
 describe('cash shift ownership and closing',()=>{
   let db,service,user1,user2;
@@ -109,6 +111,10 @@ describe('cash shift ownership and closing',()=>{
     const sep=report.months.find(x=>x.month==='2026-09');
     expect(aug).toMatchObject({salesMinor:220,gstMinor:20,cogsMinor:80,grossProfitMinor:120});
     expect(sep).toMatchObject({salesMinor:1100,customerReturnsMinor:550,netSalesMinor:550,gstMinor:50,cogsMinor:150,grossProfitMinor:350,expensesMinor:100,operatingProfitMinor:250});
+    expect(profitLoss(db,{range:'custom',from:'2026-09-01',to:'2026-09-01'},new Date('2026-09-02T00:00:00Z')))
+      .toMatchObject({salesGrossMinor:1100,listedGrossMinor:1000,salesGstMinor:100,returnsGrossMinor:550,returnsGstMinor:50,
+        netRevenueMinor:500,soldCogsMinor:300,returnedCogsMinor:150,cogsMinor:150,
+        grossProfitMinor:350,expensesMinor:100,operatingProfitMinor:250});
     expect(report.periodEnd).toBe('2026-09-02');
     expect(service.sixMonthReport('2026-08-31T19:30:00Z').months.at(-1).month).toBe('2026-09');
   });
@@ -211,7 +217,7 @@ describe('cash shift ownership and closing',()=>{
     expect(daily.detail(snapshot.businessDayId).original.accounts).toEqual(snapshot.accounts);
   });
 
-  test('linked pharmacy books reconcile day close, six-month profit, dues and stock independently',()=>{
+  test('linked pharmacy books reconcile day close, six-month profit, dues and stock independently',async()=>{
     const config=new ClosingConfigurationService(db),daily=new DailyClosingService(db);
     const manager=Number(db.prepare("INSERT INTO Users(username,password_hash,display_name,role_id,created_at,updated_at) VALUES('manager-linked','fixture','Manager',3,?,?)").run(t(0),t(0)).lastInsertRowid);
     const bank=config.saveAccount({kind:'bank',name:'Statement bank'},manager),wallet=config.saveAccount({kind:'wallet',name:'Statement wallet'},manager),reserve=config.saveAccount({kind:'savings',name:'Reserve'},manager);
@@ -251,10 +257,30 @@ describe('cash shift ownership and closing',()=>{
     expect(closed.accounts.find(row=>row.id===wallet.id)).toMatchObject({expectedNetMinor:1500,actualNetMinor:1500});
     const report=service.rangeReport('2026-09-01T00:00:00Z','2026-09-13T00:00:00Z');
     expect(report.totals).toMatchObject({salesMinor:12000,customerReturnsMinor:2000,netSalesMinor:10000,gstMinor:0,cogsMinor:5000,grossProfitMinor:5000,expensesMinor:2500,operatingProfitMinor:2500,purchasesMinor:10000,purchaseReturnsMinor:1000,savingsTransferredMinor:700});
+    const reportInput={range:'custom',from:'2026-09-12',to:'2026-09-12'};
+    const pnl=profitLoss(db,reportInput,new Date('2026-09-13T00:00:00Z'));
+    expect(pnl).toMatchObject({salesGrossMinor:12000,returnsGrossMinor:2000,netRevenueMinor:10000,soldCogsMinor:6000,returnedCogsMinor:1000,cogsMinor:5000,expensesMinor:2500,operatingProfitMinor:2500});
+    expect(reportEntries(db,{...reportInput,page:1,pageSize:2}).items).toHaveLength(2);
+    expect(reportEntries(db,{...reportInput,page:3,pageSize:2}).items).toHaveLength(2);
+    const exported=reportCsv(db,reportInput,new Date('2026-09-13T00:00:00Z'));
+    expect(exported.csv).toContain('"Operating profit minor","2500"');
+    expect(exported.csv).not.toContain('GOLD-BUY');
+    const excel=await reportXlsx(db,reportInput,new Date('2026-09-13T00:00:00Z'));
+    const excelBook=new (require('exceljs').Workbook)();
+    await excelBook.xlsx.load(Buffer.from(excel.base64,'base64'));
+    expect(excelBook.getWorksheet('Profit and Loss').getCell('B10').value).toBe(25);
+    const pdf=reportPdf(db,reportInput,new Date('2026-09-13T00:00:00Z'));
+    expect(Buffer.from(pdf.base64,'base64').subarray(0,4).toString()).toBe('%PDF');
     expect(db.prepare('SELECT balance_minor FROM Receivables WHERE id=?').get(receivable.id).balance_minor).toBe(2500);
     expect(db.prepare('SELECT balance_minor FROM Payables WHERE id=?').get(payable.id).balance_minor).toBe(4000);
     expect(db.prepare('SELECT balance_minor FROM ExpensePayables WHERE id=?').get(vendorPayable.id).balance_minor).toBe(1000);
     expect(db.prepare("SELECT quantity_on_hand FROM ProductBatches WHERE batch_number='GOLD-BATCH'").get().quantity_on_hand).toBe(4);
+    db.prepare('UPDATE Products SET minimum_stock=5 WHERE id=?').run(product.id);
+    db.prepare("UPDATE ProductBatches SET expiry_date='2026-09-01' WHERE batch_number='GOLD-BATCH'").run();
+    const kpi=dashboard(db,{range:'custom',from:'2026-09-12',to:'2026-09-12'},
+      {userId:user1,financial:true,costVisible:true,now:new Date('2026-09-12T18:00:00Z')});
+    expect(kpi).toMatchObject({vendorDues:1000,expiredValue:4000,reorderCount:1});
+    expect(kpi.today).toMatchObject({netExGst:10000,operatingProfit:2500,refunds:2000});
   });
 
   test('upgrade attaches only open legacy shifts and keeps closed history unchanged',()=>{

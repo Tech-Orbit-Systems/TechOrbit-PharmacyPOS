@@ -77,6 +77,7 @@ export interface User {
   roleCode: string;
   mustChangePassword: boolean;
   demo: boolean;
+  canViewProfit:boolean;
 }
 export interface Quote {
   amountPaidMinor:number;
@@ -146,6 +147,7 @@ export interface DashboardData {
     profit: number | null;
     count: number;
     cash: number | null;
+    operatingProfit:number|null;netExGst:number|null;refunds:number;
   };
   shift: boolean;
   low: any[];
@@ -154,9 +156,23 @@ export interface DashboardData {
     receivable: { total: number; overdue: number };
     payable: { total: number; soon: number };
   } | null;
+  vendorDues:number|null;expiredValue:number|null;reorderCount:number;
+  businessKpis:{monthSalesMinor:number;cashReceivedMinor:number;digitalReceivedMinor:number;creditCreatedMinor:number|null;overdueDuesMinor:number|null;expensesMinor:number|null};
+  stockKpis:{totalProducts:number;outOfStockProducts:number;lowStockProducts:number;nearExpiryBatches:number;expiredBatches:number;totalStockValueMinor:number|null;sellableStockValueMinor:number|null};
   recent: any[];
 }
+export interface ProfitLossReport {
+  range:{from:string;to:string;start:string;end:string;asOf:string};
+  salesGrossMinor:number;listedGrossMinor:number;salesGstMinor:number;salesExGstMinor:number;salesDiscountMinor:number;salesRoundingMinor:number;saleCount:number;
+  returnsGrossMinor:number;returnsGstMinor:number;returnsExGstMinor:number;returnedCogsMinor:number;returnCount:number;
+  netRevenueMinor:number;soldCogsMinor:number;cogsMinor:number;grossProfitMinor:number;expensesMinor:number;expenseCount:number;operatingProfitMinor:number;
+}
+export interface ReportEntry {kind:string;id:number;occurred_at:string;reference:string;gross_minor:number;gst_minor:number;cogs_minor:number;contribution_minor:number}
+export interface ReportEntries {range:{from:string;to:string};page:number;pageSize:number;hasMore:boolean;items:ReportEntry[]}
 export interface Api {
+  reportProfitLoss(input:{range:string;from?:string;to?:string}):Promise<ProfitLossReport>;
+  reportEntries(input:{range:string;from?:string;to?:string;page:number;pageSize?:number}):Promise<ReportEntries>;
+  reportExport(input:{range:string;from?:string;to?:string;format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
   supplierList(input:{q:string}):Promise<Supplier[]>;
   supplierSave(input:SupplierInput):Promise<Supplier>;
   purchaseProducts(input:{q:string}):Promise<PurchaseProduct[]>;

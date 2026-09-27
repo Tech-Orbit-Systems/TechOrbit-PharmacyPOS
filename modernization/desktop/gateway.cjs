@@ -47,7 +47,7 @@ class Gateway {
         this.session = user;
         this.expires = Date.now() + 8 * 3600000;
         this.failures = 0;
-        return { ...user, demo: this.demo };
+        return { ...user, demo: this.demo,canViewProfit:hasPermission(this.db,user.id,'report.cost') };
       } catch (error) {
         if (++this.failures >= 5) {
           this.blockedUntil = Date.now() + 60000;
@@ -131,6 +131,16 @@ class Gateway {
         report=detail.current;
       }else report=new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db).rangeReport(input?.from,input?.to);
       return {filename:`TechOrbit_PharmacyPOS_Six_Month_${report.periodStart}_${report.periodEnd}.csv`,csv:require('../../infrastructure/sqlite/services/period-export').periodCsv(report)};
+    }
+    if(['reportProfitLoss','reportEntries','reportExport'].includes(command)){
+      this.authorize('report.cost');
+      const reports=require('./reports.cjs');
+      if(command==='reportProfitLoss')return reports.profitLoss(this.db,input);
+      if(command==='reportEntries')return reports.reportEntries(this.db,input);
+      if(input.format==='xlsx')return reports.reportXlsx(this.db,input);
+      if(input.format==='pdf')return reports.reportPdf(this.db,input);
+      if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
+      return reports.reportCsv(this.db,input);
     }
     if(['closingPeriodClose','closingPeriodHistory','closingPeriodDetail','closingPeriodRevise'].includes(command)){
       this.authorize('closing.revise');
@@ -261,6 +271,7 @@ class Gateway {
       return dashboard(this.db, input, {
         userId: this.session.id,
         financial: this.permission("dues.manage"),
+        costVisible: this.permission('report.cost'),
       });
     }
     if (command === "search") {

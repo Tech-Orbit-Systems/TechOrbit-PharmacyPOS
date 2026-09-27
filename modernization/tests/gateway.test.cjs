@@ -3,6 +3,24 @@ const { test } = require("node:test"),
 const { openDatabase } = require("../../infrastructure/sqlite/database");
 const { seedDemo } = require("../desktop/demo.cjs");
 const { Gateway } = require("../desktop/gateway.cjs");
+const bcrypt=require('bcrypt');
+test('cost and profit report is denied to a cashier below the UI',async()=>{
+  const db=openDatabase({filename:':memory:'});
+  try{
+    const now=new Date().toISOString();
+    db.prepare("INSERT INTO Users(username,password_hash,display_name,role_id,must_change_password,created_at,updated_at) SELECT 'report-cashier',?,'Report Cashier',id,0,?,? FROM Roles WHERE code='cashier'")
+      .run(bcrypt.hashSync('Cashier-Report-2026!',10),now,now);
+    const gateway=new Gateway(db);
+    const user=await gateway.call('login',{username:'report-cashier',password:'Cashier-Report-2026!'});
+    assert.equal(user.canViewProfit,false);
+    await assert.rejects(gateway.call('reportProfitLoss',{range:'7d'}),/role does not allow/);
+    await assert.rejects(gateway.call('reportEntries',{range:'7d',page:1}),/role does not allow/);
+    await assert.rejects(gateway.call('reportExport',{range:'7d'}),/role does not allow/);
+    const dash=await gateway.call('dashboard',{range:'7d'});
+    assert.equal(dash.today.operatingProfit,null);
+    assert.equal(dash.expiredValue,null);
+  }finally{db.close()}
+});
 test("real SQLite read-only quote, digital sale, retry and dashboard", async () => {
   const db = openDatabase({ filename: ":memory:" });
   try {

@@ -11,6 +11,7 @@ const methods = [
   "customerSearch", "customerDetail", "duesList", "duesHistory", "receivableCollect", "supplierPay", "vendorPay",
   "expenseMetadata", "vendorSave", "expenseList", "expensePost", "expenseVoid",
   "login",
+  "reportProfitLoss", "reportEntries", "reportExport",
   "logout",
   "changePassword",
   "dashboard",

@@ -25,6 +25,7 @@ import { Purchases } from './Purchases';
 import { SalesHistory } from './SalesHistory';
 import { Accounts } from './Accounts';
 import { Closing } from './Closing';
+import { Reports } from './Reports';
 const nav = [
   ["Dashboard", LayoutDashboard],
   ["Point of Sale", ShoppingCart],
@@ -152,7 +153,7 @@ export function App() {
               key={label}
               title={label}
               disabled={
-                !["Dashboard", "Point of Sale", "Sales History", "Settings", "Products", "Inventory", "Purchases", "Accounts", "Closing", "Suppliers"].includes(label)
+                !["Dashboard", "Point of Sale", "Sales History", "Settings", "Products", "Inventory", "Purchases", "Accounts", "Closing", "Suppliers", "Reports"].includes(label)||(label==='Reports'&&!user.canViewProfit)
               }
               aria-current={page === label ? "page" : undefined}
               onClick={() => setPage(label)}
@@ -194,7 +195,7 @@ export function App() {
         </header>
         <main className="page">
           {page === "Dashboard" && (
-            <Dashboard onSale={() => setPage("Point of Sale")} />
+            <Dashboard onSale={() => setPage("Point of Sale")} onAccounts={()=>setPage('Accounts')} onInventory={()=>setPage('Inventory')} onReports={()=>setPage('Reports')} canViewProfit={user.canViewProfit} />
           )}
           <div hidden={page !== "Point of Sale"}>
             <POS user={user} />
@@ -205,6 +206,7 @@ export function App() {
           {page === 'Purchases' && <Purchases initialTab="purchases"/>}
           {page === 'Accounts' && <Accounts/>}
           {page === 'Closing' && <Closing/>}
+          {page === 'Reports' && <Reports/>}
           {page === 'Suppliers' && <Purchases initialTab="suppliers"/>}
           {page === "Settings" && (
             <>

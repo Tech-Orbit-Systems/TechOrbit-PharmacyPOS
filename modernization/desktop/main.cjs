@@ -75,6 +75,7 @@ app.whenReady().then(() => {
     "customerSearch", "customerDetail", "duesList", "duesHistory", "receivableCollect", "supplierPay", "vendorPay",
     "expenseMetadata", "vendorSave", "expenseList", "expensePost", "expenseVoid",
     "login",
+    "reportProfitLoss", "reportEntries", "reportExport",
     "logout",
     "changePassword",
     "dashboard",
@@ -125,11 +126,12 @@ app.whenReady().then(() => {
         pending.set(id, { resolve, reject, timer });
         worker.postMessage({ id, command, input });
       });
-      if(command!=='closingPeriodExport')return result;
-      return result.then(async ({filename,csv})=>{
-        const choice=await dialog.showSaveDialog(window,{title:'Export six-month report',defaultPath:filename,filters:[{name:'CSV report',extensions:['csv']} ]});
+      if(command!=='closingPeriodExport'&&command!=='reportExport')return result;
+      return result.then(async ({filename,csv,base64})=>{
+        const extension=filename.split('.').at(-1);
+        const choice=await dialog.showSaveDialog(window,{title:command==='reportExport'?'Export P&L report':'Export six-month report',defaultPath:filename,filters:[{name:`${extension.toUpperCase()} report`,extensions:[extension]} ]});
         if(choice.canceled||!choice.filePath)return {saved:false};
-        await fs.writeFile(choice.filePath,csv,'utf8');
+        await fs.writeFile(choice.filePath,base64?Buffer.from(base64,'base64'):csv,base64?undefined:'utf8');
         return {saved:true};
       });
     });

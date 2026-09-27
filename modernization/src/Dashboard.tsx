@@ -19,7 +19,7 @@ const ranges = [
   ["1y", "1 Year"],
   ["custom", "Custom"],
 ];
-export function Dashboard({ onSale }: { onSale: () => void }) {
+export function Dashboard({ onSale,onAccounts,onInventory,onReports,canViewProfit }: { onSale: () => void;onAccounts:()=>void;onInventory:()=>void;onReports:()=>void;canViewProfit:boolean }) {
   const [range, setRange] = useState("7d"),
     [from, setFrom] = useState(""),
     [to, setTo] = useState(""),
@@ -81,7 +81,7 @@ export function Dashboard({ onSale }: { onSale: () => void }) {
         {[
           [
             ShoppingCart,
-            "Net sales",
+            "Net sales incl GST",
             data ? "PKR " + money(data.today.net) : "—",
           ],
           [
@@ -108,6 +108,35 @@ export function Dashboard({ onSale }: { onSale: () => void }) {
             </div>
           </section>
         ))}
+      </div>
+      <div className="metrics">
+        <section className="panel metric"><div><span>Today refunds</span><strong>{data ? 'PKR '+money(data.today.refunds) : '—'}</strong>{canViewProfit&&<button className="link" onClick={onReports}>View report ↗</button>}</div></section>
+        <section className="panel metric"><div><span>Reorder products</span><strong>{data?.reorderCount ?? '—'}</strong><button className="link" onClick={onInventory}>View inventory ↗</button></div></section>
+        {data?.today.operatingProfit!=null&&<section className="panel metric"><div><span>Operating profit</span><strong>PKR {money(data.today.operatingProfit)}</strong><button className="link" onClick={onReports}>View P&amp;L ↗</button></div></section>}
+        {data?.vendorDues!=null&&<section className="panel metric"><div><span>Vendor dues</span><strong>PKR {money(data.vendorDues)}</strong><button className="link" onClick={onAccounts}>View accounts ↗</button></div></section>}
+        {data?.expiredValue!=null&&<section className="panel metric"><div><span>Expired stock value</span><strong>PKR {money(data.expiredValue)}</strong><button className="link" onClick={onInventory}>View inventory ↗</button></div></section>}
+      </div>
+      <div className="dashboard-grid">
+        <section className="panel"><h2>Business KPIs</h2><table><tbody>
+          {[
+            ['Month sales incl GST',data?.businessKpis.monthSalesMinor],
+            ['Cash received today',data?.businessKpis.cashReceivedMinor],
+            ['Digital received today',data?.businessKpis.digitalReceivedMinor],
+            ['Credit created today',data?.businessKpis.creditCreatedMinor],
+            ['Overdue dues',data?.businessKpis.overdueDuesMinor],
+            ['Expenses incurred today',data?.businessKpis.expensesMinor],
+          ].filter(([,value])=>value!=null).map(([label,value])=><tr key={String(label)}><th>{label}</th><td className="number">PKR {money(value as number)}</td></tr>)}
+        </tbody></table>{!data&&<p>Loading business totals…</p>}</section>
+        <section className="panel"><h2>Stock KPIs</h2><table><tbody>
+          {[
+            ['Total products',data?.stockKpis.totalProducts],
+            ['Out-of-stock products',data?.stockKpis.outOfStockProducts],
+            ['Low-stock products',data?.stockKpis.lowStockProducts],
+            ['Near-expiry batches',data?.stockKpis.nearExpiryBatches],
+            ['Expired batches',data?.stockKpis.expiredBatches],
+          ].map(([label,value])=><tr key={String(label)}><th>{label}</th><td className="number">{value??'—'}</td></tr>)}
+          {data?.stockKpis.totalStockValueMinor!=null&&<><tr><th>Total stock value</th><td className="number">PKR {money(data.stockKpis.totalStockValueMinor)}</td></tr><tr><th>Sellable stock value</th><td className="number">PKR {money(data.stockKpis.sellableStockValueMinor)}</td></tr></>}
+        </tbody></table><button className="link" onClick={onInventory}>View inventory ↗</button></section>
       </div>
       <div className="dashboard-grid">
         <section className="panel chart-panel">

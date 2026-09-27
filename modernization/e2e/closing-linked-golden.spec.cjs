@@ -91,6 +91,32 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
   await app.close();app=await launch();page=await app.firstWindow();await signIn();
   await page.getByRole('button',{name:'View',exact:true}).first().click();
   await expect(page.getByText(/Original snapshot and 1 revisions are retained/)).toBeVisible();
+  await page.getByRole('button',{name:'Dashboard',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Business KPIs'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Stock KPIs'})).toBeVisible();
+  await expect(page.getByText('Vendor dues')).toBeVisible();
+  await expect(page.getByText('Expired stock value')).toBeVisible();
+  await page.getByRole('button',{name:'Reports',exact:true}).click();
+  await page.getByRole('button',{name:'Custom',exact:true}).click();
+  await page.getByLabel('Report from date').fill('2026-09-12');
+  await page.getByLabel('Report to date').fill('2026-09-12');
+  await expect(page.getByRole('row').filter({hasText:'Operating profit'})).toContainText('PKR 25');
+  await expect(page.getByRole('row').filter({hasText:'Net revenue excluding GST'})).toContainText('PKR 100');
+  await expect(page.getByRole('row').filter({hasText:'Incurred expenses'})).toContainText('PKR -25');
+  await expect(page.getByText('GOLD-CASH')).toBeVisible();
+  const exportPath=path.join(dataDir,'b05-profit-loss.csv');
+  await app.evaluate(({dialog},filePath)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath})},exportPath);
+  await page.getByRole('button',{name:'Export CSV'}).click();
+  await expect(page.getByText('CSV report saved.')).toBeVisible();
+  expect(fs.readFileSync(exportPath,'utf8')).toContain('"Operating profit minor","2500"');
+  for(const format of ['XLSX','PDF']){
+    const filePath=path.join(dataDir,`b05-profit-loss.${format.toLowerCase()}`);
+    await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},filePath);
+    await page.getByRole('button',{name:`Export ${format}`}).click();
+    await expect(page.getByText(`${format} report saved.`)).toBeVisible();
+    expect(fs.readFileSync(filePath).subarray(0,4).toString()).toBe(format==='PDF'?'%PDF':'PK\x03\x04');
+  }
+  expect(errors).toEqual([]);
  }finally{await app.close()}
  const db=openDatabase({filename});
  try{
