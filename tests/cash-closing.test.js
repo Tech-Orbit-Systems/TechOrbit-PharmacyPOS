@@ -5,6 +5,16 @@ const {recordMoneyMovement}=require('../infrastructure/sqlite/services/money-mov
 const {ClosingConfigurationService}=require('../infrastructure/sqlite/services/closing-configuration');
 const {DailyClosingService}=require('../infrastructure/sqlite/services/daily-closing');
 const {SixMonthClosingService}=require('../infrastructure/sqlite/services/six-month-closing');
+const {SuppliersRepository}=require('../infrastructure/sqlite/repositories/suppliers');
+const {ProductsRepository}=require('../infrastructure/sqlite/repositories/products');
+const {ProductUnitsRepository}=require('../infrastructure/sqlite/repositories/product-units');
+const {PurchaseReceivingService}=require('../infrastructure/sqlite/services/purchase-receiving');
+const {PurchasePaymentsService}=require('../infrastructure/sqlite/services/purchase-payments');
+const {PurchaseReturnsService}=require('../infrastructure/sqlite/services/purchase-returns');
+const {SalesPostingService}=require('../infrastructure/sqlite/services/sales-posting');
+const {CustomerReturnsService}=require('../infrastructure/sqlite/services/customer-returns');
+const {CustomerAccountsService}=require('../infrastructure/sqlite/services/customer-accounts');
+const {ExpensesService}=require('../infrastructure/sqlite/services/expenses');
 
 describe('cash shift ownership and closing',()=>{
   let db,service,user1,user2;
@@ -199,6 +209,52 @@ describe('cash shift ownership and closing',()=>{
     expect(snapshot.accounts.find(row=>row.id===bank.id)).toMatchObject({inMinor:20000,outMinor:5000,expectedNetMinor:15000,actualNetMinor:15000,varianceMinor:0});
     expect(snapshot.accounts.find(row=>row.id===wallet.id)).toMatchObject({inMinor:15000,outMinor:5000,expectedNetMinor:10000,actualNetMinor:10000,varianceMinor:0});
     expect(daily.detail(snapshot.businessDayId).original.accounts).toEqual(snapshot.accounts);
+  });
+
+  test('linked pharmacy books reconcile day close, six-month profit, dues and stock independently',()=>{
+    const config=new ClosingConfigurationService(db),daily=new DailyClosingService(db);
+    const manager=Number(db.prepare("INSERT INTO Users(username,password_hash,display_name,role_id,created_at,updated_at) VALUES('manager-linked','fixture','Manager',3,?,?)").run(t(0),t(0)).lastInsertRowid);
+    const bank=config.saveAccount({kind:'bank',name:'Statement bank'},manager),wallet=config.saveAccount({kind:'wallet',name:'Statement wallet'},manager),reserve=config.saveAccount({kind:'savings',name:'Reserve'},manager);
+    const supplier=new SuppliersRepository(db).create({name:'Linked supplier'});
+    const product=new ProductsRepository(db).create({name:'Linked medicine',productType:'general',baseUnit:'piece'});
+    new ProductUnitsRepository(db).configure(product.id,[{unitName:'piece',baseQuantity:1,sellingPriceMinor:2000,isDefaultSaleUnit:true}]);
+    const customer=Number(db.prepare("INSERT INTO Customers(name,phone,normalized_phone,created_at,updated_at) VALUES('Ali','03001234567','03001234567',?,?)").run(t(0),t(0)).lastInsertRowid);
+    const vendor=Number(db.prepare("INSERT INTO Vendors(name,active,created_at,updated_at) VALUES('Linked utility',1,?,?)").run(t(0),t(0)).lastInsertRowid);
+    const shift=service.open({userId:user1,deviceId:'COUNTER-1',openingCashMinor:10000,openedAt:t(8)});
+    const purchase=new PurchaseReceivingService(db).receive({supplierId:supplier.id,invoiceNumber:'GOLD-BUY',idempotencyKey:'gold-buy',purchasedAt:t(9),createdBy:user1,deviceId:'COUNTER-1',paymentMethod:'card',amountPaidMinor:2000,dueDate:'2026-10-01',items:[{productId:product.id,purchasedQuantity:10,unitCostMinor:1000,salePriceMinor:2000,batchNumber:'GOLD-BATCH',expiryDate:'2028-12-31'}]});
+    const sales=new SalesPostingService(db);
+    const sell=(name,hour,method,quantity,extra={})=>sales.post({invoiceNumber:name,idempotencyKey:name,soldAt:t(hour),createdBy:user1,deviceId:'COUNTER-1',paymentMethod:method,items:[{productId:product.id,saleUnit:'piece',quantity}],...extra});
+    const cash=sell('GOLD-CASH',10,'cash',2),card=sell('GOLD-CARD',11,'card',1),digital=sell('GOLD-DIGITAL',12,'digital',1);
+    const credit=sell('GOLD-CREDIT',13,'credit',2,{customerId:customer,amountPaidMinor:0,dueDate:'2026-10-01'});
+    expect([cash,card,digital,credit].map(row=>row.finalTotalMinor)).toEqual([4000,2000,2000,4000]);
+    const receivable=db.prepare("SELECT id FROM Receivables WHERE source_type='sale' AND source_id=?").get(String(credit.saleId));
+    new CustomerAccountsService(db).collect({receivableId:receivable.id,amountMinor:1500,method:'cash',collectedAt:t(14),createdBy:user1,deviceId:'COUNTER-1',idempotencyKey:'gold-collect'});
+    const saleItem=db.prepare('SELECT id FROM SaleItems WHERE sale_id=?').get(cash.saleId);
+    new CustomerReturnsService(db).post({saleId:cash.saleId,reason:'Unopened',returnedAt:t(15),refundMethod:'cash',createdBy:user1,deviceId:'COUNTER-1',idempotencyKey:'TO-11111111-1111-1111-1111-111111111111',items:[{saleItemId:saleItem.id,baseQuantity:1,restockable:true,conditionConfirmed:true}]});
+    const payable=db.prepare("SELECT id FROM Payables WHERE source_type='purchase' AND source_id=?").get(String(purchase.purchaseId));
+    new PurchasePaymentsService(db).post({payableId:payable.id,amountMinor:3000,method:'bank_transfer',paidAt:t(16),createdBy:user1,deviceId:'COUNTER-1',idempotencyKey:'gold-supplier-pay'});
+    const purchaseItem=db.prepare('SELECT id FROM PurchaseItems WHERE purchase_id=?').get(purchase.purchaseId);
+    new PurchaseReturnsService(db).post({purchaseId:purchase.purchaseId,reason:'Excess',returnedAt:t(17),createdBy:user1,deviceId:'COUNTER-1',idempotencyKey:'TO-22222222-2222-2222-2222-222222222222',items:[{purchaseItemId:purchaseItem.id,quantity:1}]});
+    const expenses=new ExpensesService(db);
+    const expense=expenses.post({categoryId:1,vendorId:vendor,incurredAmountMinor:2500,amountPaidMinor:1000,method:'cash',expenseDate:t(18),dueDate:'2026-10-01',description:'Utility bill',idempotencyKey:'gold-expense',createdBy:user1,deviceId:'COUNTER-1'});
+    const vendorPayable=db.prepare('SELECT id FROM ExpensePayables WHERE expense_id=?').get(expense.expenseId);
+    expenses.settle({payableId:vendorPayable.id,amountMinor:500,method:'mobile_wallet',paidAt:t(19),idempotencyKey:'gold-vendor-pay',createdBy:user1,deviceId:'COUNTER-1'});
+    const movements=db.prepare("SELECT id,method FROM MoneyMovements WHERE occurred_at>=? AND occurred_at<? AND method<>'cash'").all(t(8),t(20));
+    for(const row of movements)config.allocate({movementId:row.id,accountId:['card','bank_transfer'].includes(row.method)?bank.id:wallet.id},manager);
+    config.recordSavingsTransfer({accountId:reserve.id,amountMinor:700,transferredAt:t(20),reference:'Signed reserve transfer'},manager);
+    expect(service.close({shiftId:shift.id,countedCashMinor:12500,closedAt:t(21),userId:user1}).expectedCashMinor).toBe(12500);
+    const next=service.open({userId:user2,deviceId:'COUNTER-1',openingCashMinor:12500,openedAt:t(21),handoverConfirmed:true});
+    service.close({shiftId:next.id,countedCashMinor:12500,closedAt:t(22),userId:user2});
+    const closed=daily.close({userId:manager,asOf:t(23),accountActuals:{[bank.id]:-3000,[wallet.id]:1500}});
+    expect(closed).toMatchObject({shiftCount:2,cashOpeningMinor:10000,cashExpectedMinor:12500,cashCountedMinor:12500,cashVarianceMinor:0,unresolvedMovementCount:0,savingsTransferredMinor:700});
+    expect(closed.accounts.find(row=>row.id===bank.id)).toMatchObject({expectedNetMinor:-3000,actualNetMinor:-3000});
+    expect(closed.accounts.find(row=>row.id===wallet.id)).toMatchObject({expectedNetMinor:1500,actualNetMinor:1500});
+    const report=service.rangeReport('2026-09-01T00:00:00Z','2026-09-13T00:00:00Z');
+    expect(report.totals).toMatchObject({salesMinor:12000,customerReturnsMinor:2000,netSalesMinor:10000,gstMinor:0,cogsMinor:5000,grossProfitMinor:5000,expensesMinor:2500,operatingProfitMinor:2500,purchasesMinor:10000,purchaseReturnsMinor:1000,savingsTransferredMinor:700});
+    expect(db.prepare('SELECT balance_minor FROM Receivables WHERE id=?').get(receivable.id).balance_minor).toBe(2500);
+    expect(db.prepare('SELECT balance_minor FROM Payables WHERE id=?').get(payable.id).balance_minor).toBe(4000);
+    expect(db.prepare('SELECT balance_minor FROM ExpensePayables WHERE id=?').get(vendorPayable.id).balance_minor).toBe(1000);
+    expect(db.prepare("SELECT quantity_on_hand FROM ProductBatches WHERE batch_number='GOLD-BATCH'").get().quantity_on_hand).toBe(4);
   });
 
   test('upgrade attaches only open legacy shifts and keeps closed history unchanged',()=>{
