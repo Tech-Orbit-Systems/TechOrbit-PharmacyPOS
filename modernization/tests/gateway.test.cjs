@@ -3,7 +3,7 @@ const { test } = require("node:test"),
 const { openDatabase } = require("../../infrastructure/sqlite/database");
 const { seedDemo } = require("../desktop/demo.cjs");
 const { Gateway } = require("../desktop/gateway.cjs");
-test("real SQLite quote rollback, digital sale, retry and dashboard", async () => {
+test("real SQLite read-only quote, digital sale, retry and dashboard", async () => {
   const db = openDatabase({ filename: ":memory:" });
   try {
     seedDemo(db);

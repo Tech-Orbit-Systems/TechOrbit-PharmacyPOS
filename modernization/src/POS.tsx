@@ -107,6 +107,7 @@ export function POS({ user }: { user: User }) {
     [recoveryState,setRecoveryState]=useState<ActiveDraft['state']>(()=>initialDraft?.state||'editing'),
     [recoveryReady,setRecoveryReady]=useState(()=>!initialDraft),
     [recoveryNotice,setRecoveryNotice]=useState(''),
+    [scanFeedback,setScanFeedback]=useState(''),
     [alternatives,setAlternatives]=useState<AlternativeResult|null>(null),
     [alternativeBusy,setAlternativeBusy]=useState(false),
     [tab, setTab] = useState("Products");
@@ -266,6 +267,7 @@ export function POS({ user }: { user: User }) {
       return;
     }
     setSelected(product);
+    setScanFeedback(`${product.name} added to the active sale.`);
     setLines((old) => {
       const index = old.findIndex(
         (l) => l.product.id === product.id && l.unit === unit.unit_name,
@@ -284,6 +286,7 @@ export function POS({ user }: { user: User }) {
       const exact = await window.pharmacy.barcode({ barcode: query });
       if (exact) add(exact);
       else if (products.length === 1) add(products[0]);
+      else if(selected&&products.some(product=>product.id===selected.id))add(selected);
       else setError("Select a matching product from the results");
     } catch (e) {
       setError((e as Error).message);
@@ -304,6 +307,21 @@ export function POS({ user }: { user: User }) {
     }catch(e){setError((e as Error).message);}
     finally{setAlternativeBusy(false);}
   }
+  function changeUnit(index:number,nextUnit:string){
+    setLines(old=>{
+      const current=old[index];if(!current)return old;
+      const nextPrice=(unitPrice(current.product,nextUnit)/100).toFixed(2);
+      const duplicate=old.findIndex((line,lineIndex)=>lineIndex!==index&&line.product.id===current.product.id&&line.unit===nextUnit);
+      const target=duplicate>=0?old[duplicate]:null;
+      const mergeable=target&&target.unitPrice===nextPrice&&target.discountType===current.discountType&&target.discountValue===current.discountValue&&target.overrideBatchId===current.overrideBatchId&&target.overrideReason===current.overrideReason;
+      if(duplicate>=0&&mergeable){
+        const quantity=old[duplicate].quantity+current.quantity;
+        return old.filter((_,lineIndex)=>lineIndex!==index).map(line=>line===old[duplicate]?{...line,quantity}:line);
+      }
+      return old.map((line,lineIndex)=>lineIndex===index?{...line,unit:nextUnit,unitPrice:nextPrice}:line);
+    });
+    setScanFeedback(`${lines[index]?.product.name||'Medicine'} unit changed to ${nextUnit}.`);
+  }
   function hold() {
     if (!lines.length || busy) return;
     setHeld((old) => [...old, { lines, customer, discount,discountType, method, key,creditMode,received,dueDate,cashTendered }]);
@@ -320,6 +338,7 @@ export function POS({ user }: { user: User }) {
     setCreditMode('paid');setReceived('0');setDueDate('');setCashTendered('');
     setDoctorName('');setPrescriptionReference('');setWarningAcknowledged(false);
     setRecoveryState('editing');setRecoveryNotice('');
+    setScanFeedback('');
     setKey(newKey());
     setQuery("");
     setError("");
@@ -418,6 +437,7 @@ export function POS({ user }: { user: User }) {
           Held sales ({held.length})
         </button>
       </div>
+      {scanFeedback&&<p className="scan-feedback" role="status" aria-live="polite">{scanFeedback}</p>}
       {recoveryNotice&&<div className="recovery-notice" role="status"><span>{recoveryNotice}</span>{recoveryState==='uncertain'&&<button disabled={busy} onClick={()=>void reconcilePost()}>Check saved sale</button>}</div>}
       {error && (
         <p className="error" role="alert">
@@ -515,15 +535,7 @@ export function POS({ user }: { user: User }) {
                         <select
                           aria-label={`Unit line ${index + 1}`}
                           value={line.unit}
-                          onChange={(e) =>
-                            setLines((old) =>
-                              old.map((l, i) =>
-                                i === index
-                                  ? { ...l, unit: e.target.value,unitPrice:(unitPrice(l.product,e.target.value)/100).toFixed(2) }
-                                  : l,
-                              ),
-                            )
-                          }
+                          onChange={(e) => changeUnit(index,e.target.value)}
                         >
                           {line.product.units.map((u) => (
                             <option key={u.unit_name} value={u.unit_name}>{unitLabel(line.product,u)}</option>

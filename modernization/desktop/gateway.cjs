@@ -12,6 +12,9 @@ const {
   SalesPostingService,
 } = require("../../infrastructure/sqlite/services/sales-posting");
 const {
+  SalesQuotationService,
+} = require("../../infrastructure/sqlite/services/sales-quotation");
+const {
   SalesQueryService,
 } = require("../../infrastructure/sqlite/services/sales-query");
 const { dashboard } = require("./dashboard.cjs");
@@ -264,10 +267,8 @@ class Gateway {
         cashTenderedMinor:input.cashTenderedMinor==null?null:input.cashTenderedMinor,
         enforceCashTender:command==='post'&&creditMode==='paid'&&input.paymentMethod==='cash',
       };
-      if(command==='post'&&creditMode!=='paid'){
-        if(!sale.customerId)throw Error('Select or add a customer for a credit sale');
+      if(creditMode!=='paid'){
         const due=String(input.dueDate||'');
-        if(!/^\d{4}-\d{2}-\d{2}$/.test(due)||Number.isNaN(Date.parse(due))||new Date(due+'T00:00:00Z').toISOString().slice(0,10)!==due||due<dayKey(new Date()))throw Error('Choose a valid due date, today or later');
         sale.paymentMethod='credit';sale.collectionMethod=input.paymentMethod;
         sale.amountPaidMinor=creditMode==='credit'?0:input.paidMinor;sale.dueDate=due;
       }
@@ -308,16 +309,7 @@ class Gateway {
         const posted = new SalesPostingService(this.db).post(sale);
         return new SalesQueryService(this.db).receipt(posted.saleId);
       }
-      // Reuse authoritative tax, rounding and FEFO logic, rolling back every quote write.
-      this.db.exec("SAVEPOINT modern_quote");
-      try {
-        const quote=new SalesPostingService(this.db).post(sale);
-        const received=creditMode==='credit'?0:creditMode==='partial'?input.paidMinor:quote.finalTotalMinor;
-        if(received>quote.finalTotalMinor)throw Error('Received amount cannot exceed the sale total');
-        return {...quote,amountPaidMinor:received,balanceDueMinor:quote.finalTotalMinor-received};
-      } finally {
-        this.db.exec("ROLLBACK TO modern_quote; RELEASE modern_quote");
-      }
+      return new SalesQuotationService(this.db).quote(sale);
     }
     throw Error("Unknown operation");
   }
