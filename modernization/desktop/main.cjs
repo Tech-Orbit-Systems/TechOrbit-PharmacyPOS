@@ -84,6 +84,7 @@ app.whenReady().then(() => {
     "ledger",
     "quote",
     "post",
+    "saleRecovery",
   ]) {
     ipcMain.handle("pharmacy:" + command, (event, input) => {
       if (

@@ -201,6 +201,22 @@ class Gateway {
           .all();
       throw Error("Unknown ledger");
     }
+    if (command === "saleRecovery") {
+      this.authorize("sale.create");
+      const key = String(input.key || "");
+      if (!/^TO-[a-f0-9-]{36}$/.test(key))
+        throw Error("Invalid sale reference");
+      const saved = this.db
+        .prepare("SELECT id,created_by FROM Sales WHERE idempotency_key=?")
+        .get(key);
+      if (!saved) return { status: "not_found" };
+      if (saved.created_by !== this.session.id)
+        throw Error("Sale reference belongs to another user");
+      return {
+        status: "posted",
+        receipt: new SalesQueryService(this.db).receipt(saved.id),
+      };
+    }
     if (command === "quote" || command === "post") {
       this.authorize("sale.create");
       if (

@@ -191,6 +191,7 @@ export interface Api {
   ledger(input: { type: string }): Promise<any[]>;
   quote(input: SaleInput): Promise<Quote>;
   post(input: SaleInput): Promise<Receipt>;
+  saleRecovery(input:{key:string}):Promise<{status:"posted";receipt:Receipt}|{status:"not_found"}>;
 }
 declare global {
   interface Window {

@@ -31,10 +31,36 @@ function unitLabel(product:Product,unit:Product['units'][number]){
 }
 const newKey = () => `TO-${crypto.randomUUID()}`;
 const unitPrice=(product:Product,unitName:string)=>product.units.find(unit=>unit.unit_name===unitName)?.selling_price_minor??0;
+type ActiveDraft={
+  version:1;
+  state:"editing"|"posting"|"uncertain";
+  savedAt:string;
+  lines:Line[];
+  customer:number|null;
+  discount:string;
+  discountType:"fixed"|"percentage";
+  method:Payment;
+  key:string;
+  creditMode:CreditMode;
+  received:string;
+  dueDate:string;
+  cashTendered:string;
+  doctorName:string;
+  prescriptionReference:string;
+  warningAcknowledged:boolean;
+};
+function readActiveDraft(storageKey:string):ActiveDraft|null{
+  try{
+    const value=JSON.parse(localStorage.getItem(storageKey)||"null");
+    return value?.version===1&&Array.isArray(value.lines)&&value.lines.length&&/^TO-[a-f0-9-]{36}$/.test(value.key)?value:null;
+  }catch{return null;}
+}
 export function POS({ user }: { user: User }) {
   const canOverrideBatch=['pharmacist','manager','admin'].includes(user.roleCode);
   const storageKey = `techorbit.drafts.${user.demo ? "review" : "live"}.${user.id}`;
-  const [lines, setLines] = useState<Line[]>([]),
+  const activeStorageKey=`techorbit.active-sale.v1.${user.demo ? "review" : "live"}.${user.id}`;
+  const initialDraft=useRef<ActiveDraft|null>(readActiveDraft(activeStorageKey)).current;
+  const [lines, setLines] = useState<Line[]>(()=>initialDraft?.lines||[]),
     [held, setHeld] = useState<
       {
         lines: Line[];
@@ -56,28 +82,31 @@ export function POS({ user }: { user: User }) {
       }
     }),
     [showHeld, setShowHeld] = useState(false);
-  const [key, setKey] = useState(newKey),
+  const [key, setKey] = useState(()=>initialDraft?.key||newKey()),
     [query, setQuery] = useState(""),
     [products, setProducts] = useState<Product[]>([]),
     [selected, setSelected] = useState<Product | null>(null),
     [customers, setCustomers] = useState<{ id: number; name: string }[]>([]),
-    [customer, setCustomer] = useState<number | null>(null),
-    [discount, setDiscount] = useState("0"),
-    [discountType,setDiscountType]=useState<"fixed"|"percentage">("fixed"),
-    [method, setMethod] = useState<Payment>("cash"),
-    [creditMode,setCreditMode]=useState<CreditMode>('paid'),
-    [received,setReceived]=useState('0'),
-    [dueDate,setDueDate]=useState(''),
-    [doctorName,setDoctorName]=useState(''),
-    [prescriptionReference,setPrescriptionReference]=useState(''),
-    [warningAcknowledged,setWarningAcknowledged]=useState(false),
-    [cashTendered,setCashTendered]=useState(''),
+    [customer, setCustomer] = useState<number | null>(()=>initialDraft?.customer??null),
+    [discount, setDiscount] = useState(()=>initialDraft?.discount||"0"),
+    [discountType,setDiscountType]=useState<"fixed"|"percentage">(()=>initialDraft?.discountType||"fixed"),
+    [method, setMethod] = useState<Payment>(()=>initialDraft?.method||"cash"),
+    [creditMode,setCreditMode]=useState<CreditMode>(()=>initialDraft?.creditMode||'paid'),
+    [received,setReceived]=useState(()=>initialDraft?.received||'0'),
+    [dueDate,setDueDate]=useState(()=>initialDraft?.dueDate||''),
+    [doctorName,setDoctorName]=useState(()=>initialDraft?.doctorName||''),
+    [prescriptionReference,setPrescriptionReference]=useState(()=>initialDraft?.prescriptionReference||''),
+    [warningAcknowledged,setWarningAcknowledged]=useState(()=>initialDraft?.warningAcknowledged||false),
+    [cashTendered,setCashTendered]=useState(()=>initialDraft?.cashTendered||''),
     [showAddCustomer,setShowAddCustomer]=useState(false),
     [quote, setQuote] = useState<Quote | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [quoting, setQuoting] = useState(false),
     [receipt, setReceipt] = useState<Receipt | null>(null),
+    [recoveryState,setRecoveryState]=useState<ActiveDraft['state']>(()=>initialDraft?.state||'editing'),
+    [recoveryReady,setRecoveryReady]=useState(()=>!initialDraft),
+    [recoveryNotice,setRecoveryNotice]=useState(''),
     [alternatives,setAlternatives]=useState<AlternativeResult|null>(null),
     [alternativeBusy,setAlternativeBusy]=useState(false),
     [tab, setTab] = useState("Products");
@@ -110,6 +139,11 @@ export function POS({ user }: { user: User }) {
   const warningReady=!warnings.length||warningAcknowledged;
   const inputKey = JSON.stringify(input);
   const creditReady=creditMode==='paid'||Boolean(customer&&dueDate&&quote&&(creditMode==='credit'||quote.balanceDueMinor>=0));
+  function activeDraft(state:ActiveDraft['state']):ActiveDraft{return {version:1,state,savedAt:new Date().toISOString(),lines,customer,discount,discountType,method,key,creditMode,received,dueDate,cashTendered,doctorName,prescriptionReference,warningAcknowledged};}
+  function saveActiveDraft(state:ActiveDraft['state']){
+    try{localStorage.setItem(activeStorageKey,JSON.stringify(activeDraft(state)));}
+    catch{setError("Active sale could not be saved on this device");}
+  }
   useEffect(() => {
     window.pharmacy
       .customers()
@@ -123,6 +157,46 @@ export function POS({ user }: { user: User }) {
       setError("Held sales could not be saved on this device");
     }
   }, [held, storageKey]);
+  useEffect(()=>{
+    if(!initialDraft)return;
+    let active=true;
+    void (async()=>{
+      try{
+        const refreshed=await Promise.all(initialDraft.lines.map(async line=>{
+          const barcodeMatch=line.product.barcode?await window.pharmacy.barcode({barcode:line.product.barcode}):null;
+          const product=barcodeMatch?.id===line.product.id?barcodeMatch:(await window.pharmacy.search({q:line.product.name})).find(item=>item.id===line.product.id);
+          if(!product)throw Error('A recovered product is no longer available. Review or clear this sale.');
+          if(!product.units.some(unit=>unit.unit_name===line.unit))throw Error(`The ${line.unit} sale unit is no longer available for ${product.name}.`);
+          const selected=line.overrideBatchId&&product.batches.some(batch=>batch.id===line.overrideBatchId)?line.overrideBatchId:null;
+          return {...line,product,unitPrice:line.unitPrice??(unitPrice(product,line.unit)/100).toFixed(2),discountType:line.discountType||'fixed',discountValue:line.discountValue??'0',overrideBatchId:selected,overrideReason:selected?(line.overrideReason||''):''};
+        }));
+        if(!active)return;
+        setLines(refreshed);
+        if(initialDraft.state==='posting'||initialDraft.state==='uncertain'){
+          setRecoveryNotice('Checking the previous payment result…');
+          const recovered=await window.pharmacy.saleRecovery({key:initialDraft.key});
+          if(!active)return;
+          if(recovered.status==='posted'){
+            localStorage.removeItem(activeStorageKey);
+            setReceipt(recovered.receipt);
+            reset();
+            setRecoveryNotice('Previous payment was already saved. No duplicate sale was created.');
+          }else{
+            setRecoveryState('editing');
+            setRecoveryNotice('Previous payment was not saved. Review the restored sale and retry with the same reference.');
+          }
+        }else setRecoveryNotice('Your active sale was restored after restart.');
+      }catch(e){
+        if(active){setRecoveryState(initialDraft.state==='editing'?'editing':'uncertain');setError((e as Error).message);}
+      }finally{if(active)setRecoveryReady(true);}
+    })();
+    return()=>{active=false;};
+  },[]);
+  useEffect(()=>{
+    if(!recoveryReady)return;
+    if(!lines.length){localStorage.removeItem(activeStorageKey);return;}
+    saveActiveDraft(recoveryState);
+  },[recoveryReady,recoveryState,inputKey,doctorName,prescriptionReference,warningAcknowledged,lines]);
   useEffect(() => {
     const id = ++seq.current;
     if (!query.trim()) {
@@ -236,6 +310,7 @@ export function POS({ user }: { user: User }) {
     reset();
   }
   function reset() {
+    localStorage.removeItem(activeStorageKey);
     setLines([]);
     setQuote(null);
     setDiscount("0");
@@ -244,10 +319,33 @@ export function POS({ user }: { user: User }) {
     setMethod("cash");
     setCreditMode('paid');setReceived('0');setDueDate('');setCashTendered('');
     setDoctorName('');setPrescriptionReference('');setWarningAcknowledged(false);
+    setRecoveryState('editing');setRecoveryNotice('');
     setKey(newKey());
     setQuery("");
     setError("");
     scan.current?.focus();
+  }
+  async function reconcilePost(){
+    setBusy(true);
+    setRecoveryNotice('Checking the saved sale reference…');
+    try{
+      const recovered=await window.pharmacy.saleRecovery({key});
+      if(recovered.status==='posted'){
+        localStorage.removeItem(activeStorageKey);
+        setReceipt(recovered.receipt);
+        reset();
+        setRecoveryNotice('Payment was already saved. No duplicate sale was created.');
+        return;
+      }
+      setRecoveryState('editing');
+      saveActiveDraft('editing');
+      setRecoveryNotice('No completed sale was found. Review this sale and retry; the same reference will be used safely.');
+    }catch(e){
+      setRecoveryState('uncertain');
+      saveActiveDraft('uncertain');
+      setError((e as Error).message);
+      setRecoveryNotice('The payment result is still uncertain. Keep this sale and check again when the data service is available.');
+    }finally{setBusy(false);}
   }
   async function pay() {
     if (postLock.current || !quote || quoting || !lines.length || !creditReady || !warningReady) return;
@@ -256,12 +354,25 @@ export function POS({ user }: { user: User }) {
     postLock.current = true;
     setBusy(true);
     setError("");
+    setRecoveryState('posting');
+    saveActiveDraft('posting');
     try {
       const result = await window.pharmacy.post({...input,warningAcknowledged,doctorName,prescriptionReference});
+      localStorage.removeItem(activeStorageKey);
       setReceipt(result);
       reset();
     } catch (e) {
-      setError((e as Error).message);
+      const message=(e as Error).message;
+      if(/timed out|unavailable/i.test(message)){
+        setRecoveryState('uncertain');
+        saveActiveDraft('uncertain');
+        setRecoveryNotice('Payment response was uncertain. Checking the saved sale before allowing a retry…');
+        await reconcilePost();
+      }else{
+        setRecoveryState('editing');
+        saveActiveDraft('editing');
+        setError(message);
+      }
     } finally {
       setBusy(false);
       postLock.current = false;
@@ -307,12 +418,13 @@ export function POS({ user }: { user: User }) {
           Held sales ({held.length})
         </button>
       </div>
+      {recoveryNotice&&<div className="recovery-notice" role="status"><span>{recoveryNotice}</span>{recoveryState==='uncertain'&&<button disabled={busy} onClick={()=>void reconcilePost()}>Check saved sale</button>}</div>}
       {error && (
         <p className="error" role="alert">
           {error}
         </p>
       )}
-      <fieldset disabled={busy} className="pos-fieldset">
+      <fieldset disabled={busy||!recoveryReady} className="pos-fieldset">
         <div className="pos-toolbar panel">
           <div className="search-field">
             <Search size={18} />

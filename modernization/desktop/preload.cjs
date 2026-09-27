@@ -30,6 +30,7 @@ const methods = [
   "ledger",
   "quote",
   "post",
+  "saleRecovery",
 ];
 contextBridge.exposeInMainWorld(
   "pharmacy",
