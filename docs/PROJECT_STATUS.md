@@ -24,11 +24,11 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 
 ## Open work and release boundaries
 
-- **Next batch B04: P055-P058**, cash ownership/closing, digital reconciliation and six-month period corrections.
-- B04 P055-P058 covers cash ownership/closing, digital reconciliation and six-month period corrections. P055 and P057 are Correction; P056 and P058 are Pending. B05 P059-P061 covers P&L, dashboard/report coverage and shared report filters/exports.
+- **P054 cash shift backend foundation is already Done** in commit `7047c78`; its shift/period fixture tests passed again on 2026-09-27 (2/2). This is foundation only, not acceptance of the full closing workflow.
+- **Next batch B04: P055-P058** builds on P054. P055 corrects cashier/shift ledger ownership and time boundaries; P056 adds digital reconciliation and daily revisions; P057 corrects six-month totals and Pakistan cutoffs; P058 delivers the modern closing screens. P055 and P057 are Correction; P056 and P058 are Pending. B05 P059-P061 covers P&L and reporting.
 - P045 needs a physical scanner run. Physical 80mm printer evidence, DPI/small-screen checks, role/security matrix, backup/restore and fault campaign, financial golden data, performance, signed installer/upgrade, production-data migration rehearsal and pilot remain release work.
 - The modern app uses isolated review data by default. No live cutover, destructive cleanup, stock/unit rebasing or go-live is authorized. Generic multi-industry POS ideas remain discussion only and are outside the existing Pharmacy V1 plan unless the owner explicitly changes it.
 
 ## Next action
 
-Start B04 P055-P058 from the canonical tracker, beginning with its dependencies and acceptance criteria. Keep final release gates open until their documented evidence exists.
+Start B04 P055-P058 from the already delivered P054 foundation and follow the canonical tracker's dependencies and acceptance criteria. Keep final release gates open until their documented evidence exists.
