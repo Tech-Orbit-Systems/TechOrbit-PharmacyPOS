@@ -18,6 +18,9 @@ export function Closing(){
   const [history,setHistory]=useState<Awaited<ReturnType<Api['closingDayHistory']>>>([]),[detail,setDetail]=useState<Awaited<ReturnType<Api['closingDayDetail']>>|null>(null);
   const [revisionCash,setRevisionCash]=useState(''),[revisionReason,setRevisionReason]=useState('');
   const [savingsAccount,setSavingsAccount]=useState(''),[savingsAmount,setSavingsAmount]=useState(''),[savingsReference,setSavingsReference]=useState('');
+  const [tab,setTab]=useState<'daily'|'six_month'>('daily'),[periodMode,setPeriodMode]=useState<'current'|'completed'|'custom'|'history'>('current');
+  const [periodFrom,setPeriodFrom]=useState(''),[periodTo,setPeriodTo]=useState(''),[periodNotes,setPeriodNotes]=useState(''),[periodRevisionReason,setPeriodRevisionReason]=useState('');
+  const [periodHistory,setPeriodHistory]=useState<Awaited<ReturnType<Api['closingPeriodHistory']>>>([]),[periodDetail,setPeriodDetail]=useState<Awaited<ReturnType<Api['closingPeriodDetail']>>|null>(null);
   const [error,setError]=useState(''),[notice,setNotice]=useState(''),[periodNotice,setPeriodNotice]=useState(''),[busy,setBusy]=useState(false);
   const load=async()=>{
     setBusy(true);setError('');
@@ -29,6 +32,7 @@ export function Closing(){
       try{const config=await window.pharmacy.closingConfig({});setManager(true);setAccounts(config.accounts);setTolerance(editable(config.policy.varianceToleranceMinor));setCycleMonth(config.policy.sixMonthCycleStartMonth);
         try{const current=await window.pharmacy.closingDayPreview({});setDay(current);setActuals(Object.fromEntries(current.accounts.map(row=>[row.id,editable(row.expectedNetMinor)])))}catch{setDay(null)}
         setHistory(await window.pharmacy.closingDayHistory({}));
+        setPeriodHistory(await window.pharmacy.closingPeriodHistory({}));
       }catch{setManager(false);setDay(null)}
       try{setPeriod(await window.pharmacy.closingPeriodPreview({}));setPeriodNotice('')}
       catch(e){setPeriod(null);setPeriodNotice((e as Error).message)}
@@ -37,9 +41,14 @@ export function Closing(){
   useEffect(()=>{void load()},[]);
   const action=async(work:()=>Promise<unknown>,message:string)=>{setBusy(true);setError('');setNotice('');try{await work();setNotice(message);await load()}catch(e){setError((e as Error).message)}finally{setBusy(false)}};
   const viewHistory=async(id:number)=>{try{const saved=await window.pharmacy.closingDayDetail({businessDayId:id});setDetail(saved);setRevisionCash(editable(saved.current.cashCountedMinor));setActuals(Object.fromEntries(saved.current.accounts.map(row=>[row.id,editable(row.actualNetMinor)])));setError('')}catch(e){setError((e as Error).message)}};
+  const showCompleted=async()=>{try{setPeriod(await window.pharmacy.closingPeriodCompletedPreview({}));setPeriodMode('completed');setPeriodDetail(null);setPeriodNotice('')}catch(e){setPeriodNotice((e as Error).message)}};
+  const showCustom=async()=>{try{if(!periodFrom||!periodTo)throw Error('Choose both Pakistan date/time boundaries');const from=new Date(periodFrom+'+05:00').toISOString(),to=new Date(periodTo+'+05:00').toISOString();setPeriod(await window.pharmacy.closingPeriodRangePreview({from,to}));setPeriodMode('custom');setPeriodDetail(null);setPeriodNotice('')}catch(e){setPeriodNotice((e as Error).message)}};
+  const showPeriodHistory=async(id:number)=>{try{const saved=await window.pharmacy.closingPeriodDetail({closingId:id});setPeriodDetail(saved);setPeriod(saved.current||null);setPeriodMode('history');setPeriodNotice('')}catch(e){setPeriodNotice((e as Error).message)}};
   return <section className="closing-page">
     <div className="page-title"><div><h1>Closing</h1><p>Cashier shifts, official business day and pharmacy reporting cycle.</p></div><button onClick={load} disabled={busy}><RefreshCw size={16}/> Refresh</button></div>
     {error&&<p className="error" role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
+    <div className="closing-tabs" role="tablist" aria-label="Closing sections"><button role="tab" aria-selected={tab==='daily'} onClick={()=>setTab('daily')}>Daily Closing</button><button role="tab" aria-selected={tab==='six_month'} onClick={()=>setTab('six_month')}>Six-Month Closing</button></div>
+    {tab==='daily'&&<>
     <section className="panel"><h2><WalletCards size={18}/> Current cashier shift</h2>
       {shift?<><p>Opened {dateLabel(shift.openedAt)} · {shift.deviceId}</p>
         <div className="closing-summary"><div><small>Opening cash</small><strong>{money(shift.openingCashMinor)}</strong></div><div><small>Expected cash</small><strong>{money(shift.expectedCashMinor)}</strong></div><div><small>Unattributed cash entries</small><strong>{shift.unattributedCashCount}</strong></div></div>
@@ -73,9 +82,19 @@ export function Closing(){
           <div className="closing-form"><label>Revised counted cash (Rs)<input value={revisionCash} onChange={e=>setRevisionCash(e.target.value)}/></label>{detail.current.accounts.map(row=><label key={row.id}>Revised actual net for {row.name} (Rs)<input value={actuals[row.id]||''} onChange={e=>setActuals({...actuals,[row.id]:e.target.value})}/></label>)}<label>Revision reason<input value={revisionReason} onChange={e=>setRevisionReason(e.target.value)}/></label><button disabled={busy} onClick={()=>void action(async()=>{await window.pharmacy.closingDayRevise({businessDayId:detail.current.businessDayId,cashCountedMinor:minor(revisionCash),accountActuals:Object.fromEntries(detail.current.accounts.map(row=>[row.id,minor(actuals[row.id]||'')])),reason:revisionReason});await viewHistory(detail.current.businessDayId)},'Reasoned revision saved.')}>Save revision</button></div></>}
       </section>
     </>}
+    </>}
+    {tab==='six_month'&&<>
+    <section className="panel"><h2>Six-month periods and custom range</h2><div className="closing-form"><button onClick={()=>void action(async()=>{setPeriod(await window.pharmacy.closingPeriodPreview({}));setPeriodMode('current');setPeriodDetail(null)},'Current pharmacy cycle loaded.')}>Current cycle</button><button onClick={()=>void showCompleted()}>Latest completed cycle</button><label>From (Pakistan date/time)<input type="datetime-local" value={periodFrom} onChange={e=>setPeriodFrom(e.target.value)}/></label><label>To, exclusive (Pakistan date/time)<input type="datetime-local" value={periodTo} onChange={e=>setPeriodTo(e.target.value)}/></label><button onClick={()=>void showCustom()}>Show custom range</button></div><p>Official close uses the configured six-month cycle. Custom ranges are for review.</p></section>
     {periodNotice&&<p className="error" role="status">{periodNotice}</p>}
     {period&&<section className="panel"><h2><ChartColumn size={18}/> Six-month review</h2><p>{period.periodStart} to {period.periodEnd} · As of {dateLabel(period.asOf)} · Cycle starts in month {period.cycleStartMonth}</p>
+      <div className="closing-summary"><div><small>Net sales</small><strong>{money(period.totals.netSalesMinor)}</strong></div><div><small>Operating profit</small><strong>{money(period.totals.operatingProfitMinor)}</strong></div><div><small>Actual savings transfers</small><strong>{money(period.totals.savingsTransferredMinor)}</strong></div></div>
       <div className="account-table"><table><thead><tr><th>Month</th><th>Net sales</th><th>GST</th><th>COGS</th><th>Gross profit</th><th>Expenses</th><th>Operating profit</th><th>Actual savings transfers</th></tr></thead><tbody>{period.months.map(row=><tr key={row.month}><td>{row.month}</td><td className="number">{money(row.netSalesMinor)}</td><td className="number">{money(row.gstMinor)}</td><td className="number">{money(row.cogsMinor)}</td><td className="number">{money(row.grossProfitMinor)}</td><td className="number">{money(row.expensesMinor)}</td><td className="number">{money(row.operatingProfitMinor)}</td><td className="number">{money(row.savingsTransferredMinor)}</td></tr>)}</tbody></table></div>
+      <h3>Monthly operating profit</h3><div className="period-chart">{period.months.map(row=><div key={row.month}><span>{row.month}</span><div className="period-track"><div className={row.operatingProfitMinor<0?'negative':''} style={{width:`${Math.max(1,Math.round(Math.abs(row.operatingProfitMinor)/Math.max(1,...period.months.map(item=>Math.abs(item.operatingProfitMinor)))*100))}%`}}/></div><strong>{money(row.operatingProfitMinor)}</strong></div>)}</div>
+      {manager&&periodMode==='completed'&&period.cycleStart&&<div className="closing-form"><label>Official period close note<input value={periodNotes} onChange={e=>setPeriodNotes(e.target.value)}/></label><button disabled={busy||periodHistory.some(row=>row.period_start===period.cycleStart)} onClick={()=>void action(()=>window.pharmacy.closingPeriodClose({cycleStart:period.cycleStart!,notes:periodNotes}),'Official six-month period closed.')}>Official six-month close</button></div>}
     </section>}
+    {manager&&<section className="panel"><h2>Six-month closing history</h2>{periodHistory.length?<div className="account-table"><table><thead><tr><th>Cycle</th><th>Closed</th><th>Revisions</th><th></th></tr></thead><tbody>{periodHistory.map(row=><tr key={row.id}><td>{row.period_start} to {row.period_end}{row.legacy?' (legacy snapshot)':''}</td><td>{dateLabel(row.closed_at)}</td><td>{row.revisionCount}</td><td><button onClick={()=>void showPeriodHistory(row.id)}>View</button></td></tr>)}</tbody></table></div>:<p>No official six-month close recorded yet.</p>}
+      {periodDetail&&<>{periodDetail.legacy?<p>Legacy snapshot preserved. Reconcile it independently before a revision.</p>:<><p>Original operating profit: {money(periodDetail.original!.totals.operatingProfitMinor)} · Current: {money(periodDetail.current!.totals.operatingProfitMinor)}. Original report and {periodDetail.revisions.length} revisions retained.</p><div className="closing-form"><label>Reason for recalculated revision<input value={periodRevisionReason} onChange={e=>setPeriodRevisionReason(e.target.value)}/></label><button disabled={busy} onClick={()=>void action(async()=>{await window.pharmacy.closingPeriodRevise({closingId:periodDetail.closingId,reason:periodRevisionReason});await showPeriodHistory(periodDetail.closingId)},'Period revision saved.')}>Recalculate and revise</button></div></>}</>}
+    </section>}
+    </>}
   </section>;
 }

@@ -10,6 +10,12 @@ export interface ClosingDay {
   savingsTransferredMinor:number;shifts:{id:number;user_id:number;device_id:string;status:string;opened_at:string;closed_at:string|null;counted_cash_minor:number|null}[];
   reason?:string|null;revisionNumber?:number;revisionReason?:string;
 }
+export interface PeriodReport {
+  periodStart:string;periodEnd:string;from:string;asOf:string;cycleStartMonth:number;
+  cycleStart?:string;cycleEnd?:string;closingId?:number;revisionNumber?:number;
+  months:{month:string;netSalesMinor:number;gstMinor:number;cogsMinor:number;grossProfitMinor:number;expensesMinor:number;operatingProfitMinor:number;savingsTransferredMinor:number}[];
+  totals:{netSalesMinor:number;gstMinor:number;cogsMinor:number;grossProfitMinor:number;expensesMinor:number;operatingProfitMinor:number;savingsTransferredMinor:number};
+}
 export type CreditMode = 'paid' | 'partial' | 'credit';
 export interface Product {
   id: number;
@@ -183,7 +189,13 @@ export interface Api {
   productSuppliers():Promise<{id:number;name:string}[]>;
   shiftStatus():Promise<{id:number;opened_at:string;device_id:string}|null>;
   closingShiftPreview(input:{shiftId:number}):Promise<{shiftId:number;userId:number|null;deviceId:string;status:string;openedAt:string;closedAt:string|null;openingCashMinor:number;expectedCashMinor:number;countedCashMinor:number|null;varianceMinor:number|null;unattributedCashCount:number;movements:{method:string;direction:string;amount:number}[]}>;
-  closingPeriodPreview(input:{asOf?:string}):Promise<{periodStart:string;periodEnd:string;asOf:string;cycleStartMonth:number;months:{month:string;netSalesMinor:number;gstMinor:number;cogsMinor:number;grossProfitMinor:number;expensesMinor:number;operatingProfitMinor:number;savingsTransferredMinor:number}[];totals:{netSalesMinor:number;gstMinor:number;cogsMinor:number;grossProfitMinor:number;expensesMinor:number;operatingProfitMinor:number;savingsTransferredMinor:number}}>;
+  closingPeriodPreview(input:{asOf?:string}):Promise<PeriodReport>;
+  closingPeriodRangePreview(input:{from:string;to:string}):Promise<PeriodReport>;
+  closingPeriodCompletedPreview(input:{cycleStart?:string}):Promise<PeriodReport>;
+  closingPeriodClose(input:{cycleStart:string;notes:string}):Promise<PeriodReport>;
+  closingPeriodHistory(input:Record<string,never>):Promise<{id:number;period_start:string;period_end:string;closed_at:string;legacy:number;revisionCount:number}[]>;
+  closingPeriodDetail(input:{closingId:number}):Promise<{closingId:number;legacy:boolean;original?:PeriodReport;current?:PeriodReport;originalTotals?:PeriodReport['totals'];periodStart?:string;periodEnd?:string;revisions:{revision_number:number;reason:string;revised_at:string}[]}>;
+  closingPeriodRevise(input:{closingId:number;reason:string}):Promise<PeriodReport>;
   closingHandover():Promise<{shiftId:number;countedCashMinor:number}|null>;
   closingShiftOpen(input:{openingCashMinor:number;handoverConfirmed:boolean}):Promise<{id:number;business_day_id:number}>;
   closingShiftClose(input:{shiftId:number;countedCashMinor:number;varianceReason:string;forcedCloseReason:string}):Promise<{shiftId:number;varianceMinor:number}>;

@@ -113,6 +113,22 @@ class Gateway {
       this.authorize('report.cost');
       return new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db).sixMonthReport(input.asOf);
     }
+    if(command==='closingPeriodRangePreview'){
+      this.authorize('report.cost');
+      return new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db).rangeReport(input.from,input.to);
+    }
+    if(command==='closingPeriodCompletedPreview'){
+      this.authorize('report.cost');
+      return new (require('../../infrastructure/sqlite/services/six-month-closing').SixMonthClosingService)(this.db).preview(input);
+    }
+    if(['closingPeriodClose','closingPeriodHistory','closingPeriodDetail','closingPeriodRevise'].includes(command)){
+      this.authorize('closing.revise');
+      const service=new (require('../../infrastructure/sqlite/services/six-month-closing').SixMonthClosingService)(this.db);
+      if(command==='closingPeriodClose')return service.close({...input,userId:this.session.id});
+      if(command==='closingPeriodHistory')return service.history();
+      if(command==='closingPeriodDetail')return service.detail(input.closingId);
+      return service.revise({...input,userId:this.session.id});
+    }
     if(command.startsWith('closing')){
       const cash=new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db);
       const daily=new (require('../../infrastructure/sqlite/services/daily-closing').DailyClosingService)(this.db);

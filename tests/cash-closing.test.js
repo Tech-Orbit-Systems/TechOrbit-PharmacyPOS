@@ -4,6 +4,7 @@ const {CashClosingService}=require('../infrastructure/sqlite/services/cash-closi
 const {recordMoneyMovement}=require('../infrastructure/sqlite/services/money-movement');
 const {ClosingConfigurationService}=require('../infrastructure/sqlite/services/closing-configuration');
 const {DailyClosingService}=require('../infrastructure/sqlite/services/daily-closing');
+const {SixMonthClosingService}=require('../infrastructure/sqlite/services/six-month-closing');
 
 describe('cash shift ownership and closing',()=>{
   let db,service,user1,user2;
@@ -47,9 +48,26 @@ describe('cash shift ownership and closing',()=>{
   test('six month fixture remains immutable',()=>{
     const report=service.sixMonthReport(t(0));
     expect(report.months.map(x=>x.month)).toEqual(['2026-07','2026-08','2026-09']);
-    const closed=service.closeSixMonth({asOf:t(0)});
+    const manager=Number(db.prepare("INSERT INTO Users(username,password_hash,display_name,role_id,created_at,updated_at) VALUES('manager-period','fixture','Manager',3,?,?)")
+      .run(t(0),t(0)).lastInsertRowid);
+    expect(()=>service.closeSixMonth({cycleStart:'2026-07-01',userId:manager})).toThrow(/not complete/);
+    const closed=service.closeSixMonth({cycleStart:'2026-01-01',userId:manager});
     expect(closed.closingId).toBeGreaterThan(0);
-    expect(()=>service.closeSixMonth({asOf:t(0)})).toThrow(/UNIQUE/);
+    expect(closed).toMatchObject({periodStart:'2026-01-01',periodEnd:'2026-06-30'});
+    expect(()=>service.closeSixMonth({cycleStart:'2026-01-01',userId:manager})).toThrow(/overlaps/);
+    const period=new SixMonthClosingService(db);
+    const detail=period.detail(closed.closingId);
+    expect(detail.original.totals).toEqual(closed.totals);
+    expect(period.history()[0]).toMatchObject({id:closed.closingId,legacy:0,revisionCount:0});
+    const custom=service.rangeReport('2026-04-10T04:00:00Z','2026-05-15T15:00:00Z');
+    expect(custom.months.map(x=>x.month)).toEqual(['2026-04','2026-05']);
+    db.prepare("INSERT INTO Expenses(category_id,amount_minor,method,expense_date,description,idempotency_key,status,created_at) VALUES(1,100,'cash','2026-05-01T08:00:00Z','Late correction','late-period-expense','posted',?)").run(t(0));
+    expect(()=>period.revise({closingId:closed.closingId,userId:manager})).toThrow(/reason/);
+    const revision=period.revise({closingId:closed.closingId,userId:manager,reason:'Late posted expense reconciled'});
+    expect(revision).toMatchObject({revisionNumber:1,periodStart:'2026-01-01',periodEnd:'2026-06-30'});
+    expect(revision.totals.expensesMinor).toBe(100);
+    expect(period.detail(closed.closingId).original.totals.expensesMinor).toBe(0);
+    expect(period.detail(closed.closingId).current.totals.expensesMinor).toBe(100);
   });
 
   test('Pakistan month boundary and return GST/COGS reverse profit before as-of cutoff',()=>{

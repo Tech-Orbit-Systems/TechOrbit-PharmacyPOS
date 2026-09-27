@@ -78,7 +78,7 @@ function seedInitial(db) {
   ).run(supplier, addDays(today, 3), now, now);
   const engine = new SalesPostingService(db);
   for (let i = 180; i >= 0; i -= 3) {
-    const soldAt = addDays(today, -i) + "T09:00:00.000Z";
+    const soldAt = addDays(today, -Math.max(i, 1)) + "T09:00:00.000Z";
     engine.post({
       invoiceNumber: `DEMO-${i}`,
       idempotencyKey: `seed-${i}`,

@@ -69,6 +69,7 @@ app.whenReady().then(() => {
     "shiftStatus", "closingShiftPreview", "closingPeriodPreview", "closingHandover", "closingShiftOpen", "closingShiftClose",
     "closingDayPreview", "closingDayClose", "closingDayHistory", "closingDayDetail", "closingDayRevise",
     "closingConfig", "closingSavePolicy", "closingSaveAccount", "closingAllocate", "closingSavingsTransfer",
+    "closingPeriodRangePreview", "closingPeriodCompletedPreview", "closingPeriodClose", "closingPeriodHistory", "closingPeriodDetail", "closingPeriodRevise",
     "createCustomer",
     "customerSearch", "customerDetail", "duesList", "duesHistory", "receivableCollect", "supplierPay", "vendorPay",
     "expenseMetadata", "vendorSave", "expenseList", "expensePost", "expenseVoid",

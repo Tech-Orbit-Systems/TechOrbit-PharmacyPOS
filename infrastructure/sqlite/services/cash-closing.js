@@ -102,18 +102,36 @@ class CashClosingService {
   sixMonthReport(asOf = new Date().toISOString()) {
     const end = new Date(asOf);
     if (Number.isNaN(end.getTime()) || end.getTime() > Date.now()) throw new Error('Invalid report date');
-    const pakistan = new Date(end.getTime() + 5 * 3600000);
+    const bounds=this.cycleBounds(end.toISOString());
+    return this.rangeReport(bounds.start,end.toISOString());
+  }
+  cycleBounds(asOf) {
+    const end=new Date(asOf);
+    if(Number.isNaN(end.getTime()))throw new Error('Invalid cycle date');
+    const pakistan = new Date(end.getTime() - 1 + 5 * 3600000);
     const year = pakistan.getUTCFullYear(), month = pakistan.getUTCMonth();
     const anchor = this.policy().sixMonthCycleStartMonth - 1;
     let cycleMonth = year * 12 + anchor;
     const currentMonth = year * 12 + month;
     while (cycleMonth > currentMonth) cycleMonth -= 6;
     while (cycleMonth + 6 <= currentMonth) cycleMonth += 6;
+    const instant=index=>new Date(Date.UTC(Math.floor(index / 12),index % 12,1)-5*3600000).toISOString();
+    return {start:instant(cycleMonth),end:instant(cycleMonth+6),cycleStartMonth:anchor+1};
+  }
+  rangeReport(fromInput,toInput) {
+    const fromDate=new Date(fromInput),toDate=new Date(toInput);
+    if(Number.isNaN(fromDate.getTime())||Number.isNaN(toDate.getTime())||toDate<=fromDate||toDate.getTime()>Date.now())
+      throw new Error('Choose a valid past report date/time range');
+    const fromMonth=new Date(fromDate.getTime()+5*3600000),lastMonth=new Date(toDate.getTime()-1+5*3600000);
+    const firstIndex=fromMonth.getUTCFullYear()*12+fromMonth.getUTCMonth();
+    const lastIndex=lastMonth.getUTCFullYear()*12+lastMonth.getUTCMonth();
+    if(lastIndex-firstIndex>=120)throw new Error('Report range cannot exceed 120 months');
     const months = [];
-    for (let index = cycleMonth; index <= currentMonth; index++) {
+    for (let index = firstIndex; index <= lastIndex; index++) {
       const start = new Date(Date.UTC(Math.floor(index / 12), index % 12, 1) - 5 * 3600000);
       const next = new Date(Date.UTC(Math.floor((index + 1) / 12), (index + 1) % 12, 1) - 5 * 3600000);
-      const from = start.toISOString(), to = index === currentMonth ? end.toISOString() : next.toISOString();
+      const from = new Date(Math.max(start.getTime(),fromDate.getTime())).toISOString();
+      const to = new Date(Math.min(next.getTime(),toDate.getTime())).toISOString();
       const sales = this.db.prepare("SELECT COALESCE(SUM(final_total_minor),0) total,COALESCE(SUM(cogs_minor),0) cogs,COALESCE(SUM(gst_minor),0) gst FROM Sales WHERE status='posted' AND julianday(sold_at)>=julianday(?) AND julianday(sold_at)<julianday(?)").get(from, to);
       const customerReturns = this.db.prepare(`SELECT COALESCE(SUM(r.total_minor),0) amount,
         COALESCE(SUM((SELECT SUM(i.cogs_minor) FROM SaleReturnItems i WHERE i.sale_return_id=r.id)),0) cogs,
@@ -134,15 +152,12 @@ class CashClosingService {
         purchaseReturnsMinor: Number(returns),savingsTransferredMinor:Number(savings) });
     }
     const fields = ['salesMinor','customerReturnsMinor','netSalesMinor','gstMinor','cogsMinor','grossProfitMinor','expensesMinor','operatingProfitMinor','purchasesMinor','purchaseReturnsMinor','savingsTransferredMinor'];
-    return { periodStart: `${months[0].month}-01`, periodEnd: pakistan.toISOString().slice(0,10), asOf: end.toISOString(), cycleStartMonth:anchor + 1, months,
+    return { periodStart: fromMonth.toISOString().slice(0,10), periodEnd: lastMonth.toISOString().slice(0,10), from:fromDate.toISOString(),asOf:toDate.toISOString(), cycleStartMonth:this.policy().sixMonthCycleStartMonth, months,
       totals: months.reduce((a,m)=>{for(const k of fields)a[k]+=m[k];return a;},Object.fromEntries(fields.map(k=>[k,0]))) };
   }
   closeSixMonth(x) {
-    const report = this.sixMonthReport(x.asOf), now = new Date().toISOString();
-    const id = this.db.prepare("INSERT INTO PeriodClosings(period_type,period_start,period_end,totals_json,closed_at,closed_by,notes) VALUES ('six_month',?,?,?,?,?,?)")
-      .run(report.periodStart, report.periodEnd, JSON.stringify(report.totals), now, x.closedBy || null, x.notes || null).lastInsertRowid;
-    this.audit('period.close', id, x, report);
-    return { closingId: Number(id), ...report };
+    return new (require('./six-month-closing').SixMonthClosingService)(this.db)
+      .close({...x,userId:x?.userId||x?.closedBy});
   }
   audit(action, id, x, next) {
     this.db.prepare("INSERT INTO AuditLog(occurred_at,user_id,action,entity_type,entity_id,new_json,reason,device_id) VALUES (?,?,?,'closing',?,?,?,?)")
