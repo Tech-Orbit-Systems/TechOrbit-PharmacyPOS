@@ -4,6 +4,15 @@ const path = require("path"),
 const { pathToFileURL } = require("url");
 // This separate entry never imports legacy server.js or opens the production data by default.
 app.setName("TechOrbit UI Review");
+const e2eCompatibility = process.env.TECHORBIT_E2E_COMPATIBILITY === "1";
+if (process.env.TECHORBIT_DISABLE_HARDWARE_ACCELERATION === "1" || e2eCompatibility)
+  app.disableHardwareAcceleration();
+if (e2eCompatibility) {
+  app.commandLine.appendSwitch("no-sandbox");
+  app.commandLine.appendSwitch("disable-gpu");
+  app.commandLine.appendSwitch("in-process-gpu");
+  app.commandLine.appendSwitch("disable-gpu-sandbox");
+}
 const userData = process.env.TECHORBIT_UI_DATA_DIR;
 if (userData) app.setPath("userData", path.resolve(userData));
 let worker, window;
@@ -59,6 +68,8 @@ app.whenReady().then(() => {
     "productImportInspect", "productImportPreview", "productImportTemplate", "productImportErrors", "productImportCommit",
     "shiftStatus",
     "createCustomer",
+    "customerSearch", "customerDetail", "duesList", "duesHistory", "receivableCollect", "supplierPay", "vendorPay",
+    "expenseMetadata", "vendorSave", "expenseList", "expensePost", "expenseVoid",
     "login",
     "logout",
     "changePassword",

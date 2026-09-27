@@ -5,6 +5,8 @@ const methods = [
   "productImportInspect", "productImportPreview", "productImportTemplate", "productImportErrors", "productImportCommit",
   "shiftStatus",
   "createCustomer",
+  "customerSearch", "customerDetail", "duesList", "duesHistory", "receivableCollect", "supplierPay", "vendorPay",
+  "expenseMetadata", "vendorSave", "expenseList", "expensePost", "expenseVoid",
   "login",
   "logout",
   "changePassword",

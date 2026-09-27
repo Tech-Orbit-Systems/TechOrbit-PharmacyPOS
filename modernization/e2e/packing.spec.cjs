@@ -1,7 +1,7 @@
 const {test,expect,_electron}=require('@playwright/test');const fs=require('fs'),path=require('path'),os=require('os');
 test('P030 configure pack, calculate prices and sell configured default unit',async()=>{
  const env={...process.env,TECHORBIT_UI_DATA_DIR:fs.mkdtempSync(path.join(os.tmpdir(),'techorbit-packing-'))};delete env.ELECTRON_RUN_AS_NODE;delete env.TECHORBIT_UI_DATABASE;
- const app=await _electron.launch({executablePath:require('../../node_modules/electron'),args:[path.resolve(__dirname,'../desktop/main.cjs')],env});
+ const app=await _electron.launch({args:[path.resolve(__dirname,'../desktop/main.cjs')],env});
  try{const page=await app.firstWindow();await page.getByLabel('Username',{exact:true}).fill('demo');await page.getByLabel('Password',{exact:true}).fill('TechOrbit-Demo-2026!');await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.getByRole('button',{name:'Products',exact:true}).click();await page.getByRole('button',{name:'Packing ORS sachet',exact:true}).click();
  await expect(page.getByText('This product has stock or history.',{exact:false})).toBeVisible();
  const existing=await page.getByRole('group').count();await page.getByRole('button',{name:'Add unit',exact:true}).click();const i=existing+1;

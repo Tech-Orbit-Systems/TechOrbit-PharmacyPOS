@@ -8,7 +8,6 @@ test("approved screens: ranges, Digital, holds, posting and identical dark geome
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.TECHORBIT_UI_DATABASE;
   const app = await _electron.launch({
-    executablePath: require("../../node_modules/electron"),
     args: [path.resolve(__dirname, "../desktop/main.cjs")],
     env,
   });

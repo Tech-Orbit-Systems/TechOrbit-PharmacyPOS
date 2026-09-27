@@ -10,7 +10,7 @@ async function login(page){
 
 test('P043 restores an active cart and reconciles an uncertain payment after restart',async()=>{
   const env={...process.env,TECHORBIT_UI_DATA_DIR:fs.mkdtempSync(path.join(os.tmpdir(),'techorbit-sale-recovery-'))};delete env.ELECTRON_RUN_AS_NODE;delete env.TECHORBIT_UI_DATABASE;
-  const app=await _electron.launch({executablePath:require('../../node_modules/electron'),args:[path.resolve(__dirname,'../desktop/main.cjs')],env});
+  const app=await _electron.launch({args:[path.resolve(__dirname,'../desktop/main.cjs')],env});
   try{
     const page=await app.firstWindow(),errors=[];page.on('pageerror',error=>errors.push(error.message));
     await login(page);

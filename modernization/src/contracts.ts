@@ -169,6 +169,18 @@ export interface Api {
   productSuppliers():Promise<{id:number;name:string}[]>;
   shiftStatus():Promise<{id:number;opened_at:string;device_id:string}|null>;
   createCustomer(input:{name:string;phone:string}):Promise<{id:number;name:string;phone:string}>;
+  customerSearch(input:{q:string;page:number;pageSize?:number}):Promise<CustomerSearchResult>;
+  customerDetail(input:{id:number}):Promise<CustomerAccountDetail>;
+  duesList(input:{type:string;status:string;q:string;page:number;pageSize?:number}):Promise<DuesResult>;
+  duesHistory(input:{type:string;id:number}):Promise<AccountPayment[]>;
+  receivableCollect(input:SettlementInput):Promise<SettlementResult>;
+  supplierPay(input:SettlementInput):Promise<SettlementResult>;
+  vendorPay(input:SettlementInput):Promise<SettlementResult>;
+  expenseMetadata():Promise<{categories:{id:number;name:string}[];vendors:Vendor[]}>;
+  vendorSave(input:{id?:number;name:string;phone:string;active:boolean}):Promise<Vendor>;
+  expenseList(input:{q:string;page:number;pageSize?:number}):Promise<ExpenseResult>;
+  expensePost(input:ExpenseInput):Promise<{expenseId:number;incurredAmountMinor:number;amountPaidMinor:number;balanceDueMinor:number;status:string;idempotent:boolean}>;
+  expenseVoid(input:{expenseId:number;reason:string}):Promise<{expenseId:number;status:string}>;
   login(input: { username: string; password: string }): Promise<User>;
   logout(): Promise<unknown>;
   changePassword(input: {
@@ -233,3 +245,15 @@ export interface InvoiceSearchInput {invoiceNumber:string;product:string;phone:s
 export interface InvoiceSummary {id:number;invoice_number:string;sold_at:string;customer_name_snapshot:string|null;customer_phone_snapshot:string|null;payment_method:string;payment_status:string;final_total_minor:number;amount_paid_minor:number;balance_due_minor:number;due_date:string|null;products:string|null}
 export interface InvoiceSearchResult {items:InvoiceSummary[];total:number;page:number;pageSize:number}
 export interface InvoiceDetail {saleId:number;invoiceNumber:string;soldAt:string;status:string;customer:{id:number|null;name:string|null;phone:string|null};payment:{method:string;status:string;amountPaidMinor:number;balanceDueMinor:number;dueDate:string|null;cashTenderedMinor:number|null;cashChangeMinor:number|null};totals:{grossMinor:number;lineDiscountMinor:number;invoiceDiscountMinor:number;taxableMinor:number;gstMinor:number;exactTotalMinor:number;roundingMinor:number;finalTotalMinor:number};receipt:Receipt;items:{id:number;lineNumber:number;productName:string;genericName:string|null;saleUnit:string;quantity:number;baseQuantity:number;unitPriceMinor:number;lineDiscountMinor:number;gstMinor:number;lineTotalMinor:number;returnedBaseQuantity:number;returnedMinor:number;returnableBaseQuantity:number}[];receivable:{id:number;balance_minor:number;due_date:string;status:string}|null;payments:{id:number;amount_minor:number;method:string;collected_at:string}[];returns:{id:number;returned_at:string;total_minor:number;receivable_credit_minor:number;refund_minor:number;reason:string}[];audit:{id:number;occurred_at:string;action:string;role_code:string|null;reason:string|null;new_json:unknown}[];actions:{canPrint:boolean;canViewCustomerHistory:boolean;canStartReturn:boolean;canViewAudit:boolean}}
+export interface CustomerSummary {id:number;name:string;phone:string;normalized_phone:string;invoice_count:number;outstanding_minor:number}
+export interface CustomerSearchResult {items:CustomerSummary[];total:number;page:number;pageSize:number}
+export interface CustomerAccountDetail {customer:{id:number;name:string;phone:string;normalized_phone:string;created_at:string};summary:{invoice_count:number;invoiced_minor:number;collected_minor:number;outstanding_minor:number};invoices:{id:number;invoice_number:string;sold_at:string;final_total_minor:number;amount_paid_minor:number;balance_due_minor:number;payment_status:string;due_date:string|null}[];collections:{id:number;receivable_id:number;amount_minor:number;method:string;collected_at:string;invoice_number:string}[];returns:{id:number;total_minor:number;receivable_credit_minor:number;refund_minor:number;returned_at:string;invoice_number:string}[]}
+export interface DueRow {type:'customer'|'supplier'|'vendor';id:number;party:string;reference:string;origin_date:string;due_date:string|null;original_minor:number;paid_minor:number;balance_minor:number;status:string;payment_count:number;overdue:number;settleable:number}
+export interface DuesResult {items:DueRow[];total:number;page:number;pageSize:number}
+export interface AccountPayment {id:number;amount_minor:number;method:string;reference?:string|null;occurred_at:string;audit_at:string|null;role_code:string|null}
+export interface SettlementInput {payableId?:number;receivableId?:number;amountMinor:number;method:string;paidAt?:string;collectedAt?:string;reference:string;idempotencyKey:string}
+export interface SettlementResult {paymentId:number;amountMinor:number;balanceMinor:number;status:string;idempotent:boolean}
+export interface Vendor {id:number;name:string;phone:string|null;active:number;balance_minor:number}
+export interface ExpenseInput {categoryId:number;vendorId:number|null;incurredAmountMinor:number;amountPaidMinor:number;method:string;expenseDate:string;dueDate:string;reference:string;description:string;idempotencyKey:string}
+export interface ExpenseRow {id:number;expense_date:string;description:string;reference:string|null;amount_minor:number;amount_paid_minor:number;balance_due_minor:number;method:string;due_date:string|null;status:string;category_name:string;vendor_name:string|null;payable_id:number|null}
+export interface ExpenseResult {items:ExpenseRow[];total:number;page:number;pageSize:number}

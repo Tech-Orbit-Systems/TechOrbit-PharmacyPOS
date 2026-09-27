@@ -139,6 +139,24 @@ class Gateway {
       this.authorize('sale.create');
       return require('./customer-create.cjs').createCustomer(this.db,input,this.session.id);
     }
+    if(['customerSearch','customerDetail','duesList','duesHistory','receivableCollect','supplierPay','vendorPay','expenseMetadata','vendorSave','expenseList','expensePost','expenseVoid'].includes(command)){
+      const service=new (require('./accounts.cjs').AccountsDesktop)(this.db);
+      if(command==='customerSearch'||command==='customerDetail'){this.authorize('customer.history');return command==='customerSearch'?service.customers(input):service.customerDetail(input);}
+      if(command==='duesList'||command==='duesHistory'||command==='receivableCollect'||command==='supplierPay'||command==='vendorPay'){
+        this.authorize('dues.manage');
+        if(command==='duesList')return service.dues(input);
+        if(command==='duesHistory')return service.history(input);
+        if(command==='receivableCollect')return service.collect(input,this.session);
+        if(command==='supplierPay')return service.paySupplier(input,this.session);
+        this.authorize('expense.manage');return service.payVendor(input,this.session);
+      }
+      this.authorize('expense.manage');
+      if(command==='expenseMetadata')return service.metadata();
+      if(command==='vendorSave')return service.saveVendor(input,this.session);
+      if(command==='expenseList')return service.expenses(input);
+      if(command==='expensePost')return service.postExpense(input,this.session);
+      return service.voidExpense(input,this.session);
+    }
     if (command === "dashboard") {
       this.authorize("sale.create");
       return dashboard(this.db, input, {
