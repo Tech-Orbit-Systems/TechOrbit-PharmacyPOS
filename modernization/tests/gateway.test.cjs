@@ -13,6 +13,12 @@ test("real SQLite read-only quote, digital sale, retry and dashboard", async () 
       username: "demo",
       password: "TechOrbit-Demo-2026!",
     });
+    const activeShift = await gateway.call('shiftStatus');
+    const shiftPreview = await gateway.call('closingShiftPreview',{shiftId:activeShift.id});
+    assert.equal(shiftPreview.shiftId,activeShift.id);
+    assert.equal(shiftPreview.unattributedCashCount,0);
+    const periodPreview = await gateway.call('closingPeriodPreview',{});
+    assert.equal(periodPreview.months.length,6);
     const products = await gateway.call("barcode", {
       barcode: "0012345678901",
     });

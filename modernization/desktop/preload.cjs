@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 const methods = [
   "productList", "productDetail", "productSave", "productSuppliers", "packingDetail", "packingSave",
   "productImportInspect", "productImportPreview", "productImportTemplate", "productImportErrors", "productImportCommit",
-  "shiftStatus",
+  "shiftStatus", "closingShiftPreview", "closingPeriodPreview",
   "createCustomer",
   "customerSearch", "customerDetail", "duesList", "duesHistory", "receivableCollect", "supplierPay", "vendorPay",
   "expenseMetadata", "vendorSave", "expenseList", "expensePost", "expenseVoid",

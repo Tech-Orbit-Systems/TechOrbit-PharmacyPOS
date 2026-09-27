@@ -99,8 +99,19 @@ class Gateway {
       return service.commit(input);
     }
     if(command==='shiftStatus'){
-      this.authorize('sale.create');
+      if(!this.permission('sale.create')&&!this.permission('closing.create'))throw Error('Your role does not allow this action');
       return this.db.prepare("SELECT id,opened_at,device_id FROM CashShifts WHERE user_id=? AND device_id='modern-desktop' AND status='open' ORDER BY opened_at DESC LIMIT 1").get(this.session.id)||null;
+    }
+    if(command==='closingShiftPreview'){
+      this.authorize('closing.create');
+      const shift=this.db.prepare('SELECT user_id,device_id FROM CashShifts WHERE id=?').get(input.shiftId);
+      if(!shift||shift.device_id!=='modern-desktop')throw Error('Cash shift was not found');
+      if(shift.user_id!==this.session.id&&!this.permission('closing.revise'))throw Error('Your role does not allow this shift');
+      return new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db).shiftPreview(input);
+    }
+    if(command==='closingPeriodPreview'){
+      this.authorize('report.cost');
+      return new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db).sixMonthReport(input.asOf);
     }
     if (command === 'inventoryList' || command === 'inventoryDetail') {
       this.authorize('inventory.view');

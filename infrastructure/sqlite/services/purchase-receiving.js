@@ -43,10 +43,7 @@ class PurchaseReceivingService {
     const purchaseId = Number(purchaseResult.lastInsertRowid);
     const receivedItems = items.map((item) => this.receiveItem({ item, purchase, purchaseId, purchasedAt, now }));
     if (amountPaidMinor > 0) {
-      this.db.prepare(`INSERT INTO MoneyMovements
-        (direction, method, amount_minor, reference_type, reference_id, occurred_at, user_id, note)
-        VALUES ('out', ?, ?, 'purchase', ?, ?, ?, ?)`).run(
-        paymentMethod, amountPaidMinor, String(purchaseId), purchasedAt, purchase.createdBy || null, "Purchase payment");
+      require('./money-movement').recordMoneyMovement(this.db,{direction:'out',method:paymentMethod,amountMinor:amountPaidMinor,referenceType:'purchase',referenceId:purchaseId,occurredAt:purchasedAt,userId:purchase.createdBy,deviceId:purchase.deviceId,note:'Purchase payment'});
     }
     if (balanceDueMinor > 0) {
       this.db.prepare(`INSERT INTO Payables

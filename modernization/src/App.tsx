@@ -24,6 +24,7 @@ import { Inventory } from './Inventory';
 import { Purchases } from './Purchases';
 import { SalesHistory } from './SalesHistory';
 import { Accounts } from './Accounts';
+import { Closing } from './Closing';
 const nav = [
   ["Dashboard", LayoutDashboard],
   ["Point of Sale", ShoppingCart],
@@ -32,6 +33,7 @@ const nav = [
   ["Inventory", Boxes],
   ["Purchases", Truck],
   ["Accounts", Users],
+  ["Closing", ChartColumn],
   ["Suppliers", Building2],
   ["Reports", ChartColumn],
   ["Settings", Settings],
@@ -150,7 +152,7 @@ export function App() {
               key={label}
               title={label}
               disabled={
-                !["Dashboard", "Point of Sale", "Sales History", "Settings", "Products", "Inventory", "Purchases", "Accounts", "Suppliers"].includes(label)
+                !["Dashboard", "Point of Sale", "Sales History", "Settings", "Products", "Inventory", "Purchases", "Accounts", "Closing", "Suppliers"].includes(label)
               }
               aria-current={page === label ? "page" : undefined}
               onClick={() => setPage(label)}
@@ -202,6 +204,7 @@ export function App() {
           {page === 'Inventory' && <Inventory/>}
           {page === 'Purchases' && <Purchases initialTab="purchases"/>}
           {page === 'Accounts' && <Accounts/>}
+          {page === 'Closing' && <Closing/>}
           {page === 'Suppliers' && <Purchases initialTab="suppliers"/>}
           {page === "Settings" && (
             <>

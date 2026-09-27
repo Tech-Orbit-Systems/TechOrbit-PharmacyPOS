@@ -115,8 +115,7 @@ class CustomerReturnsService {
       this.db.prepare('UPDATE Receivables SET balance_minor=?,status=?,updated_at=? WHERE id=?').run(balance, status, now, quote.receivableId);
       this.db.prepare('UPDATE Sales SET balance_due_minor=?,payment_status=? WHERE id=?').run(balance, status, data.saleId);
     }
-    if (quote.refundMinor) this.db.prepare("INSERT INTO MoneyMovements(direction,method,amount_minor,reference_type,reference_id,occurred_at,user_id,note) VALUES('out',?,?,'sale_return',?,?,?,?)")
-      .run(quote.refundMethod, quote.refundMinor, String(id), quote.returnedAt, data.createdBy, data.reason);
+    if (quote.refundMinor) require('./money-movement').recordMoneyMovement(this.db,{direction:'out',method:quote.refundMethod,amountMinor:quote.refundMinor,referenceType:'sale_return',referenceId:id,occurredAt:quote.returnedAt,userId:data.createdBy,deviceId:data.deviceId,note:data.reason});
     this.db.prepare("INSERT INTO AuditLog(occurred_at,user_id,role_code,action,entity_type,entity_id,new_json,reason,device_id) VALUES(?,?,?,'sale.return','sale_return',?,?,?,?)")
       .run(now, data.createdBy, data.roleCode, String(id), JSON.stringify({ saleId: data.saleId, totalMinor: quote.totalMinor, gstMinor: quote.lines.reduce((s, x) => s + x.gstMinor, 0), receivableCreditMinor: quote.receivableCreditMinor, refundMinor: quote.refundMinor, nonSellableLines: quote.lines.filter(x => !x.restockable).length }), data.reason, data.deviceId);
     return { ...this.result(this.db.prepare('SELECT * FROM SaleReturns WHERE id=?').get(id)), idempotent: false };

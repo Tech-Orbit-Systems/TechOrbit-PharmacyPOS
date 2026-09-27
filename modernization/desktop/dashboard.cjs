@@ -44,9 +44,9 @@ function dashboard(db, input, { userId, financial, now = new Date() }) {
     ? shift.opening_cash_minor +
       db
         .prepare(
-          "SELECT COALESCE(SUM(CASE direction WHEN 'in' THEN amount_minor ELSE -amount_minor END),0) amount FROM MoneyMovements WHERE method='cash' AND user_id=? AND occurred_at>=? AND occurred_at<=?",
+          "SELECT COALESCE(SUM(CASE direction WHEN 'in' THEN amount_minor ELSE -amount_minor END),0) amount FROM MoneyMovements WHERE method='cash' AND shift_id=? AND occurred_at>=? AND occurred_at<?",
         )
-        .get(userId, shift.opened_at, now.toISOString()).amount
+        .get(shift.id, shift.opened_at, now.toISOString()).amount
     : null;
   const low = db
     .prepare(

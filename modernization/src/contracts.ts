@@ -172,6 +172,8 @@ export interface Api {
   productSave(input:Record<string,unknown>):Promise<ProductMasterResult>;
   productSuppliers():Promise<{id:number;name:string}[]>;
   shiftStatus():Promise<{id:number;opened_at:string;device_id:string}|null>;
+  closingShiftPreview(input:{shiftId:number}):Promise<{shiftId:number;userId:number|null;deviceId:string;status:string;openedAt:string;closedAt:string|null;openingCashMinor:number;expectedCashMinor:number;countedCashMinor:number|null;varianceMinor:number|null;unattributedCashCount:number;movements:{method:string;direction:string;amount:number}[]}>;
+  closingPeriodPreview(input:{asOf?:string}):Promise<{periodStart:string;periodEnd:string;asOf:string;months:{month:string;netSalesMinor:number;gstMinor:number;cogsMinor:number;grossProfitMinor:number;expensesMinor:number;operatingProfitMinor:number}[];totals:{netSalesMinor:number;gstMinor:number;cogsMinor:number;grossProfitMinor:number;expensesMinor:number;operatingProfitMinor:number}}>;
   createCustomer(input:{name:string;phone:string}):Promise<{id:number;name:string;phone:string}>;
   customerSearch(input:{q:string;page:number;pageSize?:number}):Promise<CustomerSearchResult>;
   customerDetail(input:{id:number}):Promise<CustomerAccountDetail>;

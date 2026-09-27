@@ -97,8 +97,7 @@ class PurchaseReturnsService {
       this.db.prepare('UPDATE Payables SET balance_minor=?,status=?,updated_at=? WHERE id=?').run(balance, balance === 0 ? 'paid' : 'partial', now, quote.payableId);
       this.db.prepare('UPDATE Purchases SET balance_due_minor=? WHERE id=?').run(balance, data.purchaseId);
     }
-    if (quote.refundMinor) this.db.prepare("INSERT INTO MoneyMovements(direction,method,amount_minor,reference_type,reference_id,occurred_at,user_id,note) VALUES('in',?,?,'purchase_return',?,?,?,?)")
-      .run(quote.refundMethod, quote.refundMinor, String(id), quote.returnedAt, data.createdBy, data.reason);
+    if (quote.refundMinor) require('./money-movement').recordMoneyMovement(this.db,{direction:'in',method:quote.refundMethod,amountMinor:quote.refundMinor,referenceType:'purchase_return',referenceId:id,occurredAt:quote.returnedAt,userId:data.createdBy,deviceId:data.deviceId,note:data.reason});
     this.db.prepare("INSERT INTO AuditLog(occurred_at,user_id,role_code,action,entity_type,entity_id,new_json,reason,device_id) VALUES(?,?,?,'purchase.return','purchase_return',?,?,?,?)")
       .run(now, data.createdBy, data.roleCode, String(id), JSON.stringify({ purchaseId: data.purchaseId, totalMinor: quote.totalMinor, payableCreditMinor: quote.payableCreditMinor, refundMinor: quote.refundMinor }), data.reason, data.deviceId);
     return { ...this.result(this.db.prepare('SELECT * FROM PurchaseReturns WHERE id=?').get(id)), idempotent: false };
