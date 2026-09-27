@@ -121,6 +121,17 @@ class Gateway {
       this.authorize('report.cost');
       return new (require('../../infrastructure/sqlite/services/six-month-closing').SixMonthClosingService)(this.db).preview(input);
     }
+    if(command==='closingPeriodExport'){
+      this.authorize('report.cost');
+      let report;
+      if(input?.closingId){
+        this.authorize('closing.revise');
+        const detail=new (require('../../infrastructure/sqlite/services/six-month-closing').SixMonthClosingService)(this.db).detail(input.closingId);
+        if(detail.legacy)throw Error('Legacy period snapshot needs independent reconciliation before export');
+        report=detail.current;
+      }else report=new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db).rangeReport(input?.from,input?.to);
+      return {filename:`TechOrbit_PharmacyPOS_Six_Month_${report.periodStart}_${report.periodEnd}.csv`,csv:require('../../infrastructure/sqlite/services/period-export').periodCsv(report)};
+    }
     if(['closingPeriodClose','closingPeriodHistory','closingPeriodDetail','closingPeriodRevise'].includes(command)){
       this.authorize('closing.revise');
       const service=new (require('../../infrastructure/sqlite/services/six-month-closing').SixMonthClosingService)(this.db);

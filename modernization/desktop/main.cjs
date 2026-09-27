@@ -1,6 +1,7 @@
-const { app, BrowserWindow, ipcMain, Menu } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, dialog } = require("electron");
 const path = require("path"),
   { Worker } = require("node:worker_threads");
+const fs = require('node:fs/promises');
 const { pathToFileURL } = require("url");
 // This separate entry never imports legacy server.js or opens the production data by default.
 app.setName("TechOrbit UI Review");
@@ -69,7 +70,7 @@ app.whenReady().then(() => {
     "shiftStatus", "closingShiftPreview", "closingPeriodPreview", "closingHandover", "closingShiftOpen", "closingShiftClose",
     "closingDayPreview", "closingDayClose", "closingDayHistory", "closingDayDetail", "closingDayRevise",
     "closingConfig", "closingSavePolicy", "closingSaveAccount", "closingAllocate", "closingSavingsTransfer",
-    "closingPeriodRangePreview", "closingPeriodCompletedPreview", "closingPeriodClose", "closingPeriodHistory", "closingPeriodDetail", "closingPeriodRevise",
+    "closingPeriodRangePreview", "closingPeriodCompletedPreview", "closingPeriodClose", "closingPeriodHistory", "closingPeriodDetail", "closingPeriodRevise", "closingPeriodExport",
     "createCustomer",
     "customerSearch", "customerDetail", "duesList", "duesHistory", "receivableCollect", "supplierPay", "vendorPay",
     "expenseMetadata", "vendorSave", "expenseList", "expensePost", "expenseVoid",
@@ -111,7 +112,7 @@ app.whenReady().then(() => {
       const requestLimit = ["openingStockPreviewFile","productImportInspect","productImportPreview"].includes(command) ? 12000000 : 100000;
       if (JSON.stringify(input ?? {}).length > requestLimit)
         throw Error("Request too large");
-      return new Promise((resolve, reject) => {
+      const result=new Promise((resolve, reject) => {
         const id = ++sequence;
         const timer = setTimeout(() => {
           pending.delete(id);
@@ -123,6 +124,13 @@ app.whenReady().then(() => {
         }, 30000);
         pending.set(id, { resolve, reject, timer });
         worker.postMessage({ id, command, input });
+      });
+      if(command!=='closingPeriodExport')return result;
+      return result.then(async ({filename,csv})=>{
+        const choice=await dialog.showSaveDialog(window,{title:'Export six-month report',defaultPath:filename,filters:[{name:'CSV report',extensions:['csv']} ]});
+        if(choice.canceled||!choice.filePath)return {saved:false};
+        await fs.writeFile(choice.filePath,csv,'utf8');
+        return {saved:true};
       });
     });
   }

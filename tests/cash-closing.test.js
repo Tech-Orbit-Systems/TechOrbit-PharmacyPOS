@@ -173,6 +173,34 @@ describe('cash shift ownership and closing',()=>{
     expect(daily.preview({asOf:'2026-09-13T03:00:00Z'}).businessDayId).toBe(next.business_day_id);
   });
 
+  test('independent mixed-movement fixture reconciles cash, bank, wallet and actual savings',()=>{
+    const config=new ClosingConfigurationService(db),daily=new DailyClosingService(db);
+    const manager=Number(db.prepare("INSERT INTO Users(username,password_hash,display_name,role_id,created_at,updated_at) VALUES('manager-golden','fixture','Manager',3,?,?)")
+      .run(t(0),t(0)).lastInsertRowid);
+    const bank=config.saveAccount({kind:'bank',name:'Statement bank'},manager);
+    const wallet=config.saveAccount({kind:'wallet',name:'Statement wallet'},manager);
+    const reserve=config.saveAccount({kind:'savings',name:'Reserve'},manager);
+    const shift=service.open({userId:user1,deviceId:'COUNTER-1',openingCashMinor:10000,openedAt:t(8)});
+    const events=[
+      ['cash','in',12000,'paid cash sale',null],['cash','in',5000,'due collection',null],
+      ['cash','out',3000,'customer refund',null],['cash','out',2000,'operating expense',null],
+      ['card','in',20000,'paid card sale',bank.id],['bank_transfer','out',5000,'supplier payment',bank.id],
+      ['digital','in',15000,'paid wallet sale',wallet.id],['mobile_wallet','out',4000,'vendor settlement',wallet.id],
+      ['digital','out',1000,'customer wallet refund',wallet.id],
+    ];
+    events.forEach(([method,direction,amount,reference,accountId],index)=>{
+      const inserted=recordMoneyMovement(db,{method,direction,amountMinor:amount,referenceType:'golden_fixture',referenceId:String(index),occurredAt:t(9+index),userId:user1,deviceId:'COUNTER-1',note:reference});
+      if(accountId)config.allocate({movementId:inserted.lastInsertRowid,accountId},manager);
+    });
+    config.recordSavingsTransfer({accountId:reserve.id,amountMinor:6000,transferredAt:t(18),reference:'Signed savings transfer'},manager);
+    expect(service.close({shiftId:shift.id,countedCashMinor:22000,closedAt:t(18),userId:user1}).expectedCashMinor).toBe(22000);
+    const snapshot=daily.close({userId:manager,asOf:t(19),accountActuals:{[bank.id]:15000,[wallet.id]:10000}});
+    expect(snapshot).toMatchObject({cashOpeningMinor:10000,cashExpectedMinor:22000,cashCountedMinor:22000,cashVarianceMinor:0,savingsTransferredMinor:6000,unresolvedMovementCount:0});
+    expect(snapshot.accounts.find(row=>row.id===bank.id)).toMatchObject({inMinor:20000,outMinor:5000,expectedNetMinor:15000,actualNetMinor:15000,varianceMinor:0});
+    expect(snapshot.accounts.find(row=>row.id===wallet.id)).toMatchObject({inMinor:15000,outMinor:5000,expectedNetMinor:10000,actualNetMinor:10000,varianceMinor:0});
+    expect(daily.detail(snapshot.businessDayId).original.accounts).toEqual(snapshot.accounts);
+  });
+
   test('upgrade attaches only open legacy shifts and keeps closed history unchanged',()=>{
     const migrationDir=path.join(__dirname,'../infrastructure/sqlite/migrations');
     const oldDir=fs.mkdtempSync(path.join(os.tmpdir(),'pharmacy-old-migrations-'));

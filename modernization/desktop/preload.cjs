@@ -6,7 +6,7 @@ const methods = [
   "shiftStatus", "closingShiftPreview", "closingPeriodPreview", "closingHandover", "closingShiftOpen", "closingShiftClose",
   "closingDayPreview", "closingDayClose", "closingDayHistory", "closingDayDetail", "closingDayRevise",
   "closingConfig", "closingSavePolicy", "closingSaveAccount", "closingAllocate", "closingSavingsTransfer",
-  "closingPeriodRangePreview", "closingPeriodCompletedPreview", "closingPeriodClose", "closingPeriodHistory", "closingPeriodDetail", "closingPeriodRevise",
+  "closingPeriodRangePreview", "closingPeriodCompletedPreview", "closingPeriodClose", "closingPeriodHistory", "closingPeriodDetail", "closingPeriodRevise", "closingPeriodExport",
   "createCustomer",
   "customerSearch", "customerDetail", "duesList", "duesHistory", "receivableCollect", "supplierPay", "vendorPay",
   "expenseMetadata", "vendorSave", "expenseList", "expensePost", "expenseVoid",

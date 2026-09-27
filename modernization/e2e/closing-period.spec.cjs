@@ -22,6 +22,11 @@ test('B04 configured six-month close, history and custom range persist',async()=
   await page.getByLabel('To, exclusive (Pakistan date/time)').fill('2026-05-01T00:00');
   await page.getByRole('button',{name:'Show custom range'}).click();
   await expect(page.getByText(/2026-04-01 to 2026-04-30/)).toBeVisible();
+  const exportPath=path.join(dataDir,'period.csv');
+  await app.evaluate(({dialog},filePath)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath})},exportPath);
+  await page.getByRole('button',{name:'Export period CSV'}).click();
+  await expect(page.getByText('Six-month CSV report saved.')).toBeVisible();
+  const csv=fs.readFileSync(exportPath,'utf8');expect(csv).toContain('"2026-04"');expect(csv).toContain('"Total"');
   expect(errors).toEqual([]);
   await app.close();app=await launch();page=await app.firstWindow();await signIn();
   await page.getByRole('button',{name:'View',exact:true}).first().click();
