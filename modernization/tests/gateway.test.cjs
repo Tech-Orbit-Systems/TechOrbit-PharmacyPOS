@@ -76,11 +76,11 @@ test("real SQLite read-only quote, digital sale, retry and dashboard", async () 
       .get(result.saleId);
     new CustomerAccountsService(db).returnSale({
       saleId: result.saleId,
-      idempotencyKey: "digital-refund-test",
+      idempotencyKey: "TO-99999999-9999-9999-9999-999999999999",
       reason: "Test return",
       refundMinor: 12000,
       refundMethod: "digital",
-      items: [{ saleItemId: item.id, baseQuantity: 1 }],
+      items: [{ saleItemId: item.id, baseQuantity: 1, restockable: false, conditionConfirmed: false }],
     });
     const afterReturn = await gateway.call("dashboard", { range: "7d" });
     assert.equal(beforeReturn.today.net - afterReturn.today.net, 12000);

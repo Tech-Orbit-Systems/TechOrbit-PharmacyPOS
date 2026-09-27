@@ -89,6 +89,7 @@ app.whenReady().then(() => {
     "openingStockTemplate",
     "openingStockCommit",
     "customers",
+    "customerReturnPreview", "customerReturnPost", "supplierReturnPreview", "supplierReturnPost",
     "invoiceSearch",
     "invoiceDetail",
     "customerHistory",

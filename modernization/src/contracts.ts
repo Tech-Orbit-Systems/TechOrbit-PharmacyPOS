@@ -147,6 +147,10 @@ export interface Api {
   purchasePost(input:PurchaseInput):Promise<PurchaseResult>;
   purchaseHistory(input:{supplierId?:number}):Promise<PurchaseHistory[]>;
   purchaseDetail(input:{id:number}):Promise<PurchaseDetail>;
+  customerReturnPreview(input:CustomerReturnInput):Promise<CustomerReturnPreview>;
+  customerReturnPost(input:CustomerReturnInput):Promise<ReturnResult>;
+  supplierReturnPreview(input:SupplierReturnInput):Promise<SupplierReturnPreview>;
+  supplierReturnPost(input:SupplierReturnInput):Promise<ReturnResult>;
   productImportInspect(input:{name:string;base64:string}):Promise<ProductImportInspection>;
   productImportPreview(input:{name:string;base64:string;mapping:Record<string,string>;duplicatePolicy:string}):Promise<ProductImportPreview>;
   productImportTemplate(input?:undefined):Promise<DownloadFile>;
@@ -237,7 +241,12 @@ export interface PurchasePreviewLine {line:number;productId:number;name:string;p
 export interface PurchasePreview extends PurchaseInput {lines:PurchasePreviewLine[];totalMinor:number;balanceDueMinor:number}
 export interface PurchaseResult {purchaseId:number;totalMinor:number;amountPaidMinor:number;balanceDueMinor:number;idempotent:boolean}
 export interface PurchaseHistory {id:number;invoice_number:string;purchased_at:string;total_minor:number;amount_paid_minor:number;balance_due_minor:number;payment_method:string;due_date:string|null;supplier_name:string;item_count:number}
-export interface PurchaseDetail extends PurchaseHistory {notes:string|null;items:{id:number;product_name:string;purchase_unit:string;purchased_quantity:number;bonus_quantity:number;batch_number:string|null;expiry_date:string|null;base_quantity_received:number;effective_unit_cost_minor:number;line_total_minor:number}[]}
+export interface PurchaseDetail extends PurchaseHistory {notes:string|null;items:{id:number;product_name:string;purchase_unit:string;purchased_quantity:number;bonus_quantity:number;batch_number:string|null;expiry_date:string|null;base_quantity_received:number;effective_unit_cost_minor:number;line_total_minor:number;returned_quantity:number;returnable_base_quantity:number;batch_available_quantity:number}[];returns:{id:number;returned_at:string;total_minor:number;payable_credit_minor:number;refund_minor:number;reason:string}[]}
+export interface CustomerReturnInput {saleId:number;reason:string;refundMethod:string|null;idempotencyKey:string;items:{saleItemId:number;baseQuantity:number;restockable:boolean;conditionConfirmed:boolean}[]}
+export interface SupplierReturnInput {purchaseId:number;reason:string;refundMethod:string|null;idempotencyKey:string;items:{purchaseItemId:number;quantity:number}[]}
+export interface ReturnResult {returnId:number;totalMinor:number;refundMinor:number;receivableCreditMinor?:number;payableCreditMinor?:number;idempotent:boolean}
+export interface CustomerReturnPreview {invoiceNumber:string;totalMinor:number;receivableCreditMinor:number;refundMinor:number;lines:{saleItemId:number;baseQuantity:number;restockable:boolean;totalMinor:number;gstMinor:number;cogsMinor:number;allocations:{batchNumber:string|null;baseQuantity:number}[]}[]}
+export interface SupplierReturnPreview {invoiceNumber:string|null;totalMinor:number;payableCreditMinor:number;refundMinor:number;lines:{purchaseItemId:number;quantity:number;remainingQuantity:number;totalMinor:number;batchNumber:string|null}[]}
 export interface ProductImportInspection {headers:string[];totalRows:number;sampleRows:Record<string,unknown>[];suggestedMapping:Record<string,string>}
 export interface ProductImportPreviewRow {rowNumber:number;action:string;errors:string[];normalized:{sku:string|null;barcode:string|null;name:string|null;manufacturer:string|null;baseUnit:string}}
 export interface ProductImportPreview {jobId:number;totalRows:number;validRows:number;errorRows:number;skippedRows:number;rows:ProductImportPreviewRow[]}

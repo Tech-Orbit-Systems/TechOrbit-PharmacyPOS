@@ -26,6 +26,7 @@ const methods = [
   "openingStockTemplate",
   "openingStockCommit",
   "customers",
+  "customerReturnPreview", "customerReturnPost", "supplierReturnPreview", "supplierReturnPost",
   "invoiceSearch",
   "invoiceDetail",
   "customerHistory",

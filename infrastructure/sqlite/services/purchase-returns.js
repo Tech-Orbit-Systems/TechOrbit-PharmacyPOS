@@ -1,8 +1,110 @@
-const METHODS=new Set(["cash","card","bank_transfer","mobile_wallet","other"]);
-class PurchaseReturnsService{
- constructor(db){this.db=db;this.tx=db.transaction(data=>this.postInternal(data));}
- post(data){if(!data?.purchaseId||!data.idempotencyKey?.trim()||!data.reason?.trim())throw new Error("Purchase, idempotency key and reason are required");const old=this.db.prepare("SELECT * FROM PurchaseReturns WHERE idempotency_key=?").get(data.idempotencyKey.trim());if(old)return{...this.result(old),idempotent:true};if(!Array.isArray(data.items)||!data.items.length)throw new Error("At least one return item is required");return this.tx(data);}
- postInternal(data){const purchase=this.db.prepare("SELECT * FROM Purchases WHERE id=? AND status='posted'").get(data.purchaseId);if(!purchase)throw new Error("Posted purchase was not found");const items=data.items.map(input=>{const item=this.db.prepare("SELECT * FROM PurchaseItems WHERE id=? AND purchase_id=?").get(input.purchaseItemId,purchase.id);if(!item)throw new Error("Purchase item was not found");const qty=Number(input.quantity);if(!Number.isFinite(qty)||qty<=0)throw new Error("Return quantity must be greater than zero");const prior=Number(this.db.prepare("SELECT COALESCE(SUM(quantity),0) qty FROM PurchaseReturnItems WHERE purchase_item_id=?").get(item.id).qty);if(qty+prior>Number(item.base_quantity_received))throw new Error("Return exceeds received quantity");const batch=this.db.prepare("SELECT quantity_on_hand FROM ProductBatches WHERE id=?").get(item.batch_id);if(!batch||qty>Number(batch.quantity_on_hand))throw new Error("Return exceeds current batch stock");const baseCost=Number(item.base_quantity_received)>0?Number(item.line_total_minor)/Number(item.base_quantity_received):0;return{item,qty,unitCostMinor:Math.round(baseCost),lineTotalMinor:Math.round(qty*baseCost)};});const total=items.reduce((s,x)=>s+x.lineTotalMinor,0);const payable=this.db.prepare("SELECT * FROM Payables WHERE source_type='purchase' AND source_id=?").get(String(purchase.id));const credit=Math.min(total,payable?Number(payable.balance_minor):0),refund=Number(data.refundMinor||0);if(!Number.isInteger(refund)||refund<0||credit+refund!==total)throw new Error("Refund plus payable credit must equal return total");const method=data.refundMethod||null;if(refund>0&&!METHODS.has(method))throw new Error("Valid refund method is required");const now=new Date().toISOString(),at=data.returnedAt||now;const ret=this.db.prepare(`INSERT INTO PurchaseReturns(purchase_id,supplier_id,idempotency_key,returned_at,total_minor,payable_credit_minor,refund_minor,refund_method,reason,created_by,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(purchase.id,purchase.supplier_id,data.idempotencyKey.trim(),at,total,credit,refund,method,data.reason.trim(),data.createdBy||null,now);for(const x of items){this.db.prepare(`INSERT INTO PurchaseReturnItems(purchase_return_id,purchase_item_id,product_id,batch_id,quantity,unit_cost_minor,line_total_minor) VALUES (?,?,?,?,?,?,?)`).run(ret.lastInsertRowid,x.item.id,x.item.product_id,x.item.batch_id,x.qty,x.unitCostMinor,x.lineTotalMinor);this.db.prepare("UPDATE ProductBatches SET quantity_on_hand=quantity_on_hand-?,updated_at=? WHERE id=?").run(x.qty,now,x.item.batch_id);this.db.prepare(`INSERT INTO InventoryMovements(product_id,batch_id,movement_type,quantity_delta,reference_type,reference_id,occurred_at,user_id,note) VALUES (?,?,'purchase_return',?,'purchase_return',?,?,?,?)`).run(x.item.product_id,x.item.batch_id,-x.qty,String(ret.lastInsertRowid),at,data.createdBy||null,data.reason.trim());}if(credit>0){const balance=Number(payable.balance_minor)-credit;this.db.prepare("UPDATE Payables SET balance_minor=?,status=?,updated_at=? WHERE id=?").run(balance,balance===0?"paid":"partial",now,payable.id);this.db.prepare("UPDATE Purchases SET balance_due_minor=? WHERE id=?").run(balance,purchase.id);}if(refund>0)this.db.prepare(`INSERT INTO MoneyMovements(direction,method,amount_minor,reference_type,reference_id,occurred_at,user_id,note) VALUES ('in',?,?,'purchase_return',?,?,?,?)`).run(method,refund,String(ret.lastInsertRowid),at,data.createdBy||null,data.reason.trim());this.db.prepare(`INSERT INTO AuditLog(occurred_at,user_id,action,entity_type,entity_id,new_json,reason) VALUES (?,?,'purchase.return','purchase_return',?,?,?)`).run(now,data.createdBy||null,String(ret.lastInsertRowid),JSON.stringify({purchaseId:purchase.id,totalMinor:total,credit,refund}),data.reason.trim());return{...this.result(this.db.prepare("SELECT * FROM PurchaseReturns WHERE id=?").get(ret.lastInsertRowid)),idempotent:false};}
- result(row){return{returnId:Number(row.id),purchaseId:Number(row.purchase_id),totalMinor:Number(row.total_minor),payableCreditMinor:Number(row.payable_credit_minor),refundMinor:Number(row.refund_minor)};}
+const crypto = require('crypto');
+const METHODS = new Set(['cash', 'card', 'digital', 'bank_transfer', 'mobile_wallet', 'other']);
+const hash = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const id = (value, label) => {
+  const n = Number(value);
+  if (!Number.isSafeInteger(n) || n < 1) throw Error(`Choose a valid ${label}`);
+  return n;
+};
+
+class PurchaseReturnsService {
+  constructor(db) { this.db = db; this.transaction = db.transaction(input => this.postInternal(input)); }
+
+  normalize(input) {
+    const purchaseId = id(input?.purchaseId, 'purchase');
+    const reason = String(input.reason || '').trim();
+    if (!reason || reason.length > 500) throw Error('Return reason is required and must be 500 characters or fewer');
+    if (!Array.isArray(input.items) || !input.items.length || input.items.length > 100) throw Error('Choose return lines');
+    const seen = new Set();
+    const items = input.items.map(row => {
+      const purchaseItemId = id(row.purchaseItemId, 'purchase line');
+      const quantity = Number(row.quantity);
+      if (!Number.isFinite(quantity) || quantity <= 0) throw Error('Return quantity must be greater than zero');
+      if (seen.has(purchaseItemId)) throw Error('Return line is repeated');
+      seen.add(purchaseItemId);
+      return { purchaseItemId, quantity };
+    }).sort((a, b) => a.purchaseItemId - b.purchaseItemId);
+    return { purchaseId, reason, items, refundMethod: input.refundMethod || null,
+      idempotencyKey: String(input.idempotencyKey || '').trim(), returnedAt: input.returnedAt || null,
+      createdBy: input.createdBy || null, roleCode: input.roleCode || null, deviceId: input.deviceId || null };
+  }
+
+  preview(input) {
+    const data = this.normalize(input);
+    const purchase = this.db.prepare("SELECT * FROM Purchases WHERE id=? AND status='posted'").get(data.purchaseId);
+    if (!purchase) throw Error('Posted purchase was not found');
+    const at = data.returnedAt || new Date().toISOString();
+    if (Number.isNaN(Date.parse(at)) || Date.parse(at) < Date.parse(purchase.purchased_at)) throw Error('Return date must be valid and not before the purchase');
+    const lines = data.items.map(request => {
+      const line = this.db.prepare('SELECT * FROM PurchaseItems WHERE id=? AND purchase_id=?').get(request.purchaseItemId, purchase.id);
+      if (!line) throw Error('Return line does not belong to this purchase');
+      const prior = Number(this.db.prepare('SELECT COALESCE(SUM(quantity),0) qty FROM PurchaseReturnItems WHERE purchase_item_id=?').get(line.id).qty);
+      if (prior + request.quantity > Number(line.base_quantity_received) + 1e-9) throw Error('Return exceeds received quantity');
+      const batch = this.db.prepare('SELECT quantity_on_hand,batch_number FROM ProductBatches WHERE id=?').get(line.batch_id);
+      if (!batch || request.quantity > Number(batch.quantity_on_hand)) throw Error('Return exceeds current batch stock');
+      const source = this.db.prepare('SELECT purchase_id FROM BatchReceipts WHERE id=? AND batch_id=?').get(line.receipt_id, line.batch_id);
+      if (!source || Number(source.purchase_id) !== Number(purchase.id)) throw Error('Purchase line has no verified source receipt');
+      const mixed = this.db.prepare('SELECT COUNT(*) count FROM BatchReceipts WHERE batch_id=? AND (purchase_id IS NULL OR purchase_id<>?)').get(line.batch_id, purchase.id).count;
+      if (mixed) throw Error('Batch stock combines sources; reconcile source stock before supplier return');
+      const totalMinor = Math.round(Number(line.line_total_minor) * (prior + request.quantity) / Number(line.base_quantity_received))
+        - Math.round(Number(line.line_total_minor) * prior / Number(line.base_quantity_received));
+      return { purchaseItemId: line.id, productId: line.product_id, batchId: line.batch_id, batchNumber: batch.batch_number,
+        quantity: request.quantity, remainingQuantity: Number(line.base_quantity_received) - prior, totalMinor };
+    });
+    const byBatch = new Map();
+    for (const line of lines) byBatch.set(line.batchId, (byBatch.get(line.batchId) || 0) + line.quantity);
+    for (const [batchId, requested] of byBatch) {
+      const available = Number(this.db.prepare('SELECT quantity_on_hand FROM ProductBatches WHERE id=?').get(batchId).quantity_on_hand);
+      if (requested > available + 1e-9) throw Error('Combined return exceeds current batch stock');
+    }
+    const totalMinor = lines.reduce((sum, row) => sum + row.totalMinor, 0);
+    const payable = this.db.prepare("SELECT id,balance_minor FROM Payables WHERE source_type='purchase' AND source_id=?").get(String(purchase.id));
+    const payableCreditMinor = Math.min(totalMinor, Number(payable?.balance_minor || 0));
+    const refundMinor = totalMinor - payableCreditMinor;
+    return { ...data, invoiceNumber: purchase.invoice_number, lines, totalMinor, payableCreditMinor, refundMinor, payableId: payable?.id || null, returnedAt: at };
+  }
+
+  post(input) {
+    const data = this.normalize(input);
+    if (!/^TO-[a-f0-9-]{36}$/.test(data.idempotencyKey)) throw Error('Invalid return reference');
+    const fingerprint = hash({ purchaseId: data.purchaseId, reason: data.reason, items: data.items, refundMethod: data.refundMethod, returnedAt: data.returnedAt });
+    const old = this.db.prepare('SELECT * FROM PurchaseReturns WHERE idempotency_key=?').get(data.idempotencyKey);
+    if (old) {
+      if (!old.request_fingerprint || old.request_fingerprint !== fingerprint) throw Error('Return reference was already used with different details');
+      return { ...this.result(old), idempotent: true };
+    }
+    return this.transaction({ ...data, fingerprint });
+  }
+
+  postInternal(data) {
+    const quote = this.preview(data);
+    if (quote.refundMinor > 0 && !METHODS.has(quote.refundMethod)) throw Error('Select the actual supplier refund method');
+    const now = new Date().toISOString();
+    const supplierId = this.db.prepare('SELECT supplier_id FROM Purchases WHERE id=?').get(data.purchaseId).supplier_id;
+    const id = Number(this.db.prepare(`INSERT INTO PurchaseReturns(purchase_id,supplier_id,idempotency_key,returned_at,total_minor,payable_credit_minor,refund_minor,refund_method,reason,created_by,created_at,request_fingerprint)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(data.purchaseId, supplierId, data.idempotencyKey, quote.returnedAt, quote.totalMinor, quote.payableCreditMinor, quote.refundMinor, quote.refundMethod, data.reason, data.createdBy, now, data.fingerprint).lastInsertRowid);
+    for (const line of quote.lines) {
+      this.db.prepare('INSERT INTO PurchaseReturnItems(purchase_return_id,purchase_item_id,product_id,batch_id,quantity,unit_cost_minor,line_total_minor) VALUES(?,?,?,?,?,?,?)')
+        .run(id, line.purchaseItemId, line.productId, line.batchId, line.quantity, Math.round(line.totalMinor / line.quantity), line.totalMinor);
+      const updated = this.db.prepare('UPDATE ProductBatches SET quantity_on_hand=quantity_on_hand-?,updated_at=? WHERE id=? AND quantity_on_hand>=?')
+        .run(line.quantity, now, line.batchId, line.quantity);
+      if (updated.changes !== 1) throw Error('Batch stock changed before supplier return could post');
+      this.db.prepare("INSERT INTO InventoryMovements(product_id,batch_id,movement_type,quantity_delta,reference_type,reference_id,occurred_at,user_id,note) VALUES(?,?,'purchase_return',?,'purchase_return',?,?,?,?)")
+        .run(line.productId, line.batchId, -line.quantity, String(id), quote.returnedAt, data.createdBy, data.reason);
+    }
+    if (quote.payableCreditMinor) {
+      const balance = Number(this.db.prepare('SELECT balance_minor FROM Payables WHERE id=?').get(quote.payableId).balance_minor) - quote.payableCreditMinor;
+      this.db.prepare('UPDATE Payables SET balance_minor=?,status=?,updated_at=? WHERE id=?').run(balance, balance === 0 ? 'paid' : 'partial', now, quote.payableId);
+      this.db.prepare('UPDATE Purchases SET balance_due_minor=? WHERE id=?').run(balance, data.purchaseId);
+    }
+    if (quote.refundMinor) this.db.prepare("INSERT INTO MoneyMovements(direction,method,amount_minor,reference_type,reference_id,occurred_at,user_id,note) VALUES('in',?,?,'purchase_return',?,?,?,?)")
+      .run(quote.refundMethod, quote.refundMinor, String(id), quote.returnedAt, data.createdBy, data.reason);
+    this.db.prepare("INSERT INTO AuditLog(occurred_at,user_id,role_code,action,entity_type,entity_id,new_json,reason,device_id) VALUES(?,?,?,'purchase.return','purchase_return',?,?,?,?)")
+      .run(now, data.createdBy, data.roleCode, String(id), JSON.stringify({ purchaseId: data.purchaseId, totalMinor: quote.totalMinor, payableCreditMinor: quote.payableCreditMinor, refundMinor: quote.refundMinor }), data.reason, data.deviceId);
+    return { ...this.result(this.db.prepare('SELECT * FROM PurchaseReturns WHERE id=?').get(id)), idempotent: false };
+  }
+
+  result(row) { return { returnId: Number(row.id), purchaseId: Number(row.purchase_id), totalMinor: Number(row.total_minor), payableCreditMinor: Number(row.payable_credit_minor), refundMinor: Number(row.refund_minor) }; }
 }
-module.exports={PurchaseReturnsService};
+
+module.exports = { PurchaseReturnsService };

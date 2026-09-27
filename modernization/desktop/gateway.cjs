@@ -199,6 +199,14 @@ class Gateway {
         )
         .all();
     }
+    if(['customerReturnPreview','customerReturnPost','supplierReturnPreview','supplierReturnPost'].includes(command)){
+      const customer=command.startsWith('customer');
+      this.authorize(customer?'return.customer':'return.supplier');
+      const Service=customer?require('../../infrastructure/sqlite/services/customer-returns').CustomerReturnsService:require('../../infrastructure/sqlite/services/purchase-returns').PurchaseReturnsService;
+      const service=new Service(this.db);
+      const request={...input,returnedAt:null};
+      return command.endsWith('Preview')?service.preview(request):service.post({...request,createdBy:this.session.id,roleCode:this.session.roleCode,deviceId:'modern-desktop'});
+    }
     if(['invoiceSearch','invoiceDetail','customerHistory'].includes(command)){
       const service=new (require('./sales-history.cjs').SalesHistoryDesktop)(this.db);
       if(command==='customerHistory'){this.authorize('customer.history');return service.customerHistory(input);}
