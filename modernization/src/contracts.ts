@@ -1,5 +1,15 @@
 export type Theme = "light" | "dark" | "system";
 export type Payment = "cash" | "card" | "digital";
+export interface ClosingAccount {id:number;kind:'bank'|'wallet'|'savings';name:string;active:number}
+export interface ClosingDay {
+  businessDayId:number;openedAt:string;asOf:string;status:'open'|'closed';closedAt?:string;
+  shiftCount:number;openShifts:number;legacyOpenShifts:number;unresolvedMovementCount:number;
+  unresolvedMovements:{id:number;method:string;direction:string;amountMinor:number;needsShift:boolean}[];
+  cashOpeningMinor:number;cashExpectedMinor:number;cashCountedMinor:number|null;cashVarianceMinor:number|null;
+  accounts:{id:number;kind:string;name:string;inMinor:number;outMinor:number;expectedNetMinor:number;actualNetMinor?:number;varianceMinor?:number}[];
+  savingsTransferredMinor:number;shifts:{id:number;user_id:number;device_id:string;status:string;opened_at:string;closed_at:string|null;counted_cash_minor:number|null}[];
+  reason?:string|null;revisionNumber?:number;revisionReason?:string;
+}
 export type CreditMode = 'paid' | 'partial' | 'credit';
 export interface Product {
   id: number;
@@ -173,7 +183,20 @@ export interface Api {
   productSuppliers():Promise<{id:number;name:string}[]>;
   shiftStatus():Promise<{id:number;opened_at:string;device_id:string}|null>;
   closingShiftPreview(input:{shiftId:number}):Promise<{shiftId:number;userId:number|null;deviceId:string;status:string;openedAt:string;closedAt:string|null;openingCashMinor:number;expectedCashMinor:number;countedCashMinor:number|null;varianceMinor:number|null;unattributedCashCount:number;movements:{method:string;direction:string;amount:number}[]}>;
-  closingPeriodPreview(input:{asOf?:string}):Promise<{periodStart:string;periodEnd:string;asOf:string;months:{month:string;netSalesMinor:number;gstMinor:number;cogsMinor:number;grossProfitMinor:number;expensesMinor:number;operatingProfitMinor:number}[];totals:{netSalesMinor:number;gstMinor:number;cogsMinor:number;grossProfitMinor:number;expensesMinor:number;operatingProfitMinor:number}}>;
+  closingPeriodPreview(input:{asOf?:string}):Promise<{periodStart:string;periodEnd:string;asOf:string;cycleStartMonth:number;months:{month:string;netSalesMinor:number;gstMinor:number;cogsMinor:number;grossProfitMinor:number;expensesMinor:number;operatingProfitMinor:number;savingsTransferredMinor:number}[];totals:{netSalesMinor:number;gstMinor:number;cogsMinor:number;grossProfitMinor:number;expensesMinor:number;operatingProfitMinor:number;savingsTransferredMinor:number}}>;
+  closingHandover():Promise<{shiftId:number;countedCashMinor:number}|null>;
+  closingShiftOpen(input:{openingCashMinor:number;handoverConfirmed:boolean}):Promise<{id:number;business_day_id:number}>;
+  closingShiftClose(input:{shiftId:number;countedCashMinor:number;varianceReason:string;forcedCloseReason:string}):Promise<{shiftId:number;varianceMinor:number}>;
+  closingDayPreview(input:Record<string,never>):Promise<ClosingDay>;
+  closingDayClose(input:{accountActuals:Record<number,number>;reason:string}):Promise<ClosingDay>;
+  closingDayHistory(input:Record<string,never>):Promise<{id:number;opened_at:string;closed_at:string;revisionCount:number}[]>;
+  closingDayDetail(input:{businessDayId:number}):Promise<{original:ClosingDay;current:ClosingDay;revisions:{revision_number:number;reason:string;revised_at:string}[]}>;
+  closingDayRevise(input:{businessDayId:number;cashCountedMinor:number;accountActuals:Record<number,number>;reason:string}):Promise<ClosingDay>;
+  closingConfig(input:Record<string,never>):Promise<{policy:{varianceToleranceMinor:number;sixMonthCycleStartMonth:number};accounts:ClosingAccount[]}>;
+  closingSavePolicy(input:{varianceToleranceMinor:number;sixMonthCycleStartMonth:number}):Promise<{varianceToleranceMinor:number;sixMonthCycleStartMonth:number}>;
+  closingSaveAccount(input:{id?:number;kind:'bank'|'wallet'|'savings';name:string;active:boolean}):Promise<ClosingAccount>;
+  closingAllocate(input:{movementId:number;accountId:number}):Promise<{movementId:number;accountId:number}>;
+  closingSavingsTransfer(input:{accountId:number;amountMinor:number;reference:string}):Promise<{id:number;amountMinor:number}>;
   createCustomer(input:{name:string;phone:string}):Promise<{id:number;name:string;phone:string}>;
   customerSearch(input:{q:string;page:number;pageSize?:number}):Promise<CustomerSearchResult>;
   customerDetail(input:{id:number}):Promise<CustomerAccountDetail>;

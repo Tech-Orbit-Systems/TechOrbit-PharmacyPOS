@@ -13,7 +13,7 @@ test('P033 desktop opening stock previews manual and CSV rows, commits atomicall
   assert.equal(manual.errorRows,0);assert.equal(manual.rows[0].normalized.expiryDate,'2028-12-31');
   assert.equal((await gateway.call('openingStockCommit',{jobId:manual.jobId})).committedRows,1);
   const stored=db.prepare("SELECT opening_quantity FROM ProductBatches WHERE product_id=? AND batch_number='MAN-1'").get(products[0].id);assert.equal(stored.opening_quantity,2);
-  assert.equal(db.prepare("SELECT action FROM AuditLog WHERE entity_id=?").get(String(manual.jobId)).action,'opening_stock.manual');
+  assert.equal(db.prepare("SELECT action FROM AuditLog WHERE entity_type='import_job' AND entity_id=?").get(String(manual.jobId)).action,'opening_stock.manual');
   assert.equal((await gateway.call('openingStockProducts',{q:'Cetirizine'}))[0].locked,true);
   const csv='sku,barcode,entry_date,batch_number,expiry_date,unit,quantity,unit_cost,notes\n,0012345678903,2026-09-18,CSV-1,11/2028,Sachet,4,2.5,CSV fixture\n';
   const imported=await gateway.call('openingStockPreviewFile',{name:'opening.csv',base64:Buffer.from(csv).toString('base64')});assert.equal(imported.errorRows,0);assert.equal(imported.rows[0].normalized.expiryDate,'2028-11-30');

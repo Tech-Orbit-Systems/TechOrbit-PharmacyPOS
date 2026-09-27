@@ -1,6 +1,9 @@
-const {openDatabase}=require('../infrastructure/sqlite/database');
+const {openDatabase,runMigrations}=require('../infrastructure/sqlite/database');
+const fs=require('fs'),path=require('path'),os=require('os');
 const {CashClosingService}=require('../infrastructure/sqlite/services/cash-closing');
 const {recordMoneyMovement}=require('../infrastructure/sqlite/services/money-movement');
+const {ClosingConfigurationService}=require('../infrastructure/sqlite/services/closing-configuration');
+const {DailyClosingService}=require('../infrastructure/sqlite/services/daily-closing');
 
 describe('cash shift ownership and closing',()=>{
   let db,service,user1,user2;
@@ -21,9 +24,9 @@ describe('cash shift ownership and closing',()=>{
     money(user2,'COUNTER-2',t(10),'in',9000);
     expect(()=>service.open({userId:user2,deviceId:'COUNTER-1',openingCashMinor:0,openedAt:t(11)})).toThrow(/current device shift/);
     expect(()=>service.close({shiftId:first.id,countedCashMinor:13800,closedAt:t(12),userId:user2})).toThrow(/assigned cashier/);
-    const one=service.close({shiftId:first.id,countedCashMinor:13750,closedAt:t(12),userId:user1});
+    const one=service.close({shiftId:first.id,countedCashMinor:13750,closedAt:t(12),userId:user1,varianceReason:'Counted short'});
     expect(one).toMatchObject({expectedCashMinor:13800,varianceMinor:-50,status:'closed'});
-    const next=service.open({userId:user2,deviceId:'COUNTER-1',openingCashMinor:13750,openedAt:t(12)});
+    const next=service.open({userId:user2,deviceId:'COUNTER-1',openingCashMinor:13750,openedAt:t(12),handoverConfirmed:true});
     money(user2,'COUNTER-1',t(13),'in',300);
     const two=service.close({shiftId:next.id,countedCashMinor:14050,closedAt:t(14),userId:user2});
     expect(two.expectedCashMinor).toBe(14050);
@@ -37,13 +40,13 @@ describe('cash shift ownership and closing',()=>{
   test('blocks closing when legacy cash has no proven shift attribution',()=>{
     const shift=service.open({userId:user1,deviceId:'COUNTER-1',openingCashMinor:100,openedAt:t(8)});
     db.prepare("INSERT INTO MoneyMovements(direction,method,amount_minor,reference_type,reference_id,occurred_at,user_id) VALUES('in','cash',25,'legacy','1',?,?)").run(t(9),user1);
-    expect(()=>service.close({shiftId:shift.id,countedCashMinor:125,closedAt:t(10)})).toThrow(/Unattributed/);
+    expect(()=>service.close({shiftId:shift.id,countedCashMinor:125,closedAt:t(10),userId:user1})).toThrow(/Unattributed/);
     expect(db.prepare('SELECT status FROM CashShifts WHERE id=?').get(shift.id).status).toBe('open');
   });
 
   test('six month fixture remains immutable',()=>{
     const report=service.sixMonthReport(t(0));
-    expect(report.months.map(x=>x.month)).toEqual(['2026-04','2026-05','2026-06','2026-07','2026-08','2026-09']);
+    expect(report.months.map(x=>x.month)).toEqual(['2026-07','2026-08','2026-09']);
     const closed=service.closeSixMonth({asOf:t(0)});
     expect(closed.closingId).toBeGreaterThan(0);
     expect(()=>service.closeSixMonth({asOf:t(0)})).toThrow(/UNIQUE/);
@@ -80,5 +83,97 @@ describe('cash shift ownership and closing',()=>{
     expect(sep).toMatchObject({salesMinor:1100,customerReturnsMinor:550,netSalesMinor:550,gstMinor:50,cogsMinor:150,grossProfitMinor:350,expensesMinor:100,operatingProfitMinor:250});
     expect(report.periodEnd).toBe('2026-09-02');
     expect(service.sixMonthReport('2026-08-31T19:30:00Z').months.at(-1).month).toBe('2026-09');
+  });
+
+  test('cashier reason, Rs 50 policy boundary, manager approval and forced close',()=>{
+    const config=new ClosingConfigurationService(db);
+    const manager=Number(db.prepare("INSERT INTO Users(username,password_hash,display_name,role_id,created_at,updated_at) VALUES('manager-b04','fixture','Manager',3,?,?)")
+      .run(t(0),t(0)).lastInsertRowid);
+    const first=service.open({userId:user1,deviceId:'COUNTER-1',openingCashMinor:10000,openedAt:t(8)});
+    expect(()=>service.close({shiftId:first.id,countedCashMinor:15000,closedAt:t(9),userId:user1})).toThrow(/reason/);
+    expect(service.close({shiftId:first.id,countedCashMinor:15000,closedAt:t(9),userId:user1,varianceReason:'Counted extra'}).varianceMinor).toBe(5000);
+    expect(()=>service.open({userId:user2,deviceId:'COUNTER-1',openingCashMinor:0,openedAt:t(9),handoverConfirmed:true})).toThrow(/previous counted/);
+    const second=service.open({userId:user2,deviceId:'COUNTER-1',openingCashMinor:15000,openedAt:t(9),handoverConfirmed:true});
+    expect(second.handover_from_shift_id).toBe(first.id);
+    expect(()=>service.close({shiftId:second.id,countedCashMinor:20001,closedAt:t(10),userId:user2,varianceReason:'Counted extra'})).toThrow(/manager approval/);
+    const closed=service.close({shiftId:second.id,countedCashMinor:20001,closedAt:t(10),userId:manager,varianceReason:'Counted extra',forcedCloseReason:'Cashier unavailable'});
+    expect(closed.varianceMinor).toBe(5001);
+    expect(db.prepare('SELECT approved_by,forced_close_reason FROM CashShifts WHERE id=?').get(second.id))
+      .toEqual({approved_by:manager,forced_close_reason:'Cashier unavailable'});
+    expect(config.savePolicy({varianceToleranceMinor:10000,sixMonthCycleStartMonth:4},manager))
+      .toEqual({varianceToleranceMinor:10000,sixMonthCycleStartMonth:4});
+    expect(service.sixMonthReport(t(0)).months.map(row=>row.month)).toEqual(['2026-04','2026-05','2026-06','2026-07','2026-08','2026-09']);
+  });
+
+  test('pharmacy can configure multiple bank and wallet accounts without fixed names',()=>{
+    const config=new ClosingConfigurationService(db);
+    const manager=Number(db.prepare("INSERT INTO Users(username,password_hash,display_name,role_id,created_at,updated_at) VALUES('manager-accounts','fixture','Manager',3,?,?)")
+      .run(t(0),t(0)).lastInsertRowid);
+    expect(()=>config.saveAccount({kind:'bank',name:'Unauthorized'},user1)).toThrow(/Manager permission/);
+    const bank1=config.saveAccount({kind:'bank',name:'Operating bank'},manager);
+    const bank2=config.saveAccount({kind:'bank',name:'Counter bank'},manager);
+    const wallet=config.saveAccount({kind:'wallet',name:'Local wallet'},manager);
+    const savings=config.saveAccount({kind:'savings',name:'Savings reserve'},manager);
+    expect(config.accounts()).toHaveLength(4);
+    const movement=recordMoneyMovement(db,{direction:'in',method:'card',amountMinor:12000,referenceType:'test',referenceId:'card-1',occurredAt:t(9),userId:user1});
+    expect(()=>config.allocate({movementId:movement.lastInsertRowid,accountId:wallet.id},manager)).toThrow(/bank account/);
+    expect(config.allocate({movementId:movement.lastInsertRowid,accountId:bank2.id},manager).accountId).toBe(bank2.id);
+    expect(config.saveAccount({id:bank1.id,kind:'bank',name:'Main bank',active:false},manager).active).toBe(0);
+    service.open({userId:user1,deviceId:'COUNTER-1',openingCashMinor:0,openedAt:t(8)});
+    expect(config.recordSavingsTransfer({accountId:savings.id,amountMinor:5000,transferredAt:t(9),reference:'Bank transfer receipt'},manager).amountMinor).toBe(5000);
+    expect(()=>config.recordSavingsTransfer({accountId:savings.id,amountMinor:5000,transferredAt:t(9),reference:'bank transfer receipt'},manager)).toThrow(/already recorded/);
+    expect(service.sixMonthReport(t(10)).totals.savingsTransferredMinor).toBe(5000);
+  });
+
+  test('business day stays open past midnight, requires allocation, and preserves revisions',()=>{
+    const config=new ClosingConfigurationService(db),daily=new DailyClosingService(db);
+    const manager=Number(db.prepare("INSERT INTO Users(username,password_hash,display_name,role_id,created_at,updated_at) VALUES('manager-daily','fixture','Manager',3,?,?)")
+      .run(t(0),t(0)).lastInsertRowid);
+    const account=config.saveAccount({kind:'bank',name:'Pharmacy bank'},manager);
+    const shift=service.open({userId:user1,deviceId:'COUNTER-1',openingCashMinor:10000,openedAt:t(8)});
+    money(user1,'COUNTER-1',t(9),'in',5000);
+    const card=recordMoneyMovement(db,{direction:'in',method:'card',amountMinor:12000,referenceType:'test',referenceId:'card-day',occurredAt:t(9),userId:user1,deviceId:'COUNTER-1'});
+    service.close({shiftId:shift.id,countedCashMinor:15000,closedAt:t(10),userId:user1});
+    const nextMorning='2026-09-13T01:00:00Z';
+    const preview=daily.preview({asOf:nextMorning});
+    expect(preview.businessDayId).toBe(shift.business_day_id);
+    expect(preview).toMatchObject({cashExpectedMinor:15000,cashCountedMinor:15000,unresolvedMovementCount:1});
+    expect(()=>daily.close({userId:manager,asOf:nextMorning})).toThrow(/Allocate or reconcile/);
+    config.allocate({movementId:card.lastInsertRowid,accountId:account.id},manager);
+    const closed=daily.close({userId:manager,asOf:nextMorning,accountActuals:{[account.id]:12000}});
+    expect(closed).toMatchObject({status:'closed',cashExpectedMinor:15000,cashCountedMinor:15000});
+    expect(closed.accounts[0]).toMatchObject({name:'Pharmacy bank',expectedNetMinor:12000,actualNetMinor:12000});
+    expect(()=>config.allocate({movementId:card.lastInsertRowid,accountId:account.id},manager)).toThrow(/Closed business day/);
+    const revised=daily.revise({businessDayId:closed.businessDayId,userId:manager,cashCountedMinor:14900,reason:'Signed recount'});
+    expect(revised).toMatchObject({revisionNumber:1,cashVarianceMinor:-100});
+    const detail=daily.detail(closed.businessDayId);
+    expect(detail.original.cashVarianceMinor).toBe(0);
+    expect(detail.current.cashVarianceMinor).toBe(-100);
+    expect(detail.revisions).toHaveLength(1);
+    const next=service.open({userId:user2,deviceId:'COUNTER-1',openingCashMinor:8000,openedAt:'2026-09-13T02:00:00Z'});
+    expect(next.business_day_id).not.toBe(shift.business_day_id);
+    expect(daily.preview({asOf:'2026-09-13T03:00:00Z'}).businessDayId).toBe(next.business_day_id);
+  });
+
+  test('upgrade attaches only open legacy shifts and keeps closed history unchanged',()=>{
+    const migrationDir=path.join(__dirname,'../infrastructure/sqlite/migrations');
+    const oldDir=fs.mkdtempSync(path.join(os.tmpdir(),'pharmacy-old-migrations-'));
+    try{
+      for(const file of fs.readdirSync(migrationDir).filter(name=>/^\d+_.+\.sql$/.test(name)&&Number(name.slice(0,3))<=21))
+        fs.copyFileSync(path.join(migrationDir,file),path.join(oldDir,file));
+      const old=openDatabase({filename:':memory:',migrationsDir:oldDir});
+      try{
+        const now=new Date().toISOString();
+        const legacyClosed=Number(old.prepare("INSERT INTO CashShifts(user_id,device_id,opened_at,opening_cash_minor,status,closed_at,counted_cash_minor,created_at) VALUES(?, 'COUNTER-1', ?, 100, 'closed', ?, 100, ?)")
+          .run(null,'2026-09-01T08:00:00Z','2026-09-01T10:00:00Z',now).lastInsertRowid);
+        const legacyOpen=Number(old.prepare("INSERT INTO CashShifts(user_id,device_id,opened_at,opening_cash_minor,status,created_at) VALUES(?, 'COUNTER-1', ?, 100, 'open', ?)")
+          .run(null,'2026-09-01T11:00:00Z',now).lastInsertRowid);
+        runMigrations(old,migrationDir);
+        expect(old.prepare('SELECT business_day_id FROM CashShifts WHERE id=?').get(legacyClosed).business_day_id).toBeNull();
+        const attached=old.prepare('SELECT business_day_id FROM CashShifts WHERE id=?').get(legacyOpen).business_day_id;
+        expect(attached).toBeGreaterThan(0);
+        expect(old.prepare('SELECT opened_at FROM BusinessDays WHERE id=?').get(attached).opened_at).toBe('2026-09-01T11:00:00Z');
+      }finally{old.close()}
+    }finally{fs.rmSync(oldDir,{recursive:true,force:true})}
   });
 });

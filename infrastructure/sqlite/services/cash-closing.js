@@ -4,10 +4,19 @@ class CashClosingService {
     this.openTx = db.transaction(x => this.openInternal(x));
     this.closeTx = db.transaction(x => this.closeInternal(x));
   }
+  actorRole(userId) {
+    const actor = this.db.prepare('SELECT r.code FROM Users u JOIN Roles r ON r.id=u.role_id WHERE u.id=? AND u.active=1').get(userId);
+    if (!actor) throw new Error('Active closing user is required');
+    return actor.code;
+  }
+  policy() {
+    return new (require('./closing-configuration').ClosingConfigurationService)(this.db).policy();
+  }
   open(x) {
     const opening = Number(x?.openingCashMinor);
     if (!x?.deviceId?.trim() || !Number.isSafeInteger(opening) || opening < 0)
       throw new Error('Device and non-negative opening cash are required');
+    this.actorRole(x.userId);
     return this.openTx(x);
   }
   openInternal(x) {
@@ -19,8 +28,20 @@ class CashClosingService {
       throw new Error('Close the current device shift before opening another');
     const previous = this.db.prepare('SELECT closed_at FROM CashShifts WHERE device_id=? ORDER BY opened_at DESC LIMIT 1').get(x.deviceId.trim());
     if (previous && (!previous.closed_at || Date.parse(at) < Date.parse(previous.closed_at))) throw new Error('Shift windows cannot overlap');
-    const id = this.db.prepare("INSERT INTO CashShifts(user_id,device_id,opened_at,opening_cash_minor,status,created_at) VALUES (?,?,?,?,'open',?)")
-      .run(x.userId || null, x.deviceId.trim(), at, opening, now).lastInsertRowid;
+    const handover = this.db.prepare("SELECT id,counted_cash_minor,closed_at,business_day_id FROM CashShifts WHERE device_id=? AND status='closed' ORDER BY closed_at DESC,id DESC LIMIT 1").get(x.deviceId.trim());
+    let businessDay = this.db.prepare("SELECT id,opened_at FROM BusinessDays WHERE status='open'").get();
+    if (!businessDay) {
+      const lastDay=this.db.prepare("SELECT closed_at FROM BusinessDays WHERE status='closed' ORDER BY closed_at DESC,id DESC LIMIT 1").get();
+      if(lastDay && Date.parse(at)<Date.parse(lastDay.closed_at))throw new Error('New business day cannot start before the previous official close');
+      const id = this.db.prepare("INSERT INTO BusinessDays(opened_at,status) VALUES(?,'open')").run(at).lastInsertRowid;
+      businessDay = {id,opened_at:at};
+    }
+    if (Date.parse(at) < Date.parse(businessDay.opened_at)) throw new Error('Shift cannot start before the open business day');
+    const carry = handover && handover.business_day_id === businessDay.id ? handover : null;
+    if (carry && opening !== carry.counted_cash_minor) throw new Error('Opening cash must confirm the previous counted handover');
+    if (carry && x.handoverConfirmed !== true) throw new Error('Confirm the previous counted cash handover');
+    const id = this.db.prepare("INSERT INTO CashShifts(user_id,device_id,opened_at,opening_cash_minor,status,created_at,business_day_id,handover_from_shift_id) VALUES (?,?,?,?,'open',?,?,?)")
+      .run(x.userId || null, x.deviceId.trim(), at, opening, now, businessDay.id, carry?.id || null).lastInsertRowid;
     this.audit('cash_shift.open', id, x, { openingCashMinor: opening });
     return this.db.prepare('SELECT * FROM CashShifts WHERE id=?').get(id);
   }
@@ -44,7 +65,7 @@ class CashClosingService {
       AND (device_id IS NULL OR device_id=?) AND julianday(occurred_at)>=julianday(?) AND julianday(occurred_at)<julianday(?)`)
       .get(shift.user_id, shift.device_id, shift.opened_at, at).count;
     const cashNet = rows.filter(row=>row.method==='cash').reduce((sum,row)=>sum+(row.direction==='in'?row.amount:-row.amount),0);
-    return {shiftId:Number(shift.id),userId:shift.user_id,deviceId:shift.device_id,status:shift.status,
+    return {shiftId:Number(shift.id),userId:shift.user_id,deviceId:shift.device_id,businessDayId:shift.business_day_id,status:shift.status,
       openedAt:shift.opened_at,closedAt:shift.closed_at,openingCashMinor:shift.opening_cash_minor,
       expectedCashMinor:shift.opening_cash_minor+cashNet,countedCashMinor:shift.counted_cash_minor,
       varianceMinor:shift.variance_minor,unattributedCashCount:unresolved,movements:rows};
@@ -53,18 +74,29 @@ class CashClosingService {
     const shift = this.db.prepare('SELECT * FROM CashShifts WHERE id=?').get(x.shiftId);
     if (!shift) throw new Error('Cash shift was not found');
     if (shift.status !== 'open') throw new Error('Cash shift is already closed');
-    if (x.userId && shift.user_id !== x.userId) throw new Error('Only the assigned cashier can close this shift');
+    const role = this.actorRole(x.userId);
+    const manager = role === 'manager' || role === 'admin';
+    const forced = shift.user_id !== x.userId;
+    if (forced && !manager) throw new Error('Only the assigned cashier or a manager can close this shift');
+    const forcedReason = String(x.forcedCloseReason || '').trim();
+    if (forced && !forcedReason) throw new Error('Manager forced close requires a reason');
     const rawAt = x.closedAt || new Date().toISOString();
     if (Number.isNaN(Date.parse(rawAt)) || Date.parse(rawAt) <= Date.parse(shift.opened_at) || Date.parse(rawAt) > Date.now())
       throw new Error('Shift closing must be after opening and no later than now');
     const at = new Date(rawAt).toISOString();
+    if(this.db.prepare('SELECT 1 FROM MoneyMovements WHERE shift_id=? AND julianday(occurred_at)>=julianday(?) LIMIT 1').get(shift.id,at))
+      throw new Error('Shift close must be after its last money movement');
     const preview = this.shiftPreview({shiftId:shift.id,asOf:at});
     if (preview.unattributedCashCount) throw new Error('Unattributed cash movements need reconciliation before closing');
     const expected = preview.expectedCashMinor;
     const counted = Number(x.countedCashMinor), variance = counted - expected;
-    this.db.prepare("UPDATE CashShifts SET status='closed',closed_at=?,expected_cash_minor=?,counted_cash_minor=?,variance_minor=?,notes=? WHERE id=?")
-      .run(at, expected, counted, variance, x.notes || null, shift.id);
-    this.audit('cash_shift.close', shift.id, x, { expected, counted, variance });
+    const reason = String(x.varianceReason || '').trim();
+    if (variance !== 0 && !reason) throw new Error('Cash variance requires a reason');
+    const tolerance = this.policy().varianceToleranceMinor;
+    if (Math.abs(variance) > tolerance && !manager) throw new Error('Cash variance above tolerance requires manager approval');
+    this.db.prepare("UPDATE CashShifts SET status='closed',closed_at=?,expected_cash_minor=?,counted_cash_minor=?,variance_minor=?,notes=?,variance_reason=?,approved_by=?,forced_close_reason=? WHERE id=?")
+      .run(at, expected, counted, variance, x.notes || null, reason || null, manager && (forced || Math.abs(variance) > tolerance) ? x.userId : null, forcedReason || null, shift.id);
+    this.audit(forced ? 'cash_shift.force_close' : 'cash_shift.close', shift.id, x, { expected, counted, variance, reason, approvedBy:manager ? x.userId : null, forcedReason:forcedReason || null });
     return { shiftId: Number(shift.id), expectedCashMinor: expected, countedCashMinor: counted, varianceMinor: variance, status: 'closed' };
   }
   sixMonthReport(asOf = new Date().toISOString()) {
@@ -72,11 +104,16 @@ class CashClosingService {
     if (Number.isNaN(end.getTime()) || end.getTime() > Date.now()) throw new Error('Invalid report date');
     const pakistan = new Date(end.getTime() + 5 * 3600000);
     const year = pakistan.getUTCFullYear(), month = pakistan.getUTCMonth();
+    const anchor = this.policy().sixMonthCycleStartMonth - 1;
+    let cycleMonth = year * 12 + anchor;
+    const currentMonth = year * 12 + month;
+    while (cycleMonth > currentMonth) cycleMonth -= 6;
+    while (cycleMonth + 6 <= currentMonth) cycleMonth += 6;
     const months = [];
-    for (let offset = 5; offset >= 0; offset--) {
-      const start = new Date(Date.UTC(year, month - offset, 1) - 5 * 3600000);
-      const next = new Date(Date.UTC(year, month - offset + 1, 1) - 5 * 3600000);
-      const from = start.toISOString(), to = offset === 0 ? end.toISOString() : next.toISOString();
+    for (let index = cycleMonth; index <= currentMonth; index++) {
+      const start = new Date(Date.UTC(Math.floor(index / 12), index % 12, 1) - 5 * 3600000);
+      const next = new Date(Date.UTC(Math.floor((index + 1) / 12), (index + 1) % 12, 1) - 5 * 3600000);
+      const from = start.toISOString(), to = index === currentMonth ? end.toISOString() : next.toISOString();
       const sales = this.db.prepare("SELECT COALESCE(SUM(final_total_minor),0) total,COALESCE(SUM(cogs_minor),0) cogs,COALESCE(SUM(gst_minor),0) gst FROM Sales WHERE status='posted' AND julianday(sold_at)>=julianday(?) AND julianday(sold_at)<julianday(?)").get(from, to);
       const customerReturns = this.db.prepare(`SELECT COALESCE(SUM(r.total_minor),0) amount,
         COALESCE(SUM((SELECT SUM(i.cogs_minor) FROM SaleReturnItems i WHERE i.sale_return_id=r.id)),0) cogs,
@@ -85,6 +122,7 @@ class CashClosingService {
       const expenses = this.db.prepare("SELECT COALESCE(SUM(amount_minor),0) total FROM Expenses WHERE status='posted' AND julianday(expense_date)>=julianday(?) AND julianday(expense_date)<julianday(?)").get(from, to).total;
       const purchases = this.db.prepare("SELECT COALESCE(SUM(total_minor),0) total FROM Purchases WHERE status='posted' AND julianday(purchased_at)>=julianday(?) AND julianday(purchased_at)<julianday(?)").get(from, to).total;
       const returns = this.db.prepare("SELECT COALESCE(SUM(total_minor),0) total FROM PurchaseReturns WHERE julianday(returned_at)>=julianday(?) AND julianday(returned_at)<julianday(?)").get(from, to).total;
+      const savings = this.db.prepare("SELECT COALESCE(SUM(amount_minor),0) total FROM SavingsTransfers WHERE julianday(transferred_at)>=julianday(?) AND julianday(transferred_at)<julianday(?)").get(from,to).total;
       const netSalesMinor = Number(sales.total) - Number(customerReturns.amount);
       const gstMinor = Number(sales.gst) - Number(customerReturns.gst);
       const cogsMinor = Number(sales.cogs) - Number(customerReturns.cogs);
@@ -93,10 +131,10 @@ class CashClosingService {
         salesMinor: Number(sales.total), customerReturnsMinor: Number(customerReturns.amount),
         netSalesMinor, gstMinor, cogsMinor, grossProfitMinor, expensesMinor: Number(expenses),
         operatingProfitMinor: grossProfitMinor - Number(expenses), purchasesMinor: Number(purchases),
-        purchaseReturnsMinor: Number(returns) });
+        purchaseReturnsMinor: Number(returns),savingsTransferredMinor:Number(savings) });
     }
-    const fields = ['salesMinor','customerReturnsMinor','netSalesMinor','gstMinor','cogsMinor','grossProfitMinor','expensesMinor','operatingProfitMinor','purchasesMinor','purchaseReturnsMinor'];
-    return { periodStart: `${months[0].month}-01`, periodEnd: pakistan.toISOString().slice(0,10), asOf: end.toISOString(), months,
+    const fields = ['salesMinor','customerReturnsMinor','netSalesMinor','gstMinor','cogsMinor','grossProfitMinor','expensesMinor','operatingProfitMinor','purchasesMinor','purchaseReturnsMinor','savingsTransferredMinor'];
+    return { periodStart: `${months[0].month}-01`, periodEnd: pakistan.toISOString().slice(0,10), asOf: end.toISOString(), cycleStartMonth:anchor + 1, months,
       totals: months.reduce((a,m)=>{for(const k of fields)a[k]+=m[k];return a;},Object.fromEntries(fields.map(k=>[k,0]))) };
   }
   closeSixMonth(x) {

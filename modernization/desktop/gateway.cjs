@@ -113,6 +113,67 @@ class Gateway {
       this.authorize('report.cost');
       return new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db).sixMonthReport(input.asOf);
     }
+    if(command.startsWith('closing')){
+      const cash=new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db);
+      const daily=new (require('../../infrastructure/sqlite/services/daily-closing').DailyClosingService)(this.db);
+      const config=new (require('../../infrastructure/sqlite/services/closing-configuration').ClosingConfigurationService)(this.db);
+      if(command==='closingHandover'){
+        this.authorize('closing.create');
+        const day=this.db.prepare("SELECT id FROM BusinessDays WHERE status='open'").get();
+        const prior=this.db.prepare("SELECT id,counted_cash_minor,business_day_id FROM CashShifts WHERE device_id='modern-desktop' AND status='closed' ORDER BY closed_at DESC,id DESC LIMIT 1").get();
+        return prior&&day&&prior.business_day_id===day.id?{shiftId:prior.id,countedCashMinor:prior.counted_cash_minor}:null;
+      }
+      if(command==='closingShiftOpen'){
+        this.authorize('closing.create');
+        return cash.open({...input,userId:this.session.id,deviceId:'modern-desktop'});
+      }
+      if(command==='closingShiftClose'){
+        this.authorize('closing.create');
+        const shift=this.db.prepare('SELECT device_id,user_id FROM CashShifts WHERE id=?').get(input.shiftId);
+        if(!shift||shift.device_id!=='modern-desktop')throw Error('Cash shift was not found');
+        return cash.close({...input,userId:this.session.id,deviceId:'modern-desktop'});
+      }
+      if(command==='closingDayPreview'){
+        this.authorize('closing.revise');
+        return daily.preview(input);
+      }
+      if(command==='closingDayClose'){
+        this.authorize('closing.revise');
+        return daily.close({...input,userId:this.session.id});
+      }
+      if(command==='closingDayHistory'){
+        this.authorize('closing.revise');
+        return daily.history();
+      }
+      if(command==='closingDayDetail'){
+        this.authorize('closing.revise');
+        return daily.detail(input.businessDayId);
+      }
+      if(command==='closingDayRevise'){
+        this.authorize('closing.revise');
+        return daily.revise({...input,userId:this.session.id});
+      }
+      if(command==='closingConfig'){
+        this.authorize('closing.revise');
+        return {policy:config.policy(),accounts:config.accounts()};
+      }
+      if(command==='closingSavePolicy'){
+        this.authorize('settings.manage');
+        return config.savePolicy(input,this.session.id);
+      }
+      if(command==='closingSaveAccount'){
+        this.authorize('settings.manage');
+        return config.saveAccount(input,this.session.id);
+      }
+      if(command==='closingAllocate'){
+        this.authorize('closing.revise');
+        return config.allocate(input,this.session.id);
+      }
+      if(command==='closingSavingsTransfer'){
+        this.authorize('closing.revise');
+        return config.recordSavingsTransfer(input,this.session.id);
+      }
+    }
     if (command === 'inventoryList' || command === 'inventoryDetail') {
       this.authorize('inventory.view');
       const service = new (require('../../infrastructure/sqlite/services/inventory-live-stock').InventoryLiveStockService)(this.db);

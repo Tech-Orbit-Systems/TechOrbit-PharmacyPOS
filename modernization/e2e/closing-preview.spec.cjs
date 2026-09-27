@@ -12,7 +12,7 @@ test('B04 closing preview shows assigned shift and Pakistan six-month figures',a
   await page.getByRole('button',{name:'Sign in',exact:true}).click();
   await page.getByRole('button',{name:'Closing',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Current cashier shift'})).toBeVisible();
-  await expect(page.getByText('Expected cash',{exact:true})).toBeVisible();
+  await expect(page.getByText('Expected cash',{exact:true}).first()).toBeVisible();
   await expect(page.getByRole('heading',{name:'Six-month review'})).toBeVisible();
   await expect(page.getByRole('columnheader',{name:'Operating profit'})).toBeVisible();
   await page.screenshot({path:path.resolve(__dirname,'../evidence/closing-preview-b04.png')});

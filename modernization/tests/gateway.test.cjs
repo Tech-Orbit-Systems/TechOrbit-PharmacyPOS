@@ -18,7 +18,11 @@ test("real SQLite read-only quote, digital sale, retry and dashboard", async () 
     assert.equal(shiftPreview.shiftId,activeShift.id);
     assert.equal(shiftPreview.unattributedCashCount,0);
     const periodPreview = await gateway.call('closingPeriodPreview',{});
-    assert.equal(periodPreview.months.length,6);
+    assert.ok(periodPreview.months.length>=1 && periodPreview.months.length<=6);
+    const dayPreview = await gateway.call('closingDayPreview',{});
+    assert.equal(dayPreview.status,'open');
+    assert.equal(dayPreview.businessDayId,activeShift.business_day_id || db.prepare('SELECT business_day_id FROM CashShifts WHERE id=?').get(activeShift.id).business_day_id);
+    assert.deepEqual(await gateway.call('closingConfig',{}).then(x=>x.policy),{varianceToleranceMinor:5000,sixMonthCycleStartMonth:1});
     const products = await gateway.call("barcode", {
       barcode: "0012345678901",
     });

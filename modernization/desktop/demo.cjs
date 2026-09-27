@@ -90,9 +90,8 @@ function seedInitial(db) {
       items: [{ productId: 1, saleUnit: "Strip", quantity: 5 + (i % 11) }],
     });
   }
-  db.prepare(
-    "INSERT INTO CashShifts(user_id,device_id,opened_at,opening_cash_minor,status,created_at) VALUES(?,'modern-desktop',?,3240000,'open',?)",
-  ).run(userId, now, now);
+  new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(db)
+    .open({userId:Number(userId),deviceId:'modern-desktop',openedAt:now,openingCashMinor:3240000});
 }
 function seedDemo(db){seedInitial(db);upgradeDemoUnits(db);}
 function upgradeDemoUnits(db){

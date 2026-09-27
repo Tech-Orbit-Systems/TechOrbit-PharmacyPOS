@@ -1,0 +1,52 @@
+const {test,expect,_electron}=require('@playwright/test');
+const fs=require('fs'),path=require('path'),os=require('os');
+
+test('B04 shift count, official business day, account setup and reasoned revision persist after restart',async()=>{
+ const dataDir=fs.mkdtempSync(path.join(os.tmpdir(),'techorbit-closing-workflow-'));
+ const env={...process.env,TECHORBIT_UI_DATA_DIR:dataDir,TECHORBIT_DISABLE_HARDWARE_ACCELERATION:'1'};
+ delete env.ELECTRON_RUN_AS_NODE;delete env.TECHORBIT_UI_DATABASE;
+ const launch=()=>_electron.launch({args:[path.resolve(__dirname,'../desktop/main.cjs')],env});
+ let app=await launch();
+ try{
+  let page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.getByLabel('Username',{exact:true}).fill('demo');
+  await page.getByLabel('Password',{exact:true}).fill('TechOrbit-Demo-2026!');
+  await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  await page.getByRole('button',{name:'Closing',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Official business day'})).toBeVisible();
+  await page.getByLabel('Account name').fill('Review bank');
+  await page.getByRole('button',{name:'Add account'}).click();
+  await expect(page.getByText('Review bank')).toBeVisible();
+  await page.getByLabel('Cash variance tolerance (Rs)').fill('75.00');
+  await page.getByLabel('Six-month cycle starts in').selectOption('4');
+  await page.getByRole('button',{name:'Save rules'}).click();
+  await expect(page.getByText(/Cycle starts in month 4/)).toBeVisible();
+  await page.getByLabel('New account type').selectOption('savings');
+  await page.getByLabel('Account name').fill('Reserve');
+  await page.getByRole('button',{name:'Add account'}).click();
+  await page.getByLabel('Savings account').selectOption({label:'Reserve'});
+  await page.getByLabel('Amount transferred (Rs)').fill('10.00');
+  await page.getByLabel('Transfer reference').fill('Verified bank receipt');
+  await page.getByRole('button',{name:'Record transfer'}).click();
+  await page.getByRole('button',{name:'Close shift'}).click();
+  await expect(page.getByRole('button',{name:'Official daily close'})).toBeEnabled();
+  await page.getByRole('button',{name:'Official daily close'}).click();
+  await expect(page.getByText('No open business day.')).toBeVisible();
+  await page.getByRole('button',{name:'View',exact:true}).first().click();
+  await page.getByLabel('Revised counted cash (Rs)').fill('32399.00');
+  await page.getByLabel('Revision reason').fill('Signed recount');
+  await page.getByRole('button',{name:'Save revision'}).click();
+  await expect(page.getByText(/Original snapshot and 1 revisions are retained/)).toBeVisible();
+  expect(errors).toEqual([]);
+  await app.close();app=await launch();page=await app.firstWindow();
+  await page.getByLabel('Username',{exact:true}).fill('demo');
+  await page.getByLabel('Password',{exact:true}).fill('TechOrbit-Demo-2026!');
+  await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  await page.getByRole('button',{name:'Closing',exact:true}).click();
+  await expect(page.getByRole('cell',{name:'Review bank'})).toBeVisible();
+  await expect(page.getByLabel('Cash variance tolerance (Rs)')).toHaveValue('75.00');
+  await expect(page.getByLabel('Six-month cycle starts in')).toHaveValue('4');
+  await page.getByRole('button',{name:'View',exact:true}).first().click();
+  await expect(page.getByText(/Original snapshot and 1 revisions are retained/)).toBeVisible();
+ }finally{await app.close()}
+});
