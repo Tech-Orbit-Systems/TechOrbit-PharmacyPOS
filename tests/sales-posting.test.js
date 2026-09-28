@@ -94,6 +94,12 @@ describe("Atomic sales posting",()=>{
     expect(category.groups[0].groupLabel).toBe('Pain relief');
     expect(category.totals.netSalesMinor).toBe(daily.totals.netSalesMinor);
     expect(medicineSummary(db,{...input,groupBy:'category',category:'Unknown'},options).groups).toHaveLength(0);
+    db.prepare("UPDATE Products SET manufacturer='North Labs' WHERE id IN (?,?)").run(product.id,second.id);
+    const brand=medicineSummary(db,{...input,groupBy:'brand'},options);
+    expect(brand.groups).toHaveLength(1);
+    expect(brand.groups[0].groupLabel).toBe('North Labs');
+    expect(brand.totals.netSalesMinor).toBe(daily.totals.netSalesMinor);
+    expect(medicineSummary(db,{...input,groupBy:'brand',brand:'South Labs'},options).groups).toHaveLength(0);
   });
   test("generic report combines different medicines with the same saved generic snapshot",async()=>{
     const second=new ProductsRepository(db).create({name:"Paracetamol syrup",genericName:"Paracetamol",baseUnit:"bottle",taxStatus:"exempt"});
@@ -116,6 +122,9 @@ describe("Atomic sales posting",()=>{
     await workbook.xlsx.load(Buffer.from((await reports.medicineXlsx(db,input,{costVisible:true})).base64,'base64'));
     expect(workbook.getWorksheet('Sales by Generic').getCell('A7').value).toBe('Paracetamol');
     expect(Buffer.from(reports.medicinePdf(db,input).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+    const brandBook=new (require('exceljs').Workbook)();
+    await brandBook.xlsx.load(Buffer.from((await reports.medicineXlsx(db,{...input,groupBy:'brand'},{costVisible:true})).base64,'base64'));
+    expect(brandBook.getWorksheet('Sales by Brand-Manufacturer').getCell('A7').value).toBe('Unspecified brand');
   });
   test("creates receivable and only records money actually collected",()=>{const result=new SalesPostingService(db).post(baseSale({paymentMethod:"credit",collectionMethod:"cash",amountPaidMinor:500,customerId:Number(customer),dueDate:"2026-10-01"}));
     expect(result.balanceDueMinor).toBe(result.finalTotalMinor-500); expect(db.prepare("SELECT method,amount_minor FROM MoneyMovements").get()).toEqual({method:"cash",amount_minor:500});
