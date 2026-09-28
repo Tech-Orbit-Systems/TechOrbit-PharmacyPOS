@@ -16,6 +16,7 @@ const methods = [
   "medicineSummary", "medicineEntries", "medicineExport",
   "customerReturnSummary", "customerReturnEntries", "customerReturnExport",
   "supplierReturnSummary", "supplierReturnEntries", "supplierReturnExport",
+  "purchaseSummary", "purchaseEntries", "purchaseExport",
   "logout",
   "changePassword",
   "dashboard",

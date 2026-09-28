@@ -183,6 +183,16 @@ class Gateway {
       if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
       return reports.supplierReturnCsv(this.db,input);
     }
+    if(['purchaseSummary','purchaseEntries','purchaseExport'].includes(command)){
+      this.authorize('report.cost');
+      const reports=require('./purchase-report.cjs');
+      if(command==='purchaseSummary')return reports.purchaseSummary(this.db,input);
+      if(command==='purchaseEntries')return reports.purchaseEntries(this.db,input);
+      if(input.format==='xlsx')return reports.purchaseXlsx(this.db,input);
+      if(input.format==='pdf')return reports.purchasePdf(this.db,input);
+      if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
+      return reports.purchaseCsv(this.db,input);
+    }
     if(['closingPeriodClose','closingPeriodHistory','closingPeriodDetail','closingPeriodRevise'].includes(command)){
       this.authorize('closing.revise');
       const service=new (require('../../infrastructure/sqlite/services/six-month-closing').SixMonthClosingService)(this.db);
