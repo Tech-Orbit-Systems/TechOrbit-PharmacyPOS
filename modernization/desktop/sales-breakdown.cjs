@@ -24,17 +24,20 @@ function linesFor(db,event){
    return {...line,kind:'sale',eventId:event.id,occurred_at:event.occurred_at,day:event.day,reference:event.reference,
     customer:event.customer,cashier:event.cashier,method:event.method,quantity:Number(line.base_quantity),
     salesMinor:line.line_total_minor+endRound-startRound,returnsMinor:0,gstMinor:line.gst_minor,cogsMinor:line.cogs_minor,
-    discountMinor:line.line_discount_minor+line.allocated_invoice_discount_minor};
+    discountMinor:line.line_discount_minor+line.allocated_invoice_discount_minor,
+    lineDiscountMinor:line.line_discount_minor,invoiceDiscountMinor:line.allocated_invoice_discount_minor,returnDiscountMinor:0};
   });
  }
  return db.prepare(`SELECT si.*,p.sku,p.category,p.manufacturer,ri.base_quantity return_quantity,
+   (SELECT COALESCE(SUM(prior.base_quantity),0) FROM SaleReturnItems prior WHERE prior.sale_item_id=ri.sale_item_id AND prior.id<ri.id) prior_return_quantity,
    ri.refund_minor,ri.gst_minor return_gst_minor,ri.cogs_minor return_cogs_minor
    FROM SaleReturnItems ri JOIN SaleItems si ON si.id=ri.sale_item_id JOIN Products p ON p.id=si.product_id
    WHERE ri.sale_return_id=? ORDER BY ri.id`).all(event.id).map(line=>({...line,kind:'return',eventId:event.id,
    occurred_at:event.occurred_at,day:event.day,reference:event.reference,customer:event.customer,
    cashier:event.cashier,method:event.method,quantity:Number(line.return_quantity),salesMinor:0,
    returnsMinor:line.refund_minor,gstMinor:-line.return_gst_minor,cogsMinor:-line.return_cogs_minor,
-   discountMinor:0}));
+   discountMinor:0,lineDiscountMinor:0,invoiceDiscountMinor:0,
+   returnDiscountMinor:line.base_quantity>0?Math.round((line.line_discount_minor+line.allocated_invoice_discount_minor)*(Number(line.prior_return_quantity)+Number(line.return_quantity))/Number(line.base_quantity))-Math.round((line.line_discount_minor+line.allocated_invoice_discount_minor)*Number(line.prior_return_quantity)/Number(line.base_quantity)):0}));
 }
 const norm=x=>String(x||'').trim().toLocaleLowerCase('en-US');
 function data(db,input,options={}){
@@ -59,6 +62,7 @@ function data(db,input,options={}){
    grossProfitMinor:line.salesMinor-line.returnsMinor-line.gstMinor-line.cogsMinor,
    salesGstMinor:line.kind==='sale'?line.gstMinor:0,
    returnGstMinor:line.kind==='return'?-line.gstMinor:0,
+   netDiscountMinor:line.discountMinor-line.returnDiscountMinor,
    taxClass:line.taxable_minor>0||line.gst_rate_basis_points>0?'Taxable':
     line.line_total_minor>0||line.refund_minor>0?'Exempt':'Zero-value / unverified'});
   if(rows.length>20000)throw Error('Report exceeds 20,000 medicine lines; narrow the dates or filters');
@@ -67,9 +71,9 @@ function data(db,input,options={}){
 }
 function medicineSummary(db,input,options={}){
  const groupBy=input.groupBy||'medicine';
- if(!['medicine','generic','category','brand','cashier','method','tax','gst'].includes(groupBy))throw Error('Choose a valid sales grouping');
+ if(!['medicine','generic','category','brand','cashier','method','tax','gst','discount'].includes(groupBy))throw Error('Choose a valid sales grouping');
  const rows=data(db,input,options),groups=new Map();
- const totals={salesMinor:0,returnsMinor:0,netSalesMinor:0,gstMinor:0,salesGstMinor:0,returnGstMinor:0,netExGstMinor:0,taxableBaseMinor:0,discountMinor:0,cogsMinor:0,grossProfitMinor:0,soldQuantity:0,returnedQuantity:0};
+ const totals={salesMinor:0,returnsMinor:0,netSalesMinor:0,gstMinor:0,salesGstMinor:0,returnGstMinor:0,netExGstMinor:0,taxableBaseMinor:0,discountMinor:0,lineDiscountMinor:0,invoiceDiscountMinor:0,returnDiscountMinor:0,netDiscountMinor:0,cogsMinor:0,grossProfitMinor:0,soldQuantity:0,returnedQuantity:0};
  for(const row of rows){
   const label=groupBy==='generic'?(row.genericName||'Unspecified generic'):
     groupBy==='category'?(row.category||'Uncategorised'):
@@ -78,9 +82,9 @@ function medicineSummary(db,input,options={}){
     groupBy==='method'?(row.method||'Unspecified method'):
     groupBy==='tax'?row.taxClass:
     groupBy==='gst'?(row.taxClass==='Taxable'?`${(row.gst_rate_basis_points/100).toFixed(2)}% GST`:row.taxClass):row.productName;
-  const key=groupBy==='medicine'?`medicine:${row.product_id}`:`${groupBy}:${norm(label)}`;
+  const key=groupBy==='medicine'||groupBy==='discount'?`${groupBy}:${row.product_id}`:`${groupBy}:${norm(label)}`;
   const group=groups.get(key)||{groupKey:key,groupLabel:label,productId:row.product_id,medicine:row.productName,generic:row.genericName||'',category:row.category||'',brand:row.brand||'',...Object.fromEntries(Object.keys(totals).map(field=>[field,0]))};
-  for(const field of ['salesMinor','returnsMinor','netSalesMinor','gstMinor','salesGstMinor','returnGstMinor','netExGstMinor','discountMinor','cogsMinor','grossProfitMinor']){group[field]+=row[field];totals[field]+=row[field]}
+  for(const field of ['salesMinor','returnsMinor','netSalesMinor','gstMinor','salesGstMinor','returnGstMinor','netExGstMinor','discountMinor','lineDiscountMinor','invoiceDiscountMinor','returnDiscountMinor','netDiscountMinor','cogsMinor','grossProfitMinor']){group[field]+=row[field];totals[field]+=row[field]}
   if(row.taxClass==='Taxable'){group.taxableBaseMinor+=row.netExGstMinor;totals.taxableBaseMinor+=row.netExGstMinor}
   if(row.kind==='sale'){group.soldQuantity+=row.quantity;totals.soldQuantity+=row.quantity}
   else{group.returnedQuantity+=row.quantity;totals.returnedQuantity+=row.quantity}
@@ -90,7 +94,7 @@ function medicineSummary(db,input,options={}){
  const protect=row=>costVisible?row:{...row,cogsMinor:null,grossProfitMinor:null};
  return {groups:[...groups.values()].sort((a,b)=>b.netSalesMinor-a.netSalesMinor||a.groupLabel.localeCompare(b.groupLabel)).map(protect),
   totals:protect(totals),costVisible,groupBy,range:reportRange(input,options.now),
-  scope:'Product filter selects medicine lines; category and brand use current product metadata. Cashier and payment method follow the original sale, including linked returns. Taxable/exempt uses saved sale-line taxable base and GST rate; zero-value lines without tax evidence stay unverified. Later due collections are separate from new sales. Invoice rounding follows the saved return rule.'};
+  scope:'Product filter selects medicine lines; category and brand use current product metadata. Cashier and payment method follow the original sale, including linked returns. Taxable/exempt uses saved sale-line taxable base and GST rate; zero-value lines without tax evidence stay unverified. Discounts use posted line and allocated invoice values; linked returns reverse discounts in proportion to returned base quantity. Later due collections are separate from new sales. Invoice rounding follows the saved return rule.'};
 }
 function medicineEntries(db,input,options={}){
  const rows=data(db,input,options),page=Number(input.page||1),pageSize=Number(input.pageSize||25);
@@ -99,14 +103,26 @@ function medicineEntries(db,input,options={}){
  const items=rows.slice((page-1)*pageSize,page*pageSize).map(row=>({day:row.day,occurred_at:row.occurred_at,kind:row.kind,
   reference:row.reference,medicine:row.productName,generic:row.genericName||'',taxClass:row.taxClass,quantity:row.quantity,
   salesMinor:row.salesMinor,returnsMinor:row.returnsMinor,netSalesMinor:row.netSalesMinor,gstMinor:row.gstMinor,
-  discountMinor:row.discountMinor,cogsMinor:costVisible?row.cogsMinor:null,grossProfitMinor:costVisible?row.grossProfitMinor:null}));
+  discountMinor:row.discountMinor,lineDiscountMinor:row.lineDiscountMinor,invoiceDiscountMinor:row.invoiceDiscountMinor,
+  returnDiscountMinor:row.returnDiscountMinor,netDiscountMinor:row.netDiscountMinor,
+  cogsMinor:costVisible?row.cogsMinor:null,grossProfitMinor:costVisible?row.grossProfitMinor:null}));
  return {page,pageSize,hasMore:rows.length>page*pageSize,items};
 }
 const quote=x=>'"'+String(x??'').replaceAll('"','""')+'"';
-const reportTitle=groupBy=>({medicine:'Sales by Medicine',generic:'Sales by Generic',category:'Sales by Category',brand:'Sales by Brand/Manufacturer',cashier:'Sales by Cashier',method:'Sales by Payment Method',tax:'Taxable vs Exempt Sales',gst:'GST Report'})[groupBy];
+const reportTitle=groupBy=>({medicine:'Sales by Medicine',generic:'Sales by Generic',category:'Sales by Category',brand:'Sales by Brand/Manufacturer',cashier:'Sales by Cashier',method:'Sales by Payment Method',tax:'Taxable vs Exempt Sales',gst:'GST Report',discount:'Discount Report'})[groupBy];
 const reportStem=groupBy=>reportTitle(groupBy).replaceAll(' ','_').replaceAll('/','_');
 function medicineCsv(db,input,options={}){
  const summary=medicineSummary(db,input,options);
+ if(summary.groupBy==='discount'){
+  const rows=data(db,input,options),out=[[reportTitle('discount')],['Range',summary.range.from,summary.range.to],['Scope',summary.scope],[],
+   ['Medicine','Line discount minor','Invoice discount minor','Return discount minor','Net discount minor','Net sales minor'],
+   ...summary.groups.map(g=>[g.groupLabel,g.lineDiscountMinor,g.invoiceDiscountMinor,g.returnDiscountMinor,g.netDiscountMinor,g.netSalesMinor]),[],
+   ['Total line discount minor',summary.totals.lineDiscountMinor],['Total invoice discount minor',summary.totals.invoiceDiscountMinor],
+   ['Total return discount minor',summary.totals.returnDiscountMinor],['Total net discount minor',summary.totals.netDiscountMinor],[],
+   ['Day','Type','Reference','Medicine','Line discount minor','Invoice discount minor','Return discount minor','Net discount minor'],
+   ...rows.map(r=>[r.day,r.kind,r.reference,r.productName,r.lineDiscountMinor,r.invoiceDiscountMinor,r.returnDiscountMinor,r.netDiscountMinor])];
+  return {filename:'TechOrbit_Discount_Report.csv',csv:'\uFEFF'+out.map(row=>row.map(quote).join(',')).join('\r\n')+'\r\n'};
+ }
  const all=data(db,input,options),head=[summary.groupBy==='generic'?'Generic':summary.groupBy==='category'?'Category':summary.groupBy==='brand'?'Brand/Manufacturer':summary.groupBy==='cashier'?'Cashier':summary.groupBy==='method'?'Original payment method':summary.groupBy==='tax'?'Tax class':summary.groupBy==='gst'?'GST rate / class':'Medicine',...(summary.groupBy==='medicine'?['Generic','Category','Brand']:[]),'Sold quantity','Returned quantity','Sales minor','Returns minor','Net sales minor','GST minor',...(summary.groupBy==='gst'?['Sales GST minor','Return GST minor','Taxable base minor']:[]),'Net ex-GST minor',...(summary.groupBy==='tax'?['Taxable base minor']:[]),'Discount minor',...(summary.costVisible?['COGS minor','Gross profit minor']:[])];
  const out=[[reportTitle(summary.groupBy)],['Range',summary.range.from,summary.range.to],['Day grouping',input.dayMode||'official'],['Scope',summary.scope],[],head,...summary.groups.map(g=>[g.groupLabel,...(summary.groupBy==='medicine'?[g.generic,g.category,g.brand]:[]),g.soldQuantity,g.returnedQuantity,g.salesMinor,g.returnsMinor,g.netSalesMinor,g.gstMinor,...(summary.groupBy==='gst'?[g.salesGstMinor,g.returnGstMinor,g.taxableBaseMinor]:[]),g.netExGstMinor,...(summary.groupBy==='tax'?[g.taxableBaseMinor]:[]),g.discountMinor,...(summary.costVisible?[g.cogsMinor,g.grossProfitMinor]:[])]),[],['Total net sales minor',summary.totals.netSalesMinor],['Total GST minor',summary.totals.gstMinor],...(summary.groupBy==='gst'?[['Total sales GST minor',summary.totals.salesGstMinor],['Total return GST minor',summary.totals.returnGstMinor]]:[])];
  out.push([],['Date','Type','Reference','Medicine','Quantity','Net sales minor','GST minor',...(summary.costVisible?['COGS minor','Gross profit minor']:[])]);
@@ -115,6 +131,17 @@ function medicineCsv(db,input,options={}){
 }
 async function medicineXlsx(db,input,options={}){
  const ExcelJS=require('exceljs'),summary=medicineSummary(db,input,options),all=data(db,input,options);
+ if(summary.groupBy==='discount'){
+  const book=new ExcelJS.Workbook(),sheet=book.addWorksheet('Discount Report');
+  sheet.addRow(['TechOrbit Pharmacy POS - Discount Report']);sheet.addRow(['From',summary.range.from,'To',summary.range.to]);sheet.addRow(['Scope',summary.scope]);sheet.addRow([]);
+  sheet.addRow(['Medicine','Line discount PKR','Invoice discount PKR','Return discount PKR','Net discount PKR','Net sales PKR']);
+  for(const g of summary.groups)sheet.addRow([g.groupLabel,g.lineDiscountMinor/100,g.invoiceDiscountMinor/100,g.returnDiscountMinor/100,g.netDiscountMinor/100,g.netSalesMinor/100]);
+  sheet.addRow([]);for(const [label,value] of [['Total line discount PKR',summary.totals.lineDiscountMinor],['Total invoice discount PKR',summary.totals.invoiceDiscountMinor],['Total return discount PKR',summary.totals.returnDiscountMinor],['Total net discount PKR',summary.totals.netDiscountMinor]])sheet.addRow([label,value/100]);
+  sheet.addRow([]);sheet.addRow(['Day','Type','Reference','Medicine','Line discount PKR','Invoice discount PKR','Return discount PKR','Net discount PKR']);
+  for(const r of all)sheet.addRow([r.day,r.kind,r.reference,r.productName,r.lineDiscountMinor/100,r.invoiceDiscountMinor/100,r.returnDiscountMinor/100,r.netDiscountMinor/100]);
+  sheet.getRow(1).font={bold:true,size:14};sheet.getRow(5).font={bold:true};sheet.columns=Array.from({length:8},(_,i)=>({width:i<4?25:21}));
+  return {filename:'TechOrbit_Discount_Report.xlsx',base64:Buffer.from(await book.xlsx.writeBuffer()).toString('base64')};
+ }
  const book=new ExcelJS.Workbook(),sheet=book.addWorksheet(reportTitle(summary.groupBy).replaceAll('/','-'));
  sheet.addRow([`TechOrbit Pharmacy POS - ${reportTitle(summary.groupBy)}`]);
  sheet.addRow(['From',summary.range.from,'To',summary.range.to]);
@@ -130,6 +157,14 @@ async function medicineXlsx(db,input,options={}){
 function medicinePdf(db,input,options={}){
  const {jsPDF}=require('jspdf'),summary=medicineSummary(db,input,options),doc=new jsPDF({unit:'pt',format:'a4'});
  let y=42;const line=(left,right='')=>{if(y>780){doc.addPage();y=42}doc.text(String(left).slice(0,75),42,y);if(right)doc.text(String(right),550,y,{align:'right'});y+=17};
+ if(summary.groupBy==='discount'){
+  line('TechOrbit Pharmacy POS - Discount Report');line('Line discounts',`PKR ${(summary.totals.lineDiscountMinor/100).toFixed(2)}`);
+  line('Invoice discounts',`PKR ${(summary.totals.invoiceDiscountMinor/100).toFixed(2)}`);
+  line('Return discount reversal',`PKR ${(summary.totals.returnDiscountMinor/100).toFixed(2)}`);
+  line('Net discounts',`PKR ${(summary.totals.netDiscountMinor/100).toFixed(2)}`);
+  line('Medicine','Net discount PKR');for(const row of summary.groups)line(row.groupLabel,(row.netDiscountMinor/100).toFixed(2));
+  return {filename:'TechOrbit_Discount_Report.pdf',base64:Buffer.from(doc.output('arraybuffer')).toString('base64')};
+ }
  line(`TechOrbit Pharmacy POS - ${reportTitle(summary.groupBy)}`);line('Net sales',`PKR ${(summary.totals.netSalesMinor/100).toFixed(2)}`);
  if(summary.groupBy==='gst'){line('Sales GST',`PKR ${(summary.totals.salesGstMinor/100).toFixed(2)}`);line('Return GST',`PKR ${(summary.totals.returnGstMinor/100).toFixed(2)}`);line('Net GST',`PKR ${(summary.totals.gstMinor/100).toFixed(2)}`)}
  line(summary.groupBy==='generic'?'Generic':summary.groupBy==='category'?'Category':summary.groupBy==='brand'?'Brand/Manufacturer':summary.groupBy==='cashier'?'Cashier':summary.groupBy==='method'?'Original payment method':summary.groupBy==='tax'?'Tax class':summary.groupBy==='gst'?'GST rate / class':'Medicine',summary.groupBy==='gst'?'Net GST PKR':'Net sales PKR');for(const row of summary.groups)line(row.groupLabel,((summary.groupBy==='gst'?row.gstMinor:row.netSalesMinor)/100).toFixed(2));

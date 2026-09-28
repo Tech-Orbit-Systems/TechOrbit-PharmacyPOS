@@ -207,6 +207,21 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
     expect(fs.statSync(filePath).size).toBeGreaterThan(100);
     if(format==='CSV')expect(fs.readFileSync(filePath,'utf8')).toContain('"Total sales GST minor","0"');
   }
+  await page.getByRole('tab',{name:'Discount Report'}).click();
+  await page.getByRole('combobox',{name:'Range'}).selectOption('custom');
+  await page.getByLabel('Medicine sales from date').fill('2026-09-12');
+  await page.getByLabel('Medicine sales to date').fill('2026-09-12');
+  await page.getByRole('button',{name:'Run report'}).click();
+  await expect(page.getByRole('heading',{name:'Discount Report'})).toBeVisible();
+  await expect(page.getByText(/Net discounts: PKR 0/)).toBeVisible();
+  for(const format of ['CSV','XLSX','PDF']){
+    const filePath=path.join(dataDir,`r012-discount.${format.toLowerCase()}`);
+    await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},filePath);
+    await page.getByRole('button',{name:`Export ${format}`}).click();
+    await expect(page.getByText(`${format} discount sales saved.`)).toBeVisible({timeout:20000});
+    expect(fs.statSync(filePath).size).toBeGreaterThan(100);
+    if(format==='CSV')expect(fs.readFileSync(filePath,'utf8')).toContain('"Total net discount minor","0"');
+  }
   await page.getByRole('tab',{name:'Daily Sales'}).click();
   await page.getByRole('combobox',{name:'Range'}).selectOption('custom');
   await page.getByLabel('Daily sales from date').fill('2026-09-12');

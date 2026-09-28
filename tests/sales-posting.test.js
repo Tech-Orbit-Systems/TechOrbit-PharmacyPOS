@@ -3,8 +3,10 @@ const {openDatabase}=require("../infrastructure/sqlite/database");
 const {ProductsRepository}=require("../infrastructure/sqlite/repositories/products");
 const {ProductUnitsRepository}=require("../infrastructure/sqlite/repositories/product-units");
 const {SalesPostingService}=require("../infrastructure/sqlite/services/sales-posting");
+const {CustomerReturnsService}=require("../infrastructure/sqlite/services/customer-returns");
+const {randomUUID}=require('crypto');
 const {dailySalesSummary,dailySalesCsv}=require('../modernization/desktop/daily-sales.cjs');
-const {medicineSummary}=require('../modernization/desktop/sales-breakdown.cjs');
+const {medicineSummary,medicineCsv,medicineXlsx,medicinePdf}=require('../modernization/desktop/sales-breakdown.cjs');
 
 describe("Atomic sales posting",()=>{
   let dir,db,product,customer;
@@ -31,6 +33,28 @@ describe("Atomic sales posting",()=>{
       {costVisible:true,now:new Date('2026-09-12T00:00:00Z')});
     expect(daily.totals).toMatchObject({salesMinor:1300,returnsMinor:0,gstMinor:194,discountMinor:150,
       netExGstMinor:1106,cogsMinor:540,grossProfitMinor:566,saleCount:1});
+  });
+  test('discount report separates posted line/invoice discounts and reverses linked returns cumulatively',async()=>{
+    const sale=baseSale({invoiceDiscountType:'percentage',invoiceDiscountValue:10});sale.items[0].unitPriceMinor=123;
+    sale.items[0].discountType='fixed';sale.items[0].discountValue=30;
+    new SalesPostingService(db).post(sale);
+    const input={range:'custom',from:'2026-09-11',to:'2026-09-11',groupBy:'discount'};
+    const options={costVisible:false,now:new Date('2026-09-12T00:00:00Z')};
+    expect(medicineSummary(db,input,options).totals).toMatchObject({lineDiscountMinor:30,invoiceDiscountMinor:120,returnDiscountMinor:0,netDiscountMinor:150});
+    const saleId=db.prepare("SELECT id FROM Sales WHERE invoice_number='INV-100'").get().id;
+    const itemId=db.prepare('SELECT id FROM SaleItems WHERE sale_id=?').get(saleId).id;
+    for(const [index,quantity] of [3,7].entries()){
+      const at=`2026-09-11T13:0${index}:00Z`;
+      new CustomerReturnsService(db).post({saleId,reason:'Discount return fixture',items:[{saleItemId:itemId,baseQuantity:quantity,restockable:false}],refundMethod:'cash',idempotencyKey:`TO-${randomUUID()}`,returnedAt:at});
+      const expected=index===0?{returnDiscountMinor:45,netDiscountMinor:105}:{returnDiscountMinor:150,netDiscountMinor:0};
+      expect(medicineSummary(db,input,options).totals).toMatchObject(expected);
+    }
+    const report=medicineSummary(db,input,options),csv=medicineCsv(db,input,options);
+    expect(report.groups).toHaveLength(1);
+    expect(csv.csv).toContain('"Total net discount minor","0"');
+    expect(csv.csv).not.toContain('COGS minor');
+    expect(Buffer.from((await medicineXlsx(db,input,options)).base64,'base64').subarray(0,2).toString()).toBe('PK');
+    expect(Buffer.from(medicinePdf(db,input,options).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
   });
   test("keeps a sale after midnight on the open official day while calendar view uses its local date",()=>{
     db.prepare("INSERT INTO BusinessDays(opened_at,closed_at,status) VALUES (?,?,?)")
