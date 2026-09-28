@@ -46,6 +46,12 @@ test('B02 customers, dues and expense settlements reconcile through one desktop 
   const overdueExport=path.join(env.TECHORBIT_UI_DATA_DIR,'r027-overdue.csv');await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},overdueExport);
   await page.getByRole('button',{name:'Export CSV',exact:true}).click();await expect(page.getByText('CSV overdue dues report saved.')).toBeVisible();
   expect(fs.readFileSync(overdueExport,'utf8')).toContain('"customer balance minor"');
+  await page.getByRole('tab',{name:'Due Payment/Collection Report',exact:true}).click();
+  await page.getByLabel('Payment account type',{exact:true}).selectOption('customer');await page.getByLabel('Settlement method',{exact:true}).selectOption('digital');await page.getByRole('button',{name:'Run report',exact:true}).click();
+  await expect(page.getByRole('cell',{name:'B02-CUSTOMER',exact:true})).toBeVisible();
+  const settlementExport=path.join(env.TECHORBIT_UI_DATA_DIR,'r028-settlements.csv');await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},settlementExport);
+  await page.getByRole('button',{name:'Export CSV',exact:true}).click();await expect(page.getByText('CSV settlement report saved.')).toBeVisible();
+  expect(fs.readFileSync(settlementExport,'utf8')).toContain('"Collected minor","1000"');
   expect(errors).toEqual([]);
  }finally{await app.close()}
 });

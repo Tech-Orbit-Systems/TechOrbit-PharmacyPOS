@@ -28,6 +28,7 @@ const methods = [
     "supplierBalanceSummary", "supplierBalanceEntries", "supplierBalanceExport",
     "vendorBalanceSummary", "vendorBalanceEntries", "vendorBalanceExport",
     "overdueBalanceSummary", "overdueBalanceEntries", "overdueBalanceExport",
+    "settlementSummary", "settlementEntries", "settlementExport",
   "logout",
   "changePassword",
   "dashboard",

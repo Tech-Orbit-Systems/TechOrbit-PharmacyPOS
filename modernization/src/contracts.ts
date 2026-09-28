@@ -218,7 +218,14 @@ export interface StockValuationSummary {asOfDate:string;items:StockValuationRow[
 export interface AccountBalanceInput {accountType?:'all'|'customer'|'supplier'|'vendor';aging?:'all'|'1-30'|'31-60'|'61-90'|'90+';party?:string;reference?:string;dueFrom?:string;dueTo?:string;status?:'all'|'open'|'paid'|'overdue'}
 export interface AccountBalanceRow {id:number;type:string;partyId:number;party:string;phone:string;reference:string;originDate:string;dueDate:string;originalMinor:number;paymentsMinor:number;creditMinor:number;balanceMinor:number;status:string;overdue:boolean;daysOverdue:number}
 export interface AccountBalanceSummary {asOfDate:string;title:string;byType:{type:string;accountCount:number;balanceMinor:number}[];items:AccountBalanceRow[];totals:{accountCount:number;partyCount:number;originalMinor:number;paymentsMinor:number;creditMinor:number;balanceMinor:number;overdueMinor:number};scope:string}
+export interface SettlementReportInput {range:string;from?:string;to?:string;type?:'all'|'customer'|'supplier'|'vendor';method?:string;party?:string;reference?:string;actor?:string}
+export interface SettlementRow {id:number;type:string;party:string;reference:string;originReference:string;occurredAt:string;amountMinor:number;method:string;direction:string;actor:string}
+export interface SettlementSummary {range:{from:string;to:string};items:SettlementRow[];totals:{count:number;inMinor:number;outMinor:number;netMinor:number};methods:{method:string;inMinor:number;outMinor:number}[];scope:string}
 export interface Api {
+  settlementSummary(input:SettlementReportInput):Promise<SettlementSummary>;
+  settlementEntries(input:SettlementReportInput&{page:number;pageSize?:number}):Promise<{hasMore:boolean;items:SettlementRow[]}>;
+  settlementExport(input:SettlementReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
+
   customerBalanceSummary(input:AccountBalanceInput):Promise<AccountBalanceSummary>;
   customerBalanceEntries(input:AccountBalanceInput&{page:number;pageSize?:number}):Promise<{hasMore:boolean;items:AccountBalanceRow[]}>;
   customerBalanceExport(input:AccountBalanceInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;

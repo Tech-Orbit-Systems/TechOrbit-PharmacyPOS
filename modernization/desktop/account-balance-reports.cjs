@@ -46,7 +46,7 @@ function data(db,input={},options={}){
    throw Error('Account payments and credits do not reconcile to the saved balance');
   const overdue=Boolean(row.balance_minor>0&&row.due_date&&row.due_date<asOfDate);
   const daysOverdue=overdue?Math.ceil((Date.parse(asOfDate+'T00:00:00Z')-Date.parse(row.due_date+'T00:00:00Z'))/86400000):0;
-  return {id:row.id,type,sourceVerified,partyId:row.party_id,party:row.party||'Not linked',phone:row.phone||'',reference:row.reference||`Account #${row.id} (source not linked)`,
+  return {id:row.id,type,sourceVerified,partyId:row.party_id,party:row.party||'Not linked',phone:row.phone||'',reference:row.reference||(sourceVerified?`${type==='supplier'?'Purchase':type==='vendor'?'Expense':'Sale'} #${row.source_id}`:`Account #${row.id} (source not linked)`),
    originDate:row.origin_date||'',dueDate:row.due_date||'',originalMinor:row.original_minor,paymentsMinor:row.payments_minor,
    creditMinor:row.credit_minor,balanceMinor:row.balance_minor,status:row.status,overdue,daysOverdue};
  }).filter(row=>{
