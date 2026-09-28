@@ -210,6 +210,9 @@ export interface StockMovementSummary {range:{from:string;to:string};dayMode:str
 export interface AdjustmentInput extends StockMovementInput {kind?:string}
 export interface AdjustmentRow extends StockMovementRow {kind:string;reason:string;previousQuantity:number|null;newQuantity:number|null}
 export interface AdjustmentSummary {range:{from:string;to:string};dayMode:string;items:AdjustmentRow[];groups:{kind:string;count:number;inQuantity:number;outQuantity:number;netQuantity:number}[];totals:StockMovementSummary['totals'];scope:string}
+export type StockValuationRow=BatchStockRow&{batchCostMinor:number;physicalValueMinor:number;sellableValueMinor:number;blockedValueMinor:number};
+export interface StockValuationGroup {productId:number;name:string;sku:string;batchCount:number;physicalQuantity:number;sellableQuantity:number;physicalValueMinor:number;sellableValueMinor:number;blockedValueMinor:number}
+export interface StockValuationSummary {asOfDate:string;items:StockValuationRow[];products:StockValuationGroup[];totals:{batchCount:number;physicalQuantity:number;sellableQuantity:number;physicalValueMinor:number;sellableValueMinor:number;blockedValueMinor:number};scope:string}
 export interface Api {
   purchaseSummary(input:PurchaseReportInput):Promise<PurchaseReportSummary>;
   purchaseEntries(input:PurchaseReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:PurchaseReportRow[]}>;
@@ -235,6 +238,9 @@ export interface Api {
   adjustmentSummary(input:AdjustmentInput):Promise<AdjustmentSummary>;
   adjustmentEntries(input:AdjustmentInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:AdjustmentRow[]}>;
   adjustmentExport(input:AdjustmentInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
+  stockValuationSummary(input:BatchStockInput):Promise<StockValuationSummary>;
+  stockValuationEntries(input:BatchStockInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:StockValuationRow[]}>;
+  stockValuationExport(input:BatchStockInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
   supplierReturnSummary(input:SupplierReturnReportInput):Promise<SupplierReturnSummary>;
   supplierReturnEntries(input:SupplierReturnReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:SupplierReturnRow[]}>;
   supplierReturnExport(input:SupplierReturnReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;

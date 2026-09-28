@@ -23,6 +23,7 @@ const methods = [
   "batchStockSummary", "batchStockEntries", "batchStockExport",
   "stockMovementSummary", "stockMovementEntries", "stockMovementExport",
   "adjustmentSummary", "adjustmentEntries", "adjustmentExport",
+  "stockValuationSummary", "stockValuationEntries", "stockValuationExport",
   "logout",
   "changePassword",
   "dashboard",

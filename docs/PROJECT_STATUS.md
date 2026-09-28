@@ -1,86 +1,173 @@
 # Pharmacy POS project status
 
+
+
 - Status date: 2026-09-28
+
 - Branch: `feature/approved-dashboard-pos-ui`
+
 Verified application baseline: B02 commit `3db0a98`, pushed to `origin/feature/approved-dashboard-pos-ui`. B03 application delivery is recorded in the canonical tracker with its final commit and test evidence.
 
-The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R022 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
+
+
+The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R023 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
+
+
 
 ## Delivered application increments
 
+
+
 - SQLite migrations and transactional services underpin the isolated modern Electron/React/TypeScript review app. The legacy NeDB application and modern SQLite review app still coexist; operational data has not been migrated or cut over.
+
 - P029-P044 are Done: Product Master, product-specific packing, generic alternatives, batch inventory, opening stock, product import, stock adjustments, supplier receiving, price/discount rules, batch override, warning acknowledgement, cash tender/change, invoice search, immutable 80mm historical receipt reprint, active-cart/uncertain-post recovery and the authoritative quotation service.
+
 - B01 P044-P045 was pushed in `09df349`. P044 is Done. P045's software interaction scope is verified, while physical barcode scanner acceptance remains Partial.
+
 - **B02 P046-P051 was implemented, tested, committed and pushed on 2026-09-27 in `3db0a98`; all six features are Done.** It delivers paged customer search/history, unified customer/supplier/vendor dues, customer collection, supplier payment, vendor settlement, and the modern expenses/vendor ledger. Settlement idempotency, overpayment protection, money movements and audit links have focused checks.
+
 - **B03 P052-P053 is delivered in the modern review app.** Customer returns validate the original invoice and cumulative quantity, credit outstanding dues before recording an actual refund, and put sellable items back into their original batch. Non-sellable returns record disposal without adding sellable stock. Supplier returns validate original purchase and batch receipt attribution, available source stock and cumulative quantity, reduce outstanding payable first, then record any actual refund and stock valuation. Both flows have preview, posting, audit and replay protection.
+
 - **B04 P055-P058 development is Done.** Shift ownership, counted handover, configurable Rs 50 variance rule, manager forced close, cross-midnight business day, dynamic bank/wallet/savings accounts, explicit digital allocation, original daily snapshot and reasoned revisions are implemented. The separate six-month view provides configured official cycles, custom Pakistan date/time ranges, monthly values/chart, history, reasoned revisions and native CSV export. A linked-book pharmacy fixture independently checks sales, returns, GST/COGS, profit, purchases, customer/supplier/vendor dues, stock, cash, bank, wallet and actual savings. Three fresh isolated Electron runs each passed for linked daily closing, shift/day workflow and six-month closing. Formal manual QA/owner accounting signoff and the wider release campaign remain open.
+
 - **B05 P059-P061 development is Done.** Accrual P&L separates GST, discounts, returns, actual batch COGS/reversal and incurred expenses from purchases, settlements and savings transfers. Reports offers Pakistan dates, paged entries, permission-safe totals, empty states and CSV/Excel/PDF Save exports. Dashboard adds the master business/stock KPIs and relevant drilldowns, with cost/profit hidden from unauthorized roles. A linked-book and GST fixture reconciled P&L independently. Five sequential Electron flows including B02/B03/B04 regression passed, and the linked desktop report/exports passed three fresh-database repetitions. Formal manual and owner accounting acceptance remain open; individual report catalogue R001 onward remains pending.
+
 - **R001 Daily Sales development is Done.** The report shows daily totals and paged invoice/return detail with product, category, brand, recorded batch supplier, customer, cashier and payment-method filters. Official closing day is the default, including activity after midnight until close; Pakistan calendar date is selectable. Whole invoices and their linked returns are counted, with filter scope disclosed. Net sales, GST, discounts, paid-at-sale, credit created, refunds, COGS and gross profit reconcile with the linked ledger fixture. Cost/profit require permission; CSV, Excel and PDF use native Save dialogs. Formal manual acceptance remains open.
+
 - **R002 Weekly Sales development is Done.** Monday-start weeks aggregate the exact selected official or Pakistan calendar dates, with partial boundary weeks and the same filters, detail, permissions and exports as R001. A two-week fixture reconciles weekly and invoice totals; linked desktop, cashier access and CSV week summary passed. Formal manual acceptance remains open.
+
 - **R003 Monthly Sales development is Done.** Calendar months aggregate exact selected official or Pakistan calendar dates, with partial boundary months and the same protected filters, invoice/return detail and CSV/Excel/PDF exports. A Pakistan midnight fixture reconciles September/October sales to the daily ledger; the linked desktop CSV month summary passed. Formal manual acceptance remains open.
+
 - **R004 Sales by Medicine development is Done.** Saved sale and linked return lines group by product ID and original medicine name. Invoice rounding follows the same line allocation as customer returns, so unfiltered medicine totals reconcile to Daily Sales. Product, category, brand, recorded batch supplier, customer, cashier and payment filters, paged detail, permission-safe cost/profit and native CSV/Excel/PDF exports are implemented. Formal manual acceptance remains open.
+
 - **R005 Sales by Generic development is Done.** Saved generic-name snapshots group multiple medicines under the same generic. Blank historical names appear as Unspecified generic. Date and relevant filters, paged sale/return detail, cost protection and CSV/Excel/PDF exports reuse the reconciled medicine-line contract. Formal manual acceptance remains open.
+
 - **R006 Sales by Category development is Done.** Current product categories group saved medicine sale/return lines, with Uncategorised shown for blank category. The same date/line filters, ledger reconciliation, permission-safe detail and exports apply. Formal manual acceptance remains open.
+
 - **R007 Sales by Brand/Manufacturer development is Done.** Current product manufacturer/brand groups saved sale/return lines, with Unspecified brand for blank values. The same filters, line ledger reconciliation, protected detail and CSV/Excel/PDF exports apply. Formal manual acceptance remains open.
+
 - **R008 Sales by Cashier development is Done.** Original sale cashier receives linked return reversals; the current user display name labels the group, with Unattributed cashier for missing user links. The same filters, line reconciliation, protected detail and exports apply. Formal manual acceptance remains open.
+
 - **R009 Sales by Payment Method development is Done.** Original invoice method groups sales and linked return reversals; later due collections remain separate from new sale revenue. The linked cash/card/digital/credit totals reconcile to Daily Sales, with filters, protected detail and CSV/Excel/PDF exports. Formal manual acceptance remains open.
+
 - **R010 Taxable vs Exempt Sales development is Done.** Posted line taxable base/GST rate separates taxable and exempt sale/return values; ambiguous zero-value lines remain explicitly unverified. Net GST and taxable base appear with the usual filters, protected detail and CSV/Excel/PDF exports. Formal pharmacy tax review remains open.
+
 - **R011 GST Report development is Done.** Saved GST rate groups show sales GST, linked return GST, net GST and taxable base; exempt and uncertain zero-value lines remain distinct. Paged detail, relevant filters, protected cost/profit and CSV/Excel/PDF exports passed linked desktop checks. Formal pharmacy tax review remains open.
+
 - **R012 Discount Report development is Done.** Saved line and allocated invoice discounts are shown separately by medicine; linked partial returns reverse discounts proportionally without double counting. Net discounts, relevant filters, protected detail and CSV/Excel/PDF exports passed. Formal pharmacy discount policy/statement review remains open.
+
 - **R013 Customer Return Report development is Done.** Saved return lines reconcile cash refunds, receivable credits, GST reversals, restock and disposal to original invoices. Date and relevant medicine/customer filters, paged detail, protected cost and CSV/Excel/PDF exports are available. Formal pharmacy owner reconciliation remains open.
+
 - **R014 Supplier Return Report development is Done.** Saved purchase-return lines reconcile returned batch value, supplier payable credits and actual refunds to the original purchase and money movements. Date and supplier/product/batch filters, paged detail, cost permission and CSV/Excel/PDF exports are implemented. Formal supplier statement/owner reconciliation remains open.
+
 - **R015 Purchase Report development is Done.** Posted purchase totals reconcile saved lines, receiving-time and later payments, supplier returns, current payables and net purchases. Purchased and bonus base units are separate. Date/supplier/product filters, paged invoice detail, cost permission and CSV/Excel/PDF exports are implemented. Formal supplier statement/owner reconciliation remains open.
+
 - **R016 Supplier Purchase Report development is Done.** Posted purchases group by supplier ID with reconciled invoice detail, returns, payments, payable balances and base/bonus units. Filters, cost permission and CSV/Excel/PDF exports are implemented. Formal supplier statement/owner reconciliation remains open.
+
 - **R017 Bonus Stock/Scheme Report development is Done.** Posted bonus purchase lines reconcile paid/free base units and paid/effective cost to original batch receipts, with product grouping, detail, filters and CSV/Excel/PDF. Cost access is permission-gated. Formal physical stock/owner reconciliation remains open.
+
 - **R018 Low Stock Report development is Done.** Active products group live batch quantities into physical, sellable and expired units; configured reorder thresholds drive low/out alerts. Filters, paged detail, `inventory.view` permission and CSV/Excel/PDF are implemented. Formal physical stock/owner reconciliation remains open.
+
 - **R019 Expiry Report development is Done.** Live batches show expired and cumulative 30/60/90-day horizons with physical/sellable quantities and estimated values. Filters, paged detail, cost redaction and CSV/Excel/PDF are implemented. Formal physical stock/owner reconciliation remains open.
+
+- **R023 Stock Valuation Report development is Done.** Saved weighted batch costs value physical/sellable/blocked quantities; filters, cost permissions and CSV/Excel/PDF are implemented. Formal accounting/owner acceptance remains open.
 - **R022 Stock Adjustment/Disposal Report development is Done.** Original adjustment items and non-sellable return allocations reconcile to movement quantities; filters, permissions and CSV/Excel/PDF are implemented. Formal stock/owner acceptance remains open.
+
 - **R021 Stock Movement Report development is Done.** Saved signed ledger quantities, source references and type totals reconcile to selected movement rows; filters, permission checks and CSV/Excel/PDF are implemented. Formal stock/owner reconciliation remains open.
+
 - **R020 Batch Stock Report development is Done.** All batches, including zero stock, show live physical/sellable quantities, expiry and movement components with product grouping. Filters, paged detail, cost redaction and CSV/Excel/PDF are implemented. Formal physical stock/owner reconciliation remains open.
+
 - The B02 Electron test launcher now uses Playwright's default Electron resolution, so its loader is injected. Managed-host sandbox/GPU compatibility is test-only; production window security settings remain unchanged. Earlier Electron launch timeouts and ambiguous test locators were resolved before B02 completion.
+
+
 
 ## Verification checkpoint
 
+
+
 - B02 completion evidence: 3 backend suites / 7 tests, 4 focused modern integration tests, production build and one consolidated isolated Electron E2E passed before commit and push; the master tracker holds the package evidence.
+
 - Fresh status check on 2026-09-27: the same 3 backend suites / 7 tests passed, Accounts integration passed 1/1, TypeScript/Vite production build passed, and the isolated B02 desktop E2E passed 1/1. The desktop test covered customer history, customer collection, supplier payment and vendor expense settlement. The repository was clean and local HEAD matched its upstream at `3db0a98` before this documentation edit.
+
 - B03 verification on 2026-09-27: 4 backend suites / 13 tests, 2 modern integration tests, TypeScript/Vite production build, and 3 isolated desktop E2E flows passed. The B03 desktop flow covers customer due credit and cash refund, restock and disposal, supplier payable credit and refund, and persisted database state after reopening. The three-run acceptance matrix remains Pending.
+
 - Earlier B04 partial checkpoint: 7 affected backend suites / 29 tests, 3 modern integration tests, production build and 3 isolated Electron E2E flows passed in `64d3ba0`.
+
 - Current B04 increment on 2026-09-27: 5 affected backend suites / 21 tests, including 8 focused cash-closing tests and upgrade safety; 24 modern integration tests, TypeScript/Vite build and 4 isolated Electron E2E flows passed. The desktop flow covered account/rule configuration, savings transfer, shift count, official close, revision and restart persistence; B02/B03 E2E also passed. These are package tests, not final three-run acceptance.
+
 - Subsequent B04 six-month increment on 2026-09-28: cash-closing Jest suite passed 8/8; 24 modern integration tests, TypeScript/Vite build and 5 isolated Electron E2E flows passed together. The new period flow covers configured official close, custom range, history and restart; shift/day flow adds a posted digital sale and account allocation; B02/B03 desktop flows regressed. A Pakistan midnight demo-data and purchase-time issue found by B03 regression was corrected before the consolidated pass. These are still focused package runs, not three independent acceptance runs.
+
 - Later B04 export/reconciliation increment on 2026-09-28: cash-closing Jest suite passed 9/9, including an independent manually calculated mixed cash/bank/wallet/savings fixture; modern integration 24/24, TypeScript/Vite build and 5 isolated Electron E2E flows passed together. The six-month desktop flow saved and read back a CSV through the native Save dialog. The fixture is targeted evidence, not independent accounting approval or three full acceptance runs.
+
 - B04 final development verification on 2026-09-28: closing Jest 10/10, modern integration 24/24, TypeScript/Vite build, and six isolated Electron E2E flows including B02/B03 regression passed on the final sequential run. Three independent fresh-database repetitions of linked closing, shift/day closing and six-month closing passed 9/9; machine-readable results and hand-calculated figures are in `docs/evidence/B04_CLOSING_ACCEPTANCE_20260928.md`. One concurrent build/Electron run timed out before login; the full desktop suite passed after build finished. These are automated desktop repetitions, not manual owner signoff.
+
 - B05 final development verification on 2026-09-28: closing/report Jest 10/10, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. The linked report/CSV/Excel/PDF desktop flow passed three fresh-database repetitions. Calculation, role and export details are in `docs/evidence/B05_REPORTING_ACCEPTANCE_20260928.md`. These are automated repetitions, not manual owner signoff.
+
 - R001 development verification on 2026-09-28: affected Jest 18/18, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. A separate midnight test shows an after-midnight sale stays on the official opening day while the calendar view shows its Pakistan civil date. Linked Daily Sales desktop reporting and all three export formats passed; final three fresh-database repetitions are recorded in `docs/evidence/R001_DAILY_SALES_ACCEPTANCE_20260928.md`.
+
 - R002 development verification on 2026-09-28: affected Jest 19/19, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. The two-week ledger fixture, cashier cost denial and desktop CSV week readback are recorded in `docs/evidence/R002_WEEKLY_SALES_ACCEPTANCE_20260928.md`.
+
 - R003 development verification on 2026-09-28: affected Jest 20/20, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. The month boundary, invoice reconciliation, cashier cost denial and desktop CSV month readback are recorded in `docs/evidence/R003_MONTHLY_SALES_ACCEPTANCE_20260928.md`.
+
 - R004 development verification on 2026-09-28: affected Jest 21/21, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. Two-medicine invoice rounding, linked sale/return/COGS totals, cashier cost denial and CSV/Excel/PDF desktop readback are recorded in `docs/evidence/R004_SALES_BY_MEDICINE_ACCEPTANCE_20260928.md`.
+
 - R005 development verification on 2026-09-28: affected Jest 22/22, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. Same-generic multi-medicine grouping, unnamed-generic fallback, cashier cost denial and generic export checks are recorded in `docs/evidence/R005_SALES_BY_GENERIC_ACCEPTANCE_20260928.md`.
+
 - R006 development verification on 2026-09-28: affected Jest 22/22, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. Multi-medicine category reconciliation, linked return/COGS totals, cashier cost denial and desktop CSV readback are recorded in `docs/evidence/R006_SALES_BY_CATEGORY_ACCEPTANCE_20260928.md`.
+
 - R007 development verification on 2026-09-28: affected Jest 22/22, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. Multi-medicine brand grouping, linked return/COGS totals, cashier cost denial and desktop CSV/Excel checks are recorded in `docs/evidence/R007_SALES_BY_BRAND_ACCEPTANCE_20260928.md`.
+
 - R008 development verification on 2026-09-28: affected Jest 23/23, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. Two-cashier invoice attribution, linked returns, role-safe detail and desktop CSV readback are recorded in `docs/evidence/R008_SALES_BY_CASHIER_ACCEPTANCE_20260928.md`.
+
 - R009 development verification on 2026-09-28: affected Jest 23/23, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. Original payment-method attribution, later collection exclusion, cashier cost denial and desktop CSV readback are recorded in `docs/evidence/R009_SALES_BY_METHOD_ACCEPTANCE_20260928.md`.
+
 - R010 development verification on 2026-09-28: affected Jest 23/23, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. Mixed taxable/exempt line totals, linked GST/return reconciliation, cashier cost denial and desktop CSV readback are recorded in `docs/evidence/R010_TAXABLE_EXEMPT_ACCEPTANCE_20260928.md`.
+
 - R011 development verification on 2026-09-28: affected Jest 23/23, modern integration 25/25 and TypeScript/Vite build passed. The linked Electron flow checked GST CSV/Excel/PDF exports and prior report/closing flows. A broad desktop run passed 22/23; its slow Excel export wait was increased and the linked flow passed individually. The GST sale/return and cashier evidence is in `docs/evidence/R011_GST_REPORT_ACCEPTANCE_20260928.md`.
+
 - R012 development verification on 2026-09-28: affected Jest 24/24, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Posted line/invoice discounts, two partial return reversals, cashier cost denial and desktop CSV/Excel/PDF readback are in `docs/evidence/R012_DISCOUNT_REPORT_ACCEPTANCE_20260928.md`.
+
 - R013 development verification on 2026-09-28: affected Jest 26/26, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Cash refund/credit relief, GST/stock quantities, after-midnight official date, cashier cost denial and linked desktop CSV readback are in `docs/evidence/R013_CUSTOMER_RETURN_REPORT_ACCEPTANCE_20260928.md`.
+
 - R014 development verification on 2026-09-28: affected Jest 31/31, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Payable credit/actual bank refund, original batch reduction, cashier denial and linked desktop CSV readback are in `docs/evidence/R014_SUPPLIER_RETURN_REPORT_ACCEPTANCE_20260928.md`.
+
 - R015 development verification on 2026-09-28: affected Jest 32/32, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Mixed purchase/payment/return/bonus quantities, cashier denial and linked desktop CSV readback are in `docs/evidence/R015_PURCHASE_REPORT_ACCEPTANCE_20260928.md`.
+
 - R016 development verification on 2026-09-28: affected Jest 33/33, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Two-supplier reconciliation, cashier denial and linked desktop CSV readback are in `docs/evidence/R016_SUPPLIER_PURCHASE_REPORT_ACCEPTANCE_20260928.md`.
+
 - R017 development verification on 2026-09-28: affected Jest 34/34, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Bonus receipt reconciliation, cashier denial and linked desktop CSV readback are in `docs/evidence/R017_BONUS_STOCK_SCHEME_REPORT_ACCEPTANCE_20260928.md`.
+
 - R018 development verification on 2026-09-28: affected Jest 36/36, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Threshold/expiry reconciliation, cashier denial and desktop CSV readback are in `docs/evidence/R018_LOW_STOCK_REPORT_ACCEPTANCE_20260928.md`.
+
 - R019 development verification on 2026-09-28: affected Jest 37/37, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Expiry boundaries, value redaction and desktop CSV readback are in `docs/evidence/R019_EXPIRY_REPORT_ACCEPTANCE_20260928.md`.
+
+- R023 development verification on 2026-09-28: affected Jest 41/41, modern integration 25/25, production build and full Electron 23/23 passed. Evidence: `docs/evidence/R023_STOCK_VALUATION_REPORT_ACCEPTANCE_20260928.md`.
 - R022 development verification on 2026-09-28: affected Jest 40/40, modern integration 25/25, production build and full Electron 23/23 passed. Evidence: `docs/evidence/R022_STOCK_ADJUSTMENT_DISPOSAL_REPORT_ACCEPTANCE_20260928.md`.
+
 - R021 development verification on 2026-09-28: affected Jest 39/39, modern integration 25/25, production build and full Electron regression 23/23 passed. Evidence: `docs/evidence/R021_STOCK_MOVEMENT_REPORT_ACCEPTANCE_20260928.md`.
+
 - R020 development verification on 2026-09-28: affected Jest 38/38, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Zero-batch and inventory parity, cashier denial and desktop CSV readback are in `docs/evidence/R020_BATCH_STOCK_REPORT_ACCEPTANCE_20260928.md`.
+
 - These focused results do not replace the final 91-scenario, three-run acceptance campaign or prove hardware, packaged runtime and live-data readiness. Previously accepted unrelated flows were not rerun during this status check.
+
+
 
 ## Open work and release boundaries
 
+
+
 - **P054 cash shift backend foundation is already Done** in commit `7047c78`; its shift/period fixture tests passed again on 2026-09-27 (2/2). This is foundation only, not acceptance of the full closing workflow.
+
 - **B04 P055-P058 and B05 P059-P061 development are complete** on the P054 foundation. The owner decisions are in `docs/closing-decisions-20260914.md`; linked-book and three-run automated evidence are in `docs/evidence/B04_CLOSING_ACCEPTANCE_20260928.md` and `docs/evidence/B05_REPORTING_ACCEPTANCE_20260928.md`. Formal manual QA and an actual pharmacy's statement review remain release acceptance. The individual report catalogue R001 onward is separate work.
+
 - P045 needs a physical scanner run. Physical 80mm printer evidence, DPI/small-screen checks, role/security matrix, backup/restore and fault campaign, financial golden data, performance, signed installer/upgrade, production-data migration rehearsal and pilot remain release work.
+
 - The modern app uses isolated review data by default. No live cutover, destructive cleanup, stock/unit rebasing or go-live is authorized. Generic multi-industry POS ideas remain discussion only and are outside the existing Pharmacy V1 plan unless the owner explicitly changes it.
+
+
 
 ## Next action
 
-Implement R023 Stock Valuation Report next. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.
+
+
+Implement R024 Customer Receivable Report next. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.

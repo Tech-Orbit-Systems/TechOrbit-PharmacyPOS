@@ -12,6 +12,7 @@ const {bonusStockSummary,bonusStockEntries,bonusStockCsv,bonusStockXlsx,bonusSto
 const {stockMovementSummary,stockMovementEntries,stockMovementCsv,stockMovementXlsx,stockMovementPdf}=require('../modernization/desktop/stock-movement-report.cjs');
 const {adjustmentSummary,adjustmentEntries,adjustmentCsv,adjustmentXlsx,adjustmentPdf}=require('../modernization/desktop/adjustment-report.cjs');
 const {StockAdjustmentsService}=require('../infrastructure/sqlite/services/stock-adjustments');
+const {stockValuationSummary,stockValuationEntries,stockValuationCsv,stockValuationXlsx,stockValuationPdf}=require('../modernization/desktop/stock-valuation-report.cjs');
 const key=n=>`TO-${String(n).padStart(8,'0')}-2222-2222-2222-222222222222`;
 
 describe('supplier purchase returns',()=>{
@@ -66,6 +67,21 @@ describe('supplier purchase returns',()=>{
   expect(Buffer.from(adjustmentPdf(db,input).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
   db.prepare('UPDATE StockAdjustmentItems SET new_quantity=new_quantity+1').run();
   expect(()=>adjustmentSummary(db,input)).toThrow(/does not reconcile/);
+ });
+ test('R023 values mixed-cost receipts with saved weighted batch cost and splits blocked stock',async()=>{
+  new PurchaseReceivingService(db).receive({supplierId:db.prepare('SELECT id FROM Suppliers').get().id,idempotencyKey:'mixed-cost-buy',paymentMethod:'cash',amountPaidMinor:3000,
+   items:[{productId:item.product_id,purchasedQuantity:10,unitCostMinor:300,salePriceMinor:400}]});
+  const report=stockValuationSummary(db,{});
+  expect(db.prepare('SELECT unit_cost_minor FROM ProductBatches WHERE id=?').get(batch.id).unit_cost_minor).toBe(200);
+  expect(report.totals).toMatchObject({physicalQuantity:20,sellableQuantity:20,physicalValueMinor:4000,sellableValueMinor:4000,blockedValueMinor:0});
+  expect(report.items[0].batchCostMinor).toBe(200);
+  expect(report.items[0].effectiveCostMinor).toBe(300);
+  db.prepare('UPDATE Products SET active=0 WHERE id=?').run(item.product_id);
+  expect(stockValuationSummary(db,{}).totals).toMatchObject({physicalValueMinor:4000,sellableValueMinor:0,blockedValueMinor:4000});
+  expect(stockValuationEntries(db,{page:1}).items).toHaveLength(1);
+  expect(stockValuationCsv(db,{}).csv).toContain('"Total physical value minor","4000"');
+  expect(Buffer.from((await stockValuationXlsx(db,{})).base64,'base64').subarray(0,2).toString()).toBe('PK');
+  expect(Buffer.from(stockValuationPdf(db,{}).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
  });
 
  test('blocks excess return and leaves every ledger untouched',()=>{

@@ -50,5 +50,13 @@ test('P032 batch live-stock workflow passes once with isolated data',async()=>{
   await page.getByRole('button',{name:'Export CSV'}).click();
   await expect(page.getByText('CSV stock movement report saved.')).toBeVisible();
   expect(fs.readFileSync(movementExport,'utf8')).toContain('"Net movement"');
+  await page.getByRole('tab',{name:'Stock Valuation Report'}).click();
+  await expect(page.getByRole('heading',{name:'Stock Valuation Report'})).toBeVisible();
+  await expect(page.getByText(/Blocked value: PKR/)).toBeVisible();
+  const valuationExport=path.join(env.TECHORBIT_UI_DATA_DIR,'r023-stock-valuation.csv');
+  await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},valuationExport);
+  await page.getByRole('button',{name:'Export CSV'}).click();
+  await expect(page.getByText('CSV stock valuation report saved.')).toBeVisible();
+  expect(fs.readFileSync(valuationExport,'utf8')).toContain('"Saved batch cost minor"');
  }finally{await app.close()}
 });
