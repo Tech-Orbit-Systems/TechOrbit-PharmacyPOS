@@ -26,6 +26,7 @@ const methods = [
   "stockValuationSummary", "stockValuationEntries", "stockValuationExport",
     "customerBalanceSummary", "customerBalanceEntries", "customerBalanceExport",
     "supplierBalanceSummary", "supplierBalanceEntries", "supplierBalanceExport",
+    "vendorBalanceSummary", "vendorBalanceEntries", "vendorBalanceExport",
   "logout",
   "changePassword",
   "dashboard",

@@ -34,6 +34,12 @@ test('B02 customers, dues and expense settlements reconcile through one desktop 
   const supplierExport=path.join(env.TECHORBIT_UI_DATA_DIR,'r025-supplier-payable.csv');await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},supplierExport);
   await page.getByRole('button',{name:'Export CSV',exact:true}).click();await expect(page.getByText('CSV supplier payable report saved.')).toBeVisible();
   expect(fs.readFileSync(supplierExport,'utf8')).toContain('"Total balance minor","0"');
+  await page.getByRole('tab',{name:'Vendor Payable Report',exact:true}).click();
+  await page.getByLabel('Vendor name',{exact:true}).fill('Utility Vendor');await page.getByLabel('Balance status',{exact:true}).selectOption('paid');await page.getByRole('button',{name:'Run report',exact:true}).click();
+  await expect(page.getByRole('cell',{name:'B02-EXP-001',exact:true})).toBeVisible();
+  const vendorExport=path.join(env.TECHORBIT_UI_DATA_DIR,'r026-vendor-payable.csv');await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},vendorExport);
+  await page.getByRole('button',{name:'Export CSV',exact:true}).click();await expect(page.getByText('CSV vendor payable report saved.')).toBeVisible();
+  expect(fs.readFileSync(vendorExport,'utf8')).toContain('"Total later payments minor","7000"');
   expect(errors).toEqual([]);
  }finally{await app.close()}
 });

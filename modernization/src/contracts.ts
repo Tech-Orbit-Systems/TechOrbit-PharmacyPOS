@@ -81,6 +81,7 @@ export interface User {
   canViewSalesReport:boolean;
   canViewInventory:boolean;
   canViewDues:boolean;
+  canViewVendorDues:boolean;
 }
 export interface Quote {
   amountPaidMinor:number;
@@ -225,6 +226,10 @@ export interface Api {
   supplierBalanceSummary(input:AccountBalanceInput):Promise<AccountBalanceSummary>;
   supplierBalanceEntries(input:AccountBalanceInput&{page:number;pageSize?:number}):Promise<{hasMore:boolean;items:AccountBalanceRow[]}>;
   supplierBalanceExport(input:AccountBalanceInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
+
+  vendorBalanceSummary(input:AccountBalanceInput):Promise<AccountBalanceSummary>;
+  vendorBalanceEntries(input:AccountBalanceInput&{page:number;pageSize?:number}):Promise<{hasMore:boolean;items:AccountBalanceRow[]}>;
+  vendorBalanceExport(input:AccountBalanceInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
 
   purchaseSummary(input:PurchaseReportInput):Promise<PurchaseReportSummary>;
   purchaseEntries(input:PurchaseReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:PurchaseReportRow[]}>;

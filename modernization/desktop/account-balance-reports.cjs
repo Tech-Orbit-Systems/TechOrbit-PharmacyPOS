@@ -1,6 +1,6 @@
 const {dayKey,validDate}=require('./ranges.cjs');
 const quote=value=>'"'+String(value??'').replaceAll('"','""')+'"';
-const titles={customer:'Customer Receivable Report',supplier:'Supplier Payable Report'};
+const titles={customer:'Customer Receivable Report',supplier:'Supplier Payable Report',vendor:'Vendor Payable Report'};
 function data(db,input={},options={}){
  const type=options.type||'customer';
  if(!titles[type])throw Error('Choose a supported balance report');
@@ -13,7 +13,11 @@ function data(db,input={},options={}){
  if(input.dueFrom&&input.dueTo&&input.dueFrom>input.dueTo)throw Error('Due dates are reversed');
  const status=input.status||'open';if(!['all','open','paid','overdue'].includes(status))throw Error('Choose a valid balance status');
  const asOfDate=dayKey(options.now||new Date());
- const rows=type==='supplier'?db.prepare(`SELECT r.id,r.supplier_id party_id,c.name party,c.phone,r.source_type,r.source_id,
+ const rows=type==='vendor'?db.prepare(`SELECT r.id,r.vendor_id party_id,c.name party,c.phone,'expense' source_type,r.expense_id source_id,
+  r.original_minor,r.balance_minor,r.due_date,r.status,s.reference,s.expense_date origin_date,s.balance_due_minor source_balance,
+  COALESCE((SELECT SUM(p.amount_minor) FROM ExpensePayments p WHERE p.payable_id=r.id),0) payments_minor,0 credit_minor
+  FROM ExpensePayables r LEFT JOIN Vendors c ON c.id=r.vendor_id LEFT JOIN Expenses s ON s.id=r.expense_id AND s.vendor_id=r.vendor_id AND s.status='posted'
+  WHERE r.status<>'void' ORDER BY c.name,r.due_date,r.id`).all():type==='supplier'?db.prepare(`SELECT r.id,r.supplier_id party_id,c.name party,c.phone,r.source_type,r.source_id,
   r.original_minor,r.balance_minor,r.due_date,r.status,s.invoice_number reference,s.purchased_at origin_date,s.balance_due_minor source_balance,
   COALESCE((SELECT SUM(p.amount_minor) FROM PurchasePayments p WHERE p.payable_id=r.id),0) payments_minor,
   COALESCE((SELECT SUM(sr.payable_credit_minor) FROM PurchaseReturns sr WHERE sr.purchase_id=s.id),0) credit_minor
@@ -26,8 +30,8 @@ function data(db,input={},options={}){
   ORDER BY c.name,r.due_date,r.id`).all();
  if(rows.length>10000)throw Error('Balance report exceeds 10,000 accounts; reconcile or narrow source data');
  const items=rows.map(row=>{
-  const sourceVerified=row.source_type===(type==='supplier'?'purchase':'sale')&&row.source_balance!=null;
-  if(!sourceVerified&&type==='customer')throw Error('Receivable source cannot be reconciled to a saved sale');
+  const sourceVerified=row.source_type===(type==='supplier'?'purchase':type==='vendor'?'expense':'sale')&&row.source_balance!=null;
+  if(!sourceVerified&&type!=='supplier')throw Error('Receivable source cannot be reconciled to a saved sale');
   if(type==='supplier'&&row.source_type==='purchase'&&!sourceVerified)throw Error('Supplier payable source cannot be reconciled to a saved purchase');
   if(row.original_minor-row.payments_minor-row.credit_minor!==row.balance_minor||sourceVerified&&row.source_balance!==row.balance_minor)
    throw Error('Account payments and credits do not reconcile to the saved balance');

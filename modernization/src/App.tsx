@@ -206,7 +206,7 @@ export function App() {
           {page === 'Purchases' && <Purchases initialTab="purchases"/>}
           {page === 'Accounts' && <Accounts/>}
           {page === 'Closing' && <Closing/>}
-          {page === 'Reports' && <Reports canViewProfit={user.canViewProfit} canViewSalesReport={user.canViewSalesReport} canViewInventory={user.canViewInventory} canViewDues={user.canViewDues}/>}
+          {page === 'Reports' && <Reports canViewProfit={user.canViewProfit} canViewSalesReport={user.canViewSalesReport} canViewInventory={user.canViewInventory} canViewDues={user.canViewDues} canViewVendorDues={user.canViewVendorDues}/>}
           {page === 'Suppliers' && <Purchases initialTab="suppliers"/>}
           {page === "Settings" && (
             <>

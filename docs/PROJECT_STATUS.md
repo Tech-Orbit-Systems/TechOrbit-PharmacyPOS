@@ -10,7 +10,7 @@ Verified application baseline: B02 commit `3db0a98`, pushed to `origin/feature/a
 
 
 
-The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R025 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
+The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R026 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
 
 
 
@@ -170,8 +170,10 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 
 - **R025 Supplier Payable Report development is Done.** Purchase debt, later supplier payments and return credits reconcile to saved payable and purchase balances. Supplier/reference and due-date/status filters, paged detail and CSV/Excel/PDF require dues.manage. Unlinked source accounts are labelled; no payment history is invented. Formal owner reconciliation remains open.
 
+- **R026 Vendor Payable Report development is Done.** Expense creation debt excludes initial payment; later vendor settlements reconcile with saved expense/account balance. Vendor/reference/due/status filters, paged detail and CSV/Excel/PDF require dues.manage and expense.manage. Persisted balances survive restart; formal owner reconciliation remains open.
+
 ## Next action
 
 
 
-Implement R026 Vendor Payable Report next. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.
+Implement R027 Overdue Dues Report next. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.
