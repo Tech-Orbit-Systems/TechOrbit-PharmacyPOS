@@ -126,6 +126,21 @@ describe("Atomic sales posting",()=>{
     await brandBook.xlsx.load(Buffer.from((await reports.medicineXlsx(db,{...input,groupBy:'brand'},{costVisible:true})).base64,'base64'));
     expect(brandBook.getWorksheet('Sales by Brand-Manufacturer').getCell('A7').value).toBe('Unspecified brand');
   });
+  test("cashier report attributes sale lines and linked net totals to original sale users",()=>{
+    const stamp=new Date().toISOString();
+    const insert=db.prepare("INSERT INTO Users(username,password_hash,display_name,role_id,created_at,updated_at) VALUES (?,? ,?,(SELECT id FROM Roles WHERE code='cashier'),?,?)");
+    const first=Number(insert.run('counter-a','fixture','Counter A',stamp,stamp).lastInsertRowid);
+    const second=Number(insert.run('counter-b','fixture','Counter B',stamp,stamp).lastInsertRowid);
+    const service=new SalesPostingService(db);
+    service.post(baseSale({createdBy:first}));
+    service.post(baseSale({invoiceNumber:'INV-101',idempotencyKey:'sale-key-101',createdBy:second}));
+    const input={range:'custom',from:'2026-09-11',to:'2026-09-11',groupBy:'cashier'};
+    const report=medicineSummary(db,input,{costVisible:true,now:new Date('2026-09-12T00:00:00Z')});
+    expect(report.groups.map(row=>row.groupLabel).sort()).toEqual(['Counter A','Counter B']);
+    expect(report.groups.map(row=>row.netSalesMinor)).toEqual([1300,1300]);
+    expect(report.totals.netSalesMinor).toBe(dailySalesSummary(db,input,{costVisible:true,now:new Date('2026-09-12T00:00:00Z')}).totals.netSalesMinor);
+    expect(medicineSummary(db,{...input,cashier:'Counter A'},{costVisible:false}).groups).toHaveLength(1);
+  });
   test("creates receivable and only records money actually collected",()=>{const result=new SalesPostingService(db).post(baseSale({paymentMethod:"credit",collectionMethod:"cash",amountPaidMinor:500,customerId:Number(customer),dueDate:"2026-10-01"}));
     expect(result.balanceDueMinor).toBe(result.finalTotalMinor-500); expect(db.prepare("SELECT method,amount_minor FROM MoneyMovements").get()).toEqual({method:"cash",amount_minor:500});
     expect(db.prepare("SELECT balance_minor FROM Receivables").get().balance_minor).toBe(result.balanceDueMinor);

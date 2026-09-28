@@ -48,6 +48,9 @@ test('cost and profit report is denied to a cashier below the UI',async()=>{
     const brand=await gateway.call('medicineSummary',{range:'1y',groupBy:'brand'});
     assert.equal(brand.totals.netSalesMinor,medicine.totals.netSalesMinor);
     assert.ok(brand.groups.every(row=>row.cogsMinor===null));
+    const cashiers=await gateway.call('medicineSummary',{range:'1y',groupBy:'cashier'});
+    assert.equal(cashiers.totals.netSalesMinor,medicine.totals.netSalesMinor);
+    assert.ok(cashiers.groups.every(row=>row.cogsMinor===null));
     await assert.rejects(gateway.call('dailySalesSummary',{range:'7d',method:'other'}),/payment method/);
     await assert.rejects(gateway.call('reportProfitLoss',{range:'7d'}),/role does not allow/);
     await assert.rejects(gateway.call('reportEntries',{range:'7d',page:1}),/role does not allow/);

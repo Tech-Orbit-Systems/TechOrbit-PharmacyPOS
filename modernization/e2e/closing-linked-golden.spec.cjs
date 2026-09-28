@@ -154,6 +154,18 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
   await page.getByRole('button',{name:'Export CSV'}).click();
   await expect(page.getByText('CSV brand sales saved.')).toBeVisible();
   expect(fs.readFileSync(brandExport,'utf8')).toContain('"Total net sales minor","10000"');
+  await page.getByRole('tab',{name:'Sales by Cashier'}).click();
+  await page.getByRole('combobox',{name:'Range'}).selectOption('custom');
+  await page.getByLabel('Medicine sales from date').fill('2026-09-12');
+  await page.getByLabel('Medicine sales to date').fill('2026-09-12');
+  await page.getByRole('button',{name:'Run report'}).click();
+  await expect(page.getByRole('heading',{name:'Sales by Cashier'})).toBeVisible();
+  await expect(page.getByRole('row').filter({hasText:'B04 Reviewer'}).first()).toContainText('100');
+  const cashierExport=path.join(dataDir,'r008-sales-by-cashier.csv');
+  await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},cashierExport);
+  await page.getByRole('button',{name:'Export CSV'}).click();
+  await expect(page.getByText('CSV cashier sales saved.')).toBeVisible();
+  expect(fs.readFileSync(cashierExport,'utf8')).toContain('"Total net sales minor","10000"');
   await page.getByRole('tab',{name:'Daily Sales'}).click();
   await page.getByRole('combobox',{name:'Range'}).selectOption('custom');
   await page.getByLabel('Daily sales from date').fill('2026-09-12');
