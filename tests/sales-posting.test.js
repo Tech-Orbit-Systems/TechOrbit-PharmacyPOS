@@ -71,6 +71,8 @@ describe("Atomic sales posting",()=>{
     const input={range:'custom',from:'2026-09-11',to:'2026-09-11'},options={costVisible:true,now:new Date('2026-09-12T00:00:00Z')};
     const report=customerReturnSummary(db,input,options),daily=dailySalesSummary(db,input,options);
     expect(report.totals).toMatchObject({returnMinor:780,refundMinor:260,receivableCreditMinor:520,returnCount:2,restockQuantity:2,disposalQuantity:4});
+    const disposal=require('../modernization/desktop/adjustment-report.cjs').adjustmentSummary(db,{...input,kind:'return_disposal'},options);
+    expect(disposal.totals).toMatchObject({outQuantity:4,netQuantity:-4});
     expect(report.totals.returnMinor).toBe(daily.totals.returnsMinor);
     expect(report.totals.refundMinor).toBe(daily.totals.refundMinor);
     expect(report.totals.receivableCreditMinor).toBe(daily.totals.receivableCreditMinor);

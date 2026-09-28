@@ -207,6 +207,9 @@ export interface StockMovementInput extends PurchaseReportInput {batch?:string;r
 export interface StockMovementRow {id:number;day:string;occurredAt:string;productId:number;batchId:number|null;medicine:string;sku:string;generic:string;category:string;brand:string;baseUnit:string;batch:string;expiryDate:string;supplier:string;type:string;quantityDelta:number;referenceType:string;referenceId:string;note:string;userName:string}
 export interface StockMovementGroup {type:string;count:number;inQuantity:number;outQuantity:number;netQuantity:number}
 export interface StockMovementSummary {range:{from:string;to:string};dayMode:string;items:StockMovementRow[];groups:StockMovementGroup[];totals:{count:number;inQuantity:number;outQuantity:number;netQuantity:number};scope:string}
+export interface AdjustmentInput extends StockMovementInput {kind?:string}
+export interface AdjustmentRow extends StockMovementRow {kind:string;reason:string;previousQuantity:number|null;newQuantity:number|null}
+export interface AdjustmentSummary {range:{from:string;to:string};dayMode:string;items:AdjustmentRow[];groups:{kind:string;count:number;inQuantity:number;outQuantity:number;netQuantity:number}[];totals:StockMovementSummary['totals'];scope:string}
 export interface Api {
   purchaseSummary(input:PurchaseReportInput):Promise<PurchaseReportSummary>;
   purchaseEntries(input:PurchaseReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:PurchaseReportRow[]}>;
@@ -229,6 +232,9 @@ export interface Api {
   stockMovementSummary(input:StockMovementInput):Promise<StockMovementSummary>;
   stockMovementEntries(input:StockMovementInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:StockMovementRow[]}>;
   stockMovementExport(input:StockMovementInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
+  adjustmentSummary(input:AdjustmentInput):Promise<AdjustmentSummary>;
+  adjustmentEntries(input:AdjustmentInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:AdjustmentRow[]}>;
+  adjustmentExport(input:AdjustmentInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
   supplierReturnSummary(input:SupplierReturnReportInput):Promise<SupplierReturnSummary>;
   supplierReturnEntries(input:SupplierReturnReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:SupplierReturnRow[]}>;
   supplierReturnExport(input:SupplierReturnReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;

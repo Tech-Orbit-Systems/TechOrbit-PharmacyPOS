@@ -10,6 +10,8 @@ const {purchaseSummary,purchaseEntries,purchaseCsv,purchaseXlsx,purchasePdf}=req
 const {supplierPurchaseSummary,supplierPurchaseEntries,supplierPurchaseCsv,supplierPurchaseXlsx,supplierPurchasePdf}=require('../modernization/desktop/purchase-report.cjs');
 const {bonusStockSummary,bonusStockEntries,bonusStockCsv,bonusStockXlsx,bonusStockPdf}=require('../modernization/desktop/bonus-stock-report.cjs');
 const {stockMovementSummary,stockMovementEntries,stockMovementCsv,stockMovementXlsx,stockMovementPdf}=require('../modernization/desktop/stock-movement-report.cjs');
+const {adjustmentSummary,adjustmentEntries,adjustmentCsv,adjustmentXlsx,adjustmentPdf}=require('../modernization/desktop/adjustment-report.cjs');
+const {StockAdjustmentsService}=require('../infrastructure/sqlite/services/stock-adjustments');
 const key=n=>`TO-${String(n).padStart(8,'0')}-2222-2222-2222-222222222222`;
 
 describe('supplier purchase returns',()=>{
@@ -48,6 +50,22 @@ describe('supplier purchase returns',()=>{
   expect(stockMovementCsv(db,input).csv).toContain('"Net movement","6"');
   expect(Buffer.from((await stockMovementXlsx(db,input)).base64,'base64').subarray(0,2).toString()).toBe('PK');
   expect(Buffer.from(stockMovementPdf(db,input).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+ });
+ test('R022 reconciles manual disposal and gain to original adjustment items and detects drift',async()=>{
+  const service=new StockAdjustmentsService(db);
+  service.post({adjustmentType:'disposal',idempotencyKey:'report-disposal',reason:'Damaged',roleCode:'admin',items:[{batchId:batch.id,quantityDelta:-2}]});
+  service.post({adjustmentType:'gain',idempotencyKey:'report-gain',reason:'Count correction',roleCode:'admin',items:[{batchId:batch.id,quantityDelta:1}]});
+  const day=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Karachi'}),input={range:'custom',from:day,to:day};
+  const report=adjustmentSummary(db,input);
+  expect(report.totals).toMatchObject({count:2,inQuantity:1,outQuantity:2,netQuantity:-1});
+  expect(report.items.find(row=>row.kind==='disposal')).toMatchObject({previousQuantity:10,newQuantity:8,quantityDelta:-2});
+  expect(adjustmentSummary(db,{...input,kind:'disposal'}).totals.outQuantity).toBe(2);
+  expect(adjustmentEntries(db,{...input,page:1,pageSize:1}).hasMore).toBe(true);
+  expect(adjustmentCsv(db,input).csv).toContain('"Net adjustment","-1"');
+  expect(Buffer.from((await adjustmentXlsx(db,input)).base64,'base64').subarray(0,2).toString()).toBe('PK');
+  expect(Buffer.from(adjustmentPdf(db,input).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+  db.prepare('UPDATE StockAdjustmentItems SET new_quantity=new_quantity+1').run();
+  expect(()=>adjustmentSummary(db,input)).toThrow(/does not reconcile/);
  });
 
  test('blocks excess return and leaves every ledger untouched',()=>{
