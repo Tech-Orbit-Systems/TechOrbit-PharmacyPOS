@@ -79,6 +79,7 @@ export interface User {
   demo: boolean;
   canViewProfit:boolean;
   canViewSalesReport:boolean;
+  canViewInventory:boolean;
 }
 export interface Quote {
   amountPaidMinor:number;
@@ -191,6 +192,9 @@ export interface SupplierPurchaseSummary {range:{from:string;to:string};dayMode:
 export interface BonusStockRow {id:number;purchaseId:number;day:string;invoice:string;supplierId:number;supplier:string;productId:number;medicine:string;sku:string;generic:string;category:string;brand:string;batch:string;expiryDate:string;purchaseUnit:string;unitsPerPurchaseUnit:number;purchasedQuantity:number;bonusQuantity:number;purchasedBaseQuantity:number;bonusBaseQuantity:number;receivedBaseQuantity:number;paidCostMinor:number;effectiveUnitCostMinor:number}
 export interface BonusStockGroup {productId:number;medicine:string;sku:string;generic:string;category:string;brand:string;lineCount:number;purchasedBaseQuantity:number;bonusBaseQuantity:number;receivedBaseQuantity:number;paidCostMinor:number}
 export interface BonusStockSummary {range:{from:string;to:string};dayMode:string;items:BonusStockRow[];products:BonusStockGroup[];totals:{lineCount:number;purchasedBaseQuantity:number;bonusBaseQuantity:number;receivedBaseQuantity:number;paidCostMinor:number};scope:string}
+export interface LowStockInput {q?:string;generic?:string;category?:string;brand?:string;supplier?:string;status?:'all'|'low'|'out'}
+export interface LowStockRow {productId:number;sku:string;medicine:string;generic:string;category:string;brand:string;supplier:string;baseUnit:string;minimumStock:number;reorderLevel:number;threshold:number;physicalQuantity:number;sellableQuantity:number;expiredQuantity:number;batchCount:number;status:'low'|'out';unitsToClearAlert:number}
+export interface LowStockSummary {asOfDate:string;items:LowStockRow[];totals:{productCount:number;outCount:number;lowCount:number;physicalQuantity:number;sellableQuantity:number;expiredQuantity:number;unitsToClearAlert:number};scope:string}
 export interface Api {
   purchaseSummary(input:PurchaseReportInput):Promise<PurchaseReportSummary>;
   purchaseEntries(input:PurchaseReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:PurchaseReportRow[]}>;
@@ -201,6 +205,9 @@ export interface Api {
   bonusStockSummary(input:PurchaseReportInput):Promise<BonusStockSummary>;
   bonusStockEntries(input:PurchaseReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:BonusStockRow[]}>;
   bonusStockExport(input:PurchaseReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
+  lowStockSummary(input:LowStockInput):Promise<LowStockSummary>;
+  lowStockEntries(input:LowStockInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:LowStockRow[]}>;
+  lowStockExport(input:LowStockInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
   supplierReturnSummary(input:SupplierReturnReportInput):Promise<SupplierReturnSummary>;
   supplierReturnEntries(input:SupplierReturnReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:SupplierReturnRow[]}>;
   supplierReturnExport(input:SupplierReturnReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;

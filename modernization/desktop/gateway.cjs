@@ -48,7 +48,7 @@ class Gateway {
         this.expires = Date.now() + 8 * 3600000;
         this.failures = 0;
         return { ...user, demo: this.demo,canViewProfit:hasPermission(this.db,user.id,'report.cost'),
-          canViewSalesReport:hasPermission(this.db,user.id,'invoice.search') };
+          canViewSalesReport:hasPermission(this.db,user.id,'invoice.search'),canViewInventory:hasPermission(this.db,user.id,'inventory.view') };
       } catch (error) {
         if (++this.failures >= 5) {
           this.blockedUntil = Date.now() + 60000;
@@ -218,6 +218,16 @@ class Gateway {
       if(input.format==='pdf')return reports.bonusStockPdf(this.db,input);
       if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
       return reports.bonusStockCsv(this.db,input);
+    }
+    if(['lowStockSummary','lowStockEntries','lowStockExport'].includes(command)){
+      this.authorize('inventory.view');
+      const reports=require('./low-stock-report.cjs');
+      if(command==='lowStockSummary')return reports.lowStockSummary(this.db,input);
+      if(command==='lowStockEntries')return reports.lowStockEntries(this.db,input);
+      if(input.format==='xlsx')return reports.lowStockXlsx(this.db,input);
+      if(input.format==='pdf')return reports.lowStockPdf(this.db,input);
+      if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
+      return reports.lowStockCsv(this.db,input);
     }
     if(command.startsWith('closing')){
       const cash=new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db);

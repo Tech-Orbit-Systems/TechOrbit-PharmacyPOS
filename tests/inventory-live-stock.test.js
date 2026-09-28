@@ -1,7 +1,27 @@
 const { openDatabase } = require('../infrastructure/sqlite/database');
 const { InventoryLiveStockService, expiryStatus } = require('../infrastructure/sqlite/services/inventory-live-stock');
+const {lowStockSummary,lowStockEntries,lowStockCsv,lowStockXlsx,lowStockPdf}=require('../modernization/desktop/low-stock-report.cjs');
 
 describe('P032 batch live stock', () => {
+  test('R018 groups active product stock, excludes expired sellable units and exports alerts',async()=>{
+    const db=openDatabase({filename:':memory:'});
+    try{
+      const now='2026-09-18T08:00:00Z';
+      const low=db.prepare(`INSERT INTO Products(name,sku,base_unit,minimum_stock,reorder_level,created_at,updated_at) VALUES('Low Item','LOW-1','piece',5,10,?,?)`).run(now,now).lastInsertRowid;
+      const out=db.prepare(`INSERT INTO Products(name,sku,base_unit,minimum_stock,reorder_level,created_at,updated_at) VALUES('Expired Item','OUT-1','piece',5,0,?,?)`).run(now,now).lastInsertRowid;
+      db.prepare(`INSERT INTO ProductBatches(product_id,expiry_date,unit_cost_minor,sale_price_minor,quantity_on_hand,received_at,created_at,updated_at) VALUES(?,'2027-12-31',100,200,8,?,?,?)`).run(low,now,now,now);
+      db.prepare(`INSERT INTO ProductBatches(product_id,expiry_date,unit_cost_minor,sale_price_minor,quantity_on_hand,received_at,created_at,updated_at) VALUES(?,'2026-09-17',100,200,12,?,?,?)`).run(out,now,now,now);
+      const input={status:'all'},options={now:new Date(now)},report=lowStockSummary(db,input,options);
+      expect(report.totals).toMatchObject({productCount:2,lowCount:1,outCount:1,physicalQuantity:20,sellableQuantity:8,expiredQuantity:12,unitsToClearAlert:9});
+      expect(report.items.find(row=>row.productId===out)).toMatchObject({physicalQuantity:12,sellableQuantity:0,threshold:5,status:'out',unitsToClearAlert:6});
+      expect(lowStockSummary(db,{q:'LOW-1'},options).items).toHaveLength(1);
+      expect(lowStockEntries(db,{status:'all',page:1,pageSize:1},options).hasMore).toBe(true);
+      expect(lowStockCsv(db,input,options).csv).toContain('"Out of stock products","1"');
+      expect(Buffer.from((await lowStockXlsx(db,input,options)).base64,'base64').subarray(0,2).toString()).toBe('PK');
+      expect(Buffer.from(lowStockPdf(db,input,options).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+      expect(Object.keys(report.items[0])).not.toContain('unitCostMinor');
+    }finally{db.close()}
+  });
   test('shows physical stock, blocks expired sellable stock and protects cost', () => {
     const db = openDatabase({ filename: ':memory:' });
     try {

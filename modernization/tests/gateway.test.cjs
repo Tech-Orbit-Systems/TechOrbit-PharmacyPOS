@@ -15,6 +15,8 @@ test('cost and profit report is denied to a cashier below the UI',async()=>{
     const user=await gateway.call('login',{username:'report-cashier',password:'Cashier-Report-2026!'});
     assert.equal(user.canViewProfit,false);
     assert.equal(user.canViewSalesReport,true);
+    assert.equal(user.canViewInventory,false);
+    await assert.rejects(gateway.call('lowStockSummary',{}),/role does not allow/);
     const daily=await gateway.call('dailySalesSummary',{range:'1y'});
     assert.equal(daily.costVisible,false);
     assert.equal(daily.totals.cogsMinor,null);

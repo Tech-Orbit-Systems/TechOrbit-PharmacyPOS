@@ -14,5 +14,15 @@ test('P032 batch live-stock workflow passes once with isolated data',async()=>{
   await page.getByLabel('Expiry status filter',{exact:true}).selectOption('30');await expect(page.getByText('WITHIN 30 DAYS',{exact:true}).first()).toBeVisible();
   await page.getByRole('button',{name:/View batch/}).first().click();await expect(page.getByRole('heading',{name:'Quantity history',exact:true})).toBeVisible();await expect(page.getByRole('heading',{name:'Latest movements',exact:true})).toBeVisible();
   await page.screenshot({path:path.resolve(__dirname,'../evidence/inventory-live-stock.png')});expect(errors).toEqual([]);
+  await page.getByRole('button',{name:'Close dialog'}).click();
+  await page.getByRole('button',{name:'Reports',exact:true}).click();
+  await page.getByRole('tab',{name:'Low Stock Report'}).click();
+  await expect(page.getByRole('heading',{name:'Low Stock Report'})).toBeVisible();
+  await expect(page.getByText(/Physical base units:/)).toBeVisible();
+  const lowExport=path.join(env.TECHORBIT_UI_DATA_DIR,'r018-low-stock.csv');
+  await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},lowExport);
+  await page.getByRole('button',{name:'Export CSV'}).click();
+  await expect(page.getByText('CSV low stock report saved.')).toBeVisible();
+  expect(fs.readFileSync(lowExport,'utf8')).toContain('"Sellable units"');
  }finally{await app.close()}
 });
