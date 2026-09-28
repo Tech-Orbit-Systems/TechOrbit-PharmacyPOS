@@ -80,7 +80,7 @@ app.whenReady().then(() => {
     "medicineSummary", "medicineEntries", "medicineExport",
     "customerReturnSummary", "customerReturnEntries", "customerReturnExport",
     "supplierReturnSummary", "supplierReturnEntries", "supplierReturnExport",
-    "purchaseSummary", "purchaseEntries", "purchaseExport",
+    "purchaseSummary", "purchaseEntries", "purchaseExport", "supplierPurchaseSummary", "supplierPurchaseEntries", "supplierPurchaseExport",
     "logout",
     "changePassword",
     "dashboard",
@@ -131,7 +131,7 @@ app.whenReady().then(() => {
         pending.set(id, { resolve, reject, timer });
         worker.postMessage({ id, command, input });
       });
-      if(command!=='closingPeriodExport'&&command!=='reportExport'&&command!=='dailySalesExport'&&command!=='medicineExport'&&command!=='customerReturnExport'&&command!=='supplierReturnExport'&&command!=='purchaseExport')return result;
+      if(command!=='closingPeriodExport'&&command!=='reportExport'&&command!=='dailySalesExport'&&command!=='medicineExport'&&command!=='customerReturnExport'&&command!=='supplierReturnExport'&&command!=='purchaseExport'&&command!=='supplierPurchaseExport')return result;
       return result.then(async ({filename,csv,base64})=>{
         const extension=filename.split('.').at(-1);
         const title=command==='reportExport'?'Export P&L report':command==='dailySalesExport'?'Export daily sales report':command==='medicineExport'?'Export sales by medicine':'Export six-month report';

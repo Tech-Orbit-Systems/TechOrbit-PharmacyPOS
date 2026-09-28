@@ -184,12 +184,17 @@ export interface SupplierReturnRow {id:number;returnId:number;purchaseId:number;
 export interface SupplierReturnGroup {returnId:number;day:string;invoice:string;supplier:string;reason:string;refundMethod:string;returnMinor:number;payableCreditMinor:number;refundMinor:number;quantity:number;returnCount:number}
 export interface SupplierReturnSummary {range:{from:string;to:string};dayMode:string;groups:SupplierReturnGroup[];totals:Omit<SupplierReturnGroup,'returnId'|'day'|'invoice'|'supplier'|'reason'|'refundMethod'>;scope:string}
 export interface PurchaseReportInput {range:string;dayMode?:'official'|'calendar';from?:string;to?:string;supplier?:string;product?:string;generic?:string;category?:string;brand?:string}
-export interface PurchaseReportRow {id:number;day:string;purchasedAt:string;invoice:string;supplier:string;method:string;dueDate:string;lineCount:number;totalMinor:number;paidAtReceivingMinor:number;laterPaymentsMinor:number;balanceDueMinor:number;supplierReturnsMinor:number;returnCreditMinor:number;returnRefundMinor:number;netPurchaseMinor:number;purchasedBaseQuantity:number;bonusBaseQuantity:number;receivedBaseQuantity:number}
-export interface PurchaseReportSummary {range:{from:string;to:string};dayMode:string;items:PurchaseReportRow[];totals:Omit<PurchaseReportRow,'id'|'day'|'purchasedAt'|'invoice'|'supplier'|'method'|'dueDate'|'lineCount'>&{purchaseCount:number};scope:string}
+export interface PurchaseReportRow {id:number;day:string;purchasedAt:string;invoice:string;supplierId:number;supplier:string;method:string;dueDate:string;lineCount:number;totalMinor:number;paidAtReceivingMinor:number;laterPaymentsMinor:number;balanceDueMinor:number;supplierReturnsMinor:number;returnCreditMinor:number;returnRefundMinor:number;netPurchaseMinor:number;purchasedBaseQuantity:number;bonusBaseQuantity:number;receivedBaseQuantity:number}
+export interface PurchaseReportSummary {range:{from:string;to:string};dayMode:string;items:PurchaseReportRow[];totals:Omit<PurchaseReportRow,'id'|'day'|'purchasedAt'|'invoice'|'supplierId'|'supplier'|'method'|'dueDate'|'lineCount'>&{purchaseCount:number};scope:string}
+export type SupplierPurchaseGroup=PurchaseReportSummary['totals']&{supplierId:number;supplier:string};
+export interface SupplierPurchaseSummary {range:{from:string;to:string};dayMode:string;suppliers:SupplierPurchaseGroup[];totals:PurchaseReportSummary['totals'];scope:string}
 export interface Api {
   purchaseSummary(input:PurchaseReportInput):Promise<PurchaseReportSummary>;
   purchaseEntries(input:PurchaseReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:PurchaseReportRow[]}>;
   purchaseExport(input:PurchaseReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
+  supplierPurchaseSummary(input:PurchaseReportInput):Promise<SupplierPurchaseSummary>;
+  supplierPurchaseEntries(input:PurchaseReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:PurchaseReportRow[]}>;
+  supplierPurchaseExport(input:PurchaseReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
   supplierReturnSummary(input:SupplierReturnReportInput):Promise<SupplierReturnSummary>;
   supplierReturnEntries(input:SupplierReturnReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:SupplierReturnRow[]}>;
   supplierReturnExport(input:SupplierReturnReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;

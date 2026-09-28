@@ -248,7 +248,7 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
   await page.getByRole('button',{name:'Export CSV'}).click();
   await expect(page.getByText('CSV supplier return report saved.')).toBeVisible();
   expect(fs.readFileSync(supplierReturnExport,'utf8')).toContain('"Total supplier returns minor","1000"');
-  await page.getByRole('tab',{name:'Purchase Report'}).click();
+  await page.getByRole('tab',{name:'Purchase Report',exact:true}).click();
   await page.getByRole('combobox',{name:'Range'}).selectOption('custom');
   await page.getByLabel('Purchase report from date').fill('2026-09-12');
   await page.getByLabel('Purchase report to date').fill('2026-09-12');
@@ -262,6 +262,19 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
   await page.getByRole('button',{name:'Export CSV'}).click();
   await expect(page.getByText('CSV purchase report saved.')).toBeVisible();
   expect(fs.readFileSync(purchaseExport,'utf8')).toContain('"Total net purchases minor","9000"');
+  await page.getByRole('tab',{name:'Supplier Purchase Report'}).click();
+  await page.getByRole('combobox',{name:'Range'}).selectOption('custom');
+  await page.getByLabel('Supplier purchase from date').fill('2026-09-12');
+  await page.getByLabel('Supplier purchase to date').fill('2026-09-12');
+  await page.getByRole('button',{name:'Run report'}).click();
+  await expect(page.getByRole('heading',{name:'Supplier Purchase Report'})).toBeVisible();
+  await expect(page.getByText(/Purchases: PKR 100 · Returns: PKR 10 · Net purchases: PKR 90 · Current payable: PKR 40/)).toBeVisible();
+  await expect(page.getByRole('row').filter({hasText:'Linked supplier'}).first()).toContainText('90');
+  const supplierPurchaseExport=path.join(dataDir,'r016-supplier-purchases.csv');
+  await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},supplierPurchaseExport);
+  await page.getByRole('button',{name:'Export CSV'}).click();
+  await expect(page.getByText('CSV supplier purchase report saved.')).toBeVisible();
+  expect(fs.readFileSync(supplierPurchaseExport,'utf8')).toContain('"Total net purchases minor","9000"');
   await page.getByRole('tab',{name:'Daily Sales'}).click();
   await page.getByRole('combobox',{name:'Range'}).selectOption('custom');
   await page.getByLabel('Daily sales from date').fill('2026-09-12');

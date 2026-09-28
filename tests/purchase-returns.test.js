@@ -7,6 +7,7 @@ const {PurchaseReturnsService}=require('../infrastructure/sqlite/services/purcha
 const {PurchasePaymentsService}=require('../infrastructure/sqlite/services/purchase-payments');
 const {supplierReturnSummary,supplierReturnEntries,supplierReturnCsv,supplierReturnXlsx,supplierReturnPdf}=require('../modernization/desktop/supplier-return-report.cjs');
 const {purchaseSummary,purchaseEntries,purchaseCsv,purchaseXlsx,purchasePdf}=require('../modernization/desktop/purchase-report.cjs');
+const {supplierPurchaseSummary,supplierPurchaseEntries,supplierPurchaseCsv,supplierPurchaseXlsx,supplierPurchasePdf}=require('../modernization/desktop/purchase-report.cjs');
 const key=n=>`TO-${String(n).padStart(8,'0')}-2222-2222-2222-222222222222`;
 
 describe('supplier purchase returns',()=>{
@@ -90,6 +91,22 @@ describe('supplier purchase returns',()=>{
   expect(purchaseCsv(db,input).csv).toContain('"Total net purchases minor","600"');
   expect(Buffer.from((await purchaseXlsx(db,input)).base64,'base64').subarray(0,2).toString()).toBe('PK');
   expect(Buffer.from(purchasePdf(db,input).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+ });
+ test('supplier purchase report groups distinct suppliers and reconciles invoice totals and exports',async()=>{
+  const other=new SuppliersRepository(db).create({name:'Second Supplier'});
+  new PurchaseReceivingService(db).receive({supplierId:other.id,invoiceNumber:'SECOND-BUY',idempotencyKey:'supplier-group-buy',paymentMethod:'cash',amountPaidMinor:300,
+   items:[{productId:item.product_id,purchasedQuantity:3,unitCostMinor:100,salePriceMinor:200}]});
+  const day=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Karachi'}),input={range:'custom',from:day,to:day};
+  const report=supplierPurchaseSummary(db,input);
+  expect(report.suppliers).toHaveLength(2);
+  expect(report.totals).toMatchObject({purchaseCount:2,totalMinor:1300,balanceDueMinor:1000});
+  expect(report.suppliers.reduce((sum,row)=>sum+row.totalMinor,0)).toBe(report.totals.totalMinor);
+  expect(supplierPurchaseSummary(db,{...input,supplier:'Second'}).totals).toMatchObject({purchaseCount:1,totalMinor:300,balanceDueMinor:0});
+  expect(supplierPurchaseSummary(db,{...input,product:'Unknown'}).suppliers).toHaveLength(0);
+  expect(supplierPurchaseEntries(db,{...input,page:1,pageSize:1}).hasMore).toBe(true);
+  expect(supplierPurchaseCsv(db,input).csv).toContain('"Total purchases minor","1300"');
+  expect(Buffer.from((await supplierPurchaseXlsx(db,input)).base64,'base64').subarray(0,2).toString()).toBe('PK');
+  expect(Buffer.from(supplierPurchasePdf(db,input).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
  });
 
  test('ambiguous batch source blocks supplier return before stock changes',()=>{

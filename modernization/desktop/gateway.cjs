@@ -183,9 +183,17 @@ class Gateway {
       if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
       return reports.supplierReturnCsv(this.db,input);
     }
-    if(['purchaseSummary','purchaseEntries','purchaseExport'].includes(command)){
+      if(['purchaseSummary','purchaseEntries','purchaseExport','supplierPurchaseSummary','supplierPurchaseEntries','supplierPurchaseExport'].includes(command)){
       this.authorize('report.cost');
       const reports=require('./purchase-report.cjs');
+        if(command==='supplierPurchaseSummary')return reports.supplierPurchaseSummary(this.db,input);
+        if(command==='supplierPurchaseEntries')return reports.supplierPurchaseEntries(this.db,input);
+        if(command==='supplierPurchaseExport'){
+          if(input.format==='xlsx')return reports.supplierPurchaseXlsx(this.db,input);
+          if(input.format==='pdf')return reports.supplierPurchasePdf(this.db,input);
+          if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
+          return reports.supplierPurchaseCsv(this.db,input);
+        }
       if(command==='purchaseSummary')return reports.purchaseSummary(this.db,input);
       if(command==='purchaseEntries')return reports.purchaseEntries(this.db,input);
       if(input.format==='xlsx')return reports.purchaseXlsx(this.db,input);

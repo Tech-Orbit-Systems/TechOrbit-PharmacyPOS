@@ -23,7 +23,7 @@ function data(db,input,options={}){
  if(input.brand?.trim()){lineFilters.push("pr.manufacturer LIKE ? ESCAPE '\\'");lineArgs.push(like(input.brand.trim()))}
  if(lineFilters.length){clauses.push(`EXISTS (SELECT 1 FROM PurchaseItems pi JOIN Products pr ON pr.id=pi.product_id WHERE pi.purchase_id=selected_purchases.id AND ${lineFilters.join(' AND ')})`);args.push(...lineArgs)}
  const rows=db.prepare(`WITH selected_purchases AS (SELECT p.id,p.invoice_number,p.purchased_at,p.total_minor,p.amount_paid_minor,p.balance_due_minor,
-  p.payment_method,p.due_date,s.name supplier,${day} day,
+  p.payment_method,p.due_date,p.supplier_id supplier_id,s.name supplier,${day} day,
   (SELECT COALESCE(SUM(pp.amount_minor),0) FROM PurchasePayments pp WHERE pp.purchase_id=p.id) later_payments_minor,
   (SELECT COALESCE(SUM(r.total_minor),0) FROM PurchaseReturns r WHERE r.purchase_id=p.id) supplier_returns_minor,
   (SELECT COALESCE(SUM(r.payable_credit_minor),0) FROM PurchaseReturns r WHERE r.purchase_id=p.id) return_credit_minor,
@@ -41,7 +41,7 @@ function data(db,input,options={}){
   const paidAtReceivingMinor=row.amount_paid_minor-row.later_payments_minor;
   if(paidAtReceivingMinor<0||row.total_minor-paidAtReceivingMinor-row.later_payments_minor-row.return_credit_minor!==row.balance_due_minor)
    throw Error('Saved purchase payments and credits do not reconcile to the balance');
-  return {id:row.id,day:row.day,purchasedAt:row.purchased_at,invoice:row.invoice_number||'',supplier:row.supplier,
+  return {id:row.id,day:row.day,purchasedAt:row.purchased_at,invoice:row.invoice_number||'',supplierId:row.supplier_id,supplier:row.supplier,
    method:row.payment_method,dueDate:row.due_date||'',lineCount:row.line_count,totalMinor:row.total_minor,
    paidAtReceivingMinor,laterPaymentsMinor:row.later_payments_minor,balanceDueMinor:row.balance_due_minor,
    supplierReturnsMinor:row.supplier_returns_minor,returnCreditMinor:row.return_credit_minor,returnRefundMinor:row.return_refund_minor,
@@ -87,4 +87,43 @@ function purchasePdf(db,input,options={}){
  line('Purchase invoice / supplier','Total PKR');for(const row of report.items)line(`${row.invoice} / ${row.supplier}`,(row.totalMinor/100).toFixed(2));
  return {filename:'TechOrbit_Purchase_Report.pdf',base64:Buffer.from(doc.output('arraybuffer')).toString('base64')};
 }
-module.exports={purchaseSummary,purchaseEntries,purchaseCsv,purchaseXlsx,purchasePdf};
+const supplierFields=['totalMinor','paidAtReceivingMinor','laterPaymentsMinor','balanceDueMinor','supplierReturnsMinor','returnCreditMinor','returnRefundMinor','netPurchaseMinor','purchasedBaseQuantity','bonusBaseQuantity','receivedBaseQuantity'];
+function supplierPurchaseSummary(db,input,options={}){
+ const report=purchaseSummary(db,input,options),groups=new Map();
+ for(const item of report.items){
+  let group=groups.get(item.supplierId);
+  if(!group){group={supplierId:item.supplierId,supplier:item.supplier,purchaseCount:0};for(const field of supplierFields)group[field]=0;groups.set(item.supplierId,group)}
+  group.purchaseCount++;
+  for(const field of supplierFields)group[field]+=item[field];
+ }
+ const suppliers=[...groups.values()].sort((a,b)=>a.supplier.localeCompare(b.supplier)||a.supplierId-b.supplierId);
+ for(const field of supplierFields)if(suppliers.reduce((sum,row)=>sum+row[field],0)!==report.totals[field])throw Error('Supplier purchases do not reconcile to invoices');
+ return {range:report.range,dayMode:report.dayMode,suppliers,totals:report.totals,scope:report.scope+' Supplier groups are keyed by supplier ID; invoice details use the same selected purchases.'};
+}
+function supplierPurchaseEntries(db,input,options={}){return purchaseEntries(db,input,options)}
+function supplierPurchaseCsv(db,input,options={}){
+ const report=supplierPurchaseSummary(db,input,options),rows=[['Supplier Purchase Report'],['Range',report.range.from,report.range.to],['Scope',report.scope],[],
+ ['Supplier','Purchase count','Purchases minor','Returns minor','Net purchases minor','Paid at receiving minor','Later payments minor','Current payable minor','Purchased base units','Bonus base units'],
+ ...report.suppliers.map(r=>[r.supplier,r.purchaseCount,r.totalMinor,r.supplierReturnsMinor,r.netPurchaseMinor,r.paidAtReceivingMinor,r.laterPaymentsMinor,r.balanceDueMinor,r.purchasedBaseQuantity,r.bonusBaseQuantity]),[],
+ ['Total purchases minor',report.totals.totalMinor],['Total supplier returns minor',report.totals.supplierReturnsMinor],['Total net purchases minor',report.totals.netPurchaseMinor],['Total current payable minor',report.totals.balanceDueMinor]];
+ return {filename:'TechOrbit_Supplier_Purchase_Report.csv',csv:'\uFEFF'+rows.map(row=>row.map(quote).join(',')).join('\r\n')+'\r\n'};
+}
+async function supplierPurchaseXlsx(db,input,options={}){
+ const ExcelJS=require('exceljs'),report=supplierPurchaseSummary(db,input,options),book=new ExcelJS.Workbook(),sheet=book.addWorksheet('Supplier Purchases');
+ sheet.addRow(['TechOrbit Pharmacy POS - Supplier Purchase Report']);sheet.addRow(['From',report.range.from,'To',report.range.to]);sheet.addRow(['Scope',report.scope]);sheet.addRow([]);
+ sheet.addRow(['Supplier','Invoices','Purchases PKR','Returns PKR','Net purchases PKR','Paid at receiving PKR','Later payments PKR','Current payable PKR','Purchased base units','Bonus base units']);
+ for(const r of report.suppliers)sheet.addRow([r.supplier,r.purchaseCount,r.totalMinor/100,r.supplierReturnsMinor/100,r.netPurchaseMinor/100,r.paidAtReceivingMinor/100,r.laterPaymentsMinor/100,r.balanceDueMinor/100,r.purchasedBaseQuantity,r.bonusBaseQuantity]);
+ sheet.addRow([]);sheet.addRow(['Total purchases PKR',report.totals.totalMinor/100]);sheet.addRow(['Total net purchases PKR',report.totals.netPurchaseMinor/100]);
+ sheet.getRow(1).font={bold:true,size:14};sheet.getRow(5).font={bold:true};sheet.columns=Array.from({length:10},(_,i)=>({width:i===0?30:22}));
+ return {filename:'TechOrbit_Supplier_Purchase_Report.xlsx',base64:Buffer.from(await book.xlsx.writeBuffer()).toString('base64')};
+}
+function supplierPurchasePdf(db,input,options={}){
+ const {jsPDF}=require('jspdf'),report=supplierPurchaseSummary(db,input,options),doc=new jsPDF({unit:'pt',format:'a4'});
+ let y=42;const line=(left,right='')=>{if(y>780){doc.addPage();y=42}doc.text(String(left).slice(0,75),42,y);if(right)doc.text(String(right),550,y,{align:'right'});y+=17};
+ line('TechOrbit Pharmacy POS - Supplier Purchase Report');line(`${report.range.from} to ${report.range.to}`);
+ line('Purchases',`PKR ${(report.totals.totalMinor/100).toFixed(2)}`);line('Returns',`PKR ${(report.totals.supplierReturnsMinor/100).toFixed(2)}`);
+ line('Net purchases',`PKR ${(report.totals.netPurchaseMinor/100).toFixed(2)}`);line('Current payable',`PKR ${(report.totals.balanceDueMinor/100).toFixed(2)}`);
+ line('Supplier / invoices','Net PKR');for(const row of report.suppliers)line(`${row.supplier} / ${row.purchaseCount}`,(row.netPurchaseMinor/100).toFixed(2));
+ return {filename:'TechOrbit_Supplier_Purchase_Report.pdf',base64:Buffer.from(doc.output('arraybuffer')).toString('base64')};
+}
+module.exports={purchaseSummary,purchaseEntries,purchaseCsv,purchaseXlsx,purchasePdf,supplierPurchaseSummary,supplierPurchaseEntries,supplierPurchaseCsv,supplierPurchaseXlsx,supplierPurchasePdf};
