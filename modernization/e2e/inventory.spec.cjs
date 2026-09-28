@@ -42,5 +42,13 @@ test('P032 batch live-stock workflow passes once with isolated data',async()=>{
   await page.getByRole('button',{name:'Export CSV'}).click();
   await expect(page.getByText('CSV batch stock report saved.')).toBeVisible();
   expect(fs.readFileSync(batchExport,'utf8')).toContain('"Zero-stock batches"');
+  await page.getByRole('tab',{name:'Stock Movement Report'}).click();
+  await expect(page.getByRole('heading',{name:'Stock Movement Report'})).toBeVisible();
+  await expect(page.getByText(/Net movement:/)).toBeVisible();
+  const movementExport=path.join(env.TECHORBIT_UI_DATA_DIR,'r021-stock-movement.csv');
+  await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},movementExport);
+  await page.getByRole('button',{name:'Export CSV'}).click();
+  await expect(page.getByText('CSV stock movement report saved.')).toBeVisible();
+  expect(fs.readFileSync(movementExport,'utf8')).toContain('"Net movement"');
  }finally{await app.close()}
 });

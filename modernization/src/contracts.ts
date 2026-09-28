@@ -203,6 +203,10 @@ export interface BatchStockInput {q?:string;generic?:string;category?:string;bra
 export type BatchStockRow=InventoryBatch&{sku:string;category:string;active:boolean};
 export interface BatchStockGroup {productId:number;name:string;sku:string;batchCount:number;physicalQuantity:number;sellableQuantity:number;stockValueMinor:number|null}
 export interface BatchStockSummary {asOfDate:string;costVisible:boolean;items:BatchStockRow[];products:BatchStockGroup[];totals:{batchCount:number;physicalQuantity:number;sellableQuantity:number;zeroStockBatches:number;expiredBatches:number;stockValueMinor:number|null};scope:string}
+export interface StockMovementInput extends PurchaseReportInput {batch?:string;reference?:string;type?:string}
+export interface StockMovementRow {id:number;day:string;occurredAt:string;productId:number;batchId:number|null;medicine:string;sku:string;generic:string;category:string;brand:string;baseUnit:string;batch:string;expiryDate:string;supplier:string;type:string;quantityDelta:number;referenceType:string;referenceId:string;note:string;userName:string}
+export interface StockMovementGroup {type:string;count:number;inQuantity:number;outQuantity:number;netQuantity:number}
+export interface StockMovementSummary {range:{from:string;to:string};dayMode:string;items:StockMovementRow[];groups:StockMovementGroup[];totals:{count:number;inQuantity:number;outQuantity:number;netQuantity:number};scope:string}
 export interface Api {
   purchaseSummary(input:PurchaseReportInput):Promise<PurchaseReportSummary>;
   purchaseEntries(input:PurchaseReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:PurchaseReportRow[]}>;
@@ -222,6 +226,9 @@ export interface Api {
   batchStockSummary(input:BatchStockInput):Promise<BatchStockSummary>;
   batchStockEntries(input:BatchStockInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:BatchStockRow[]}>;
   batchStockExport(input:BatchStockInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
+  stockMovementSummary(input:StockMovementInput):Promise<StockMovementSummary>;
+  stockMovementEntries(input:StockMovementInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:StockMovementRow[]}>;
+  stockMovementExport(input:StockMovementInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
   supplierReturnSummary(input:SupplierReturnReportInput):Promise<SupplierReturnSummary>;
   supplierReturnEntries(input:SupplierReturnReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:SupplierReturnRow[]}>;
   supplierReturnExport(input:SupplierReturnReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;

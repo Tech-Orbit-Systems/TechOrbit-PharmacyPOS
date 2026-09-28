@@ -9,6 +9,7 @@ const {supplierReturnSummary,supplierReturnEntries,supplierReturnCsv,supplierRet
 const {purchaseSummary,purchaseEntries,purchaseCsv,purchaseXlsx,purchasePdf}=require('../modernization/desktop/purchase-report.cjs');
 const {supplierPurchaseSummary,supplierPurchaseEntries,supplierPurchaseCsv,supplierPurchaseXlsx,supplierPurchasePdf}=require('../modernization/desktop/purchase-report.cjs');
 const {bonusStockSummary,bonusStockEntries,bonusStockCsv,bonusStockXlsx,bonusStockPdf}=require('../modernization/desktop/bonus-stock-report.cjs');
+const {stockMovementSummary,stockMovementEntries,stockMovementCsv,stockMovementXlsx,stockMovementPdf}=require('../modernization/desktop/stock-movement-report.cjs');
 const key=n=>`TO-${String(n).padStart(8,'0')}-2222-2222-2222-222222222222`;
 
 describe('supplier purchase returns',()=>{
@@ -34,6 +35,19 @@ describe('supplier purchase returns',()=>{
   expect(db.prepare('SELECT quantity_on_hand FROM ProductBatches WHERE id=?').get(batch.id).quantity_on_hand).toBe(6);
   expect(db.prepare('SELECT balance_minor FROM Payables').get().balance_minor).toBe(600);
   expect(db.prepare("SELECT quantity_delta FROM InventoryMovements WHERE movement_type='purchase_return'").get().quantity_delta).toBe(-4);
+ });
+ test('R021 saved movement ledger reconciles purchase in and supplier return out',async()=>{
+  new PurchaseReturnsService(db).post({purchaseId:purchase.purchaseId,idempotencyKey:key(50),reason:'Damaged',items:[{purchaseItemId:item.id,quantity:4}]});
+  const day=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Karachi'}),input={range:'custom',from:day,to:day};
+  const report=stockMovementSummary(db,input);
+  expect(report.totals).toMatchObject({count:2,inQuantity:10,outQuantity:4,netQuantity:6});
+  expect(report.totals.netQuantity).toBe(db.prepare('SELECT SUM(quantity_delta) total FROM InventoryMovements').get().total);
+  expect(stockMovementSummary(db,{...input,type:'purchase_return'}).totals.netQuantity).toBe(-4);
+  expect(stockMovementSummary(db,{...input,product:'Unknown'}).totals.count).toBe(0);
+  expect(stockMovementEntries(db,{...input,page:1,pageSize:1}).hasMore).toBe(true);
+  expect(stockMovementCsv(db,input).csv).toContain('"Net movement","6"');
+  expect(Buffer.from((await stockMovementXlsx(db,input)).base64,'base64').subarray(0,2).toString()).toBe('PK');
+  expect(Buffer.from(stockMovementPdf(db,input).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
  });
 
  test('blocks excess return and leaves every ledger untouched',()=>{

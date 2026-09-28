@@ -249,6 +249,16 @@ class Gateway {
       if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
       return reports.batchStockCsv(this.db,input,options);
     }
+    if(['stockMovementSummary','stockMovementEntries','stockMovementExport'].includes(command)){
+      this.authorize('inventory.view');
+      const reports=require('./stock-movement-report.cjs');
+      if(command==='stockMovementSummary')return reports.stockMovementSummary(this.db,input);
+      if(command==='stockMovementEntries')return reports.stockMovementEntries(this.db,input);
+      if(input.format==='xlsx')return reports.stockMovementXlsx(this.db,input);
+      if(input.format==='pdf')return reports.stockMovementPdf(this.db,input);
+      if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
+      return reports.stockMovementCsv(this.db,input);
+    }
     if(command.startsWith('closing')){
       const cash=new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db);
       const daily=new (require('../../infrastructure/sqlite/services/daily-closing').DailyClosingService)(this.db);
