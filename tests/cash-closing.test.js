@@ -293,6 +293,9 @@ describe('cash shift ownership and closing',()=>{
     expect(medicines.groups[0]).toMatchObject({medicine:'Linked medicine',category:'General care',brand:'Linked brand',
       salesMinor:12000,returnsMinor:2000,netSalesMinor:10000,cogsMinor:5000,grossProfitMinor:5000});
     expect(medicines.totals.netSalesMinor).toBe(dailyReport.totals.netSalesMinor);
+    const categories=medicineSales.medicineSummary(db,{...salesFilter,groupBy:'category'},{costVisible:true,now:new Date('2026-09-13T00:00:00Z')});
+    expect(categories.groups).toHaveLength(1);
+    expect(categories.groups[0]).toMatchObject({groupLabel:'General care',netSalesMinor:10000,cogsMinor:5000});
     expect(medicineSales.medicineSummary(db,{...salesFilter,product:'Linked medicine',supplier:'Linked supplier'},{costVisible:false}).totals)
       .toMatchObject({netSalesMinor:10000,cogsMinor:null,grossProfitMinor:null});
     expect(medicineSales.medicineEntries(db,{...salesFilter,page:1,pageSize:2},{costVisible:false})).toMatchObject({hasMore:true,page:1});

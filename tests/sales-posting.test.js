@@ -88,6 +88,12 @@ describe("Atomic sales posting",()=>{
     for(const field of ['salesMinor','netSalesMinor','gstMinor','netExGstMinor','cogsMinor','grossProfitMinor'])
       expect(byMedicine.totals[field]).toBe(daily.totals[field]);
     expect(medicineSummary(db,{...input,product:"Ibuprofen"},options).groups).toHaveLength(1);
+    db.prepare("UPDATE Products SET category='Pain relief' WHERE id IN (?,?)").run(product.id,second.id);
+    const category=medicineSummary(db,{...input,groupBy:'category'},options);
+    expect(category.groups).toHaveLength(1);
+    expect(category.groups[0].groupLabel).toBe('Pain relief');
+    expect(category.totals.netSalesMinor).toBe(daily.totals.netSalesMinor);
+    expect(medicineSummary(db,{...input,groupBy:'category',category:'Unknown'},options).groups).toHaveLength(0);
   });
   test("generic report combines different medicines with the same saved generic snapshot",async()=>{
     const second=new ProductsRepository(db).create({name:"Paracetamol syrup",genericName:"Paracetamol",baseUnit:"bottle",taxStatus:"exempt"});

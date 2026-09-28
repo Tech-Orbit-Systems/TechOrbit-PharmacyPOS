@@ -4,7 +4,7 @@
 - Branch: `feature/approved-dashboard-pos-ui`
 Verified application baseline: B02 commit `3db0a98`, pushed to `origin/feature/approved-dashboard-pos-ui`. B03 application delivery is recorded in the canonical tracker with its final commit and test evidence.
 
-The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R005 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
+The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R006 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
 
 ## Delivered application increments
 
@@ -20,6 +20,7 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 - **R003 Monthly Sales development is Done.** Calendar months aggregate exact selected official or Pakistan calendar dates, with partial boundary months and the same protected filters, invoice/return detail and CSV/Excel/PDF exports. A Pakistan midnight fixture reconciles September/October sales to the daily ledger; the linked desktop CSV month summary passed. Formal manual acceptance remains open.
 - **R004 Sales by Medicine development is Done.** Saved sale and linked return lines group by product ID and original medicine name. Invoice rounding follows the same line allocation as customer returns, so unfiltered medicine totals reconcile to Daily Sales. Product, category, brand, recorded batch supplier, customer, cashier and payment filters, paged detail, permission-safe cost/profit and native CSV/Excel/PDF exports are implemented. Formal manual acceptance remains open.
 - **R005 Sales by Generic development is Done.** Saved generic-name snapshots group multiple medicines under the same generic. Blank historical names appear as Unspecified generic. Date and relevant filters, paged sale/return detail, cost protection and CSV/Excel/PDF exports reuse the reconciled medicine-line contract. Formal manual acceptance remains open.
+- **R006 Sales by Category development is Done.** Current product categories group saved medicine sale/return lines, with Uncategorised shown for blank category. The same date/line filters, ledger reconciliation, permission-safe detail and exports apply. Formal manual acceptance remains open.
 - The B02 Electron test launcher now uses Playwright's default Electron resolution, so its loader is injected. Managed-host sandbox/GPU compatibility is test-only; production window security settings remain unchanged. Earlier Electron launch timeouts and ambiguous test locators were resolved before B02 completion.
 
 ## Verification checkpoint
@@ -38,6 +39,7 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 - R003 development verification on 2026-09-28: affected Jest 20/20, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. The month boundary, invoice reconciliation, cashier cost denial and desktop CSV month readback are recorded in `docs/evidence/R003_MONTHLY_SALES_ACCEPTANCE_20260928.md`.
 - R004 development verification on 2026-09-28: affected Jest 21/21, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. Two-medicine invoice rounding, linked sale/return/COGS totals, cashier cost denial and CSV/Excel/PDF desktop readback are recorded in `docs/evidence/R004_SALES_BY_MEDICINE_ACCEPTANCE_20260928.md`.
 - R005 development verification on 2026-09-28: affected Jest 22/22, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. Same-generic multi-medicine grouping, unnamed-generic fallback, cashier cost denial and generic export checks are recorded in `docs/evidence/R005_SALES_BY_GENERIC_ACCEPTANCE_20260928.md`.
+- R006 development verification on 2026-09-28: affected Jest 22/22, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. Multi-medicine category reconciliation, linked return/COGS totals, cashier cost denial and desktop CSV readback are recorded in `docs/evidence/R006_SALES_BY_CATEGORY_ACCEPTANCE_20260928.md`.
 - These focused results do not replace the final 91-scenario, three-run acceptance campaign or prove hardware, packaged runtime and live-data readiness. Previously accepted unrelated flows were not rerun during this status check.
 
 ## Open work and release boundaries
@@ -49,4 +51,4 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 
 ## Next action
 
-Implement the next individual report R006 Sales by Category. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.
+Implement the next individual report R007 Sales by Brand/Manufacturer. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.
