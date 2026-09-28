@@ -12,6 +12,7 @@ const methods = [
   "expenseMetadata", "vendorSave", "expenseList", "expensePost", "expenseVoid",
   "login",
   "reportProfitLoss", "reportEntries", "reportExport",
+  "dailySalesSummary", "dailySalesEntries", "dailySalesExport",
   "logout",
   "changePassword",
   "dashboard",

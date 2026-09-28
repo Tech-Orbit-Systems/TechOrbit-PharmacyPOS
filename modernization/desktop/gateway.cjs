@@ -47,7 +47,8 @@ class Gateway {
         this.session = user;
         this.expires = Date.now() + 8 * 3600000;
         this.failures = 0;
-        return { ...user, demo: this.demo,canViewProfit:hasPermission(this.db,user.id,'report.cost') };
+        return { ...user, demo: this.demo,canViewProfit:hasPermission(this.db,user.id,'report.cost'),
+          canViewSalesReport:hasPermission(this.db,user.id,'invoice.search') };
       } catch (error) {
         if (++this.failures >= 5) {
           this.blockedUntil = Date.now() + 60000;
@@ -141,6 +142,16 @@ class Gateway {
       if(input.format==='pdf')return reports.reportPdf(this.db,input);
       if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
       return reports.reportCsv(this.db,input);
+    }
+    if(['dailySalesSummary','dailySalesEntries','dailySalesExport'].includes(command)){
+      this.authorize('invoice.search');
+      const reports=require('./daily-sales.cjs'),options={costVisible:this.permission('report.cost')};
+      if(command==='dailySalesSummary')return reports.dailySalesSummary(this.db,input,options);
+      if(command==='dailySalesEntries')return reports.dailySalesEntries(this.db,input,options);
+      if(input.format==='xlsx')return reports.dailySalesXlsx(this.db,input,options);
+      if(input.format==='pdf')return reports.dailySalesPdf(this.db,input,options);
+      if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
+      return reports.dailySalesCsv(this.db,input,options);
     }
     if(['closingPeriodClose','closingPeriodHistory','closingPeriodDetail','closingPeriodRevise'].includes(command)){
       this.authorize('closing.revise');

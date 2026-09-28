@@ -3,6 +3,7 @@ const {openDatabase}=require("../infrastructure/sqlite/database");
 const {ProductsRepository}=require("../infrastructure/sqlite/repositories/products");
 const {ProductUnitsRepository}=require("../infrastructure/sqlite/repositories/product-units");
 const {SalesPostingService}=require("../infrastructure/sqlite/services/sales-posting");
+const {dailySalesSummary}=require('../modernization/desktop/daily-sales.cjs');
 
 describe("Atomic sales posting",()=>{
   let dir,db,product,customer;
@@ -25,6 +26,23 @@ describe("Atomic sales posting",()=>{
   test("snapshots price, line discount, invoice discount, GST and rounded payable",()=>{const sale=baseSale({invoiceDiscountType:"percentage",invoiceDiscountValue:10}); sale.items[0].unitPriceMinor=123; sale.items[0].discountType="fixed"; sale.items[0].discountValue=30;
     const result=new SalesPostingService(db).post(sale); expect(result).toMatchObject({grossMinor:1230,lineDiscountMinor:30,invoiceDiscountMinor:120,taxableMinor:1080,gstMinor:194,exactTotalMinor:1274,finalTotalMinor:1300,roundingMinor:26});
     expect(db.prepare("SELECT original_unit_price_minor,charged_unit_price_minor,gst_minor FROM SaleItems").get()).toEqual({original_unit_price_minor:110,charged_unit_price_minor:123,gst_minor:194});
+    const daily=dailySalesSummary(db,{range:'custom',from:'2026-09-11',to:'2026-09-11',product:'Paracetamol'},
+      {costVisible:true,now:new Date('2026-09-12T00:00:00Z')});
+    expect(daily.totals).toMatchObject({salesMinor:1300,returnsMinor:0,gstMinor:194,discountMinor:150,
+      netExGstMinor:1106,cogsMinor:540,grossProfitMinor:566,saleCount:1});
+  });
+  test("keeps a sale after midnight on the open official day while calendar view uses its local date",()=>{
+    db.prepare("INSERT INTO BusinessDays(opened_at,closed_at,status) VALUES (?,?,?)")
+      .run("2026-09-11T08:00:00Z","2026-09-12T02:00:00Z","closed");
+    new SalesPostingService(db).post(baseSale({soldAt:"2026-09-11T21:00:00Z",paymentMethod:"credit",amountPaidMinor:0,
+      customerId:Number(customer),dueDate:"2026-10-01"}));
+    const options={costVisible:true,now:new Date("2026-09-13T00:00:00Z")};
+    const official=dailySalesSummary(db,{range:"custom",from:"2026-09-11",to:"2026-09-11",dayMode:"official"},options);
+    const calendar=dailySalesSummary(db,{range:"custom",from:"2026-09-12",to:"2026-09-12",dayMode:"calendar"},options);
+    expect(official.days).toHaveLength(1); expect(official.days[0].day).toBe("2026-09-11");
+    expect(calendar.days).toHaveLength(1); expect(calendar.days[0].day).toBe("2026-09-12");
+    expect(official.totals).toMatchObject({saleCount:1,salesMinor:calendar.totals.salesMinor});
+    expect(dailySalesSummary(db,{range:"custom",from:"2026-09-12",to:"2026-09-12",dayMode:"official"},options).totals.saleCount).toBe(0);
   });
   test("creates receivable and only records money actually collected",()=>{const result=new SalesPostingService(db).post(baseSale({paymentMethod:"credit",collectionMethod:"cash",amountPaidMinor:500,customerId:Number(customer),dueDate:"2026-10-01"}));
     expect(result.balanceDueMinor).toBe(result.finalTotalMinor-500); expect(db.prepare("SELECT method,amount_minor FROM MoneyMovements").get()).toEqual({method:"cash",amount_minor:500});

@@ -17,6 +17,7 @@ const {CustomerAccountsService}=require('../infrastructure/sqlite/services/custo
 const {ExpensesService}=require('../infrastructure/sqlite/services/expenses');
 const {profitLoss,reportEntries,reportCsv,reportXlsx,reportPdf}=require('../modernization/desktop/reports.cjs');
 const {dashboard}=require('../modernization/desktop/dashboard.cjs');
+const dailySales=require('../modernization/desktop/daily-sales.cjs');
 
 describe('cash shift ownership and closing',()=>{
   let db,service,user1,user2;
@@ -111,6 +112,10 @@ describe('cash shift ownership and closing',()=>{
     const sep=report.months.find(x=>x.month==='2026-09');
     expect(aug).toMatchObject({salesMinor:220,gstMinor:20,cogsMinor:80,grossProfitMinor:120});
     expect(sep).toMatchObject({salesMinor:1100,customerReturnsMinor:550,netSalesMinor:550,gstMinor:50,cogsMinor:150,grossProfitMinor:350,expensesMinor:100,operatingProfitMinor:250});
+    const dailyReport=dailySales.dailySalesSummary(db,{range:'custom',from:'2026-08-31',to:'2026-09-01'},
+      {costVisible:true,now:new Date('2026-09-02T00:00:00Z')});
+    expect(dailyReport.days).toMatchObject([{day:'2026-09-01',salesMinor:1100,returnsMinor:550,netExGstMinor:500},
+      {day:'2026-08-31',salesMinor:220,returnsMinor:0,netExGstMinor:200}]);
     expect(profitLoss(db,{range:'custom',from:'2026-09-01',to:'2026-09-01'},new Date('2026-09-02T00:00:00Z')))
       .toMatchObject({salesGrossMinor:1100,listedGrossMinor:1000,salesGstMinor:100,returnsGrossMinor:550,returnsGstMinor:50,
         netRevenueMinor:500,soldCogsMinor:300,returnedCogsMinor:150,cogsMinor:150,
@@ -265,6 +270,31 @@ describe('cash shift ownership and closing',()=>{
     const exported=reportCsv(db,reportInput,new Date('2026-09-13T00:00:00Z'));
     expect(exported.csv).toContain('"Operating profit minor","2500"');
     expect(exported.csv).not.toContain('GOLD-BUY');
+    const salesFilter={range:'custom',from:'2026-09-12',to:'2026-09-12'};
+    const dailyReport=dailySales.dailySalesSummary(db,salesFilter,{costVisible:true,now:new Date('2026-09-13T00:00:00Z')});
+    expect(dailyReport.totals).toMatchObject({salesMinor:12000,returnsMinor:2000,netSalesMinor:10000,
+      netExGstMinor:10000,cogsMinor:5000,grossProfitMinor:5000,paidAtSaleMinor:8000,creditCreatedMinor:4000,
+      refundMinor:2000,saleCount:4,returnCount:1});
+    expect(dailyReport.totals.netExGstMinor).toBe(pnl.netRevenueMinor);
+    expect(dailyReport.totals.cogsMinor).toBe(pnl.cogsMinor);
+    expect(dailySales.dailySalesSummary(db,{...salesFilter,customer:'Ali'},{costVisible:false}).totals)
+      .toMatchObject({salesMinor:4000,returnsMinor:0,cogsMinor:null,grossProfitMinor:null});
+    expect(dailySales.dailySalesSummary(db,{...salesFilter,method:'cash'},{costVisible:true}).totals)
+      .toMatchObject({salesMinor:4000,returnsMinor:2000,netSalesMinor:2000});
+    expect(dailySales.dailySalesSummary(db,{...salesFilter,supplier:'Linked supplier'},{costVisible:true}).totals.salesMinor).toBe(12000);
+    expect(dailySales.dailySalesSummary(db,{...salesFilter,product:'Linked medicine'},{costVisible:true}).totals.saleCount).toBe(4);
+    expect(dailySales.dailySalesSummary(db,{...salesFilter,cashier:'cashier-a'},{costVisible:true}).totals.saleCount).toBe(4);
+    db.prepare("UPDATE Products SET category='General care',manufacturer='Linked brand' WHERE id=?").run(product.id);
+    expect(dailySales.dailySalesSummary(db,{...salesFilter,category:'General care',brand:'Linked brand'},{costVisible:true}).totals.saleCount).toBe(4);
+    expect(dailySales.dailySalesSummary(db,{...salesFilter,product:'%'},{costVisible:true}).totals.saleCount).toBe(0);
+    expect(dailySales.dailySalesEntries(db,{...salesFilter,page:1,pageSize:2},{costVisible:true})).toMatchObject({hasMore:true,page:1});
+    const dailyCsv=dailySales.dailySalesCsv(db,salesFilter,{costVisible:false});
+    expect(dailyCsv.csv).toContain('"Net sales minor","10000"');
+    expect(dailyCsv.csv).not.toContain('COGS minor');
+    const dailyExcel=await dailySales.dailySalesXlsx(db,salesFilter,{costVisible:true});
+    const dailyBook=new (require('exceljs').Workbook)();await dailyBook.xlsx.load(Buffer.from(dailyExcel.base64,'base64'));
+    expect(dailyBook.getWorksheet('Daily Sales').getCell('B3').value).toBe(100);
+    expect(Buffer.from(dailySales.dailySalesPdf(db,salesFilter,{costVisible:false}).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
     const excel=await reportXlsx(db,reportInput,new Date('2026-09-13T00:00:00Z'));
     const excelBook=new (require('exceljs').Workbook)();
     await excelBook.xlsx.load(Buffer.from(excel.base64,'base64'));

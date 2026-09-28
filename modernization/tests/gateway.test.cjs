@@ -7,12 +7,22 @@ const bcrypt=require('bcrypt');
 test('cost and profit report is denied to a cashier below the UI',async()=>{
   const db=openDatabase({filename:':memory:'});
   try{
+    seedDemo(db);
     const now=new Date().toISOString();
     db.prepare("INSERT INTO Users(username,password_hash,display_name,role_id,must_change_password,created_at,updated_at) SELECT 'report-cashier',?,'Report Cashier',id,0,?,? FROM Roles WHERE code='cashier'")
       .run(bcrypt.hashSync('Cashier-Report-2026!',10),now,now);
     const gateway=new Gateway(db);
     const user=await gateway.call('login',{username:'report-cashier',password:'Cashier-Report-2026!'});
     assert.equal(user.canViewProfit,false);
+    assert.equal(user.canViewSalesReport,true);
+    const daily=await gateway.call('dailySalesSummary',{range:'1y'});
+    assert.equal(daily.costVisible,false);
+    assert.equal(daily.totals.cogsMinor,null);
+    const entries=await gateway.call('dailySalesEntries',{range:'1y',page:1});
+    assert.ok(entries.items.length>0);
+    assert.ok(entries.items.every(row=>row.cogsMinor===null&&row.grossProfitMinor===null));
+    assert.ok(!(await gateway.call('dailySalesExport',{range:'1y',format:'csv'})).csv.includes('COGS minor'));
+    await assert.rejects(gateway.call('dailySalesSummary',{range:'7d',method:'other'}),/payment method/);
     await assert.rejects(gateway.call('reportProfitLoss',{range:'7d'}),/role does not allow/);
     await assert.rejects(gateway.call('reportEntries',{range:'7d',page:1}),/role does not allow/);
     await assert.rejects(gateway.call('reportExport',{range:'7d'}),/role does not allow/);

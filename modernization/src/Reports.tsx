@@ -1,8 +1,9 @@
 import {useEffect,useState} from 'react';
 import type {ProfitLossReport,ReportEntries} from './contracts';
 import {money,dateLabel} from './shared';
+import {DailySales} from './DailySales';
 
-export function Reports(){
+function ProfitLoss(){
  const [range,setRange]=useState('1m'),[from,setFrom]=useState(''),[to,setTo]=useState('');
  const [page,setPage]=useState(1),[summary,setSummary]=useState<ProfitLossReport|null>(null),[entries,setEntries]=useState<ReportEntries|null>(null);
  const [error,setError]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState('');
@@ -43,4 +44,11 @@ export function Reports(){
    <div className="segmented"><button disabled={page===1||busy} onClick={()=>setPage(page-1)}>Previous</button><span>Page {page}</span><button disabled={!entries?.hasMore||busy} onClick={()=>setPage(page+1)}>Next</button></div>
   </section>
  </>
+}
+export function Reports({canViewProfit,canViewSalesReport}:{canViewProfit:boolean;canViewSalesReport:boolean}){
+ const [tab,setTab]=useState<'pnl'|'daily'>(canViewProfit?'pnl':'daily');
+ return <><div className="segmented" role="tablist" aria-label="Report type">
+  {canViewProfit&&<button role="tab" aria-selected={tab==='pnl'} onClick={()=>setTab('pnl')}>Profit and Loss</button>}
+  {canViewSalesReport&&<button role="tab" aria-selected={tab==='daily'} onClick={()=>setTab('daily')}>Daily Sales</button>}
+ </div>{tab==='pnl'&&canViewProfit?<ProfitLoss/>:<DailySales/>}</>
 }

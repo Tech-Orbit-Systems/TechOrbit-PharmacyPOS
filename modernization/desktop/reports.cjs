@@ -111,4 +111,4 @@ function reportPdf(db,input,now=new Date()) {
   const bytes=Buffer.from(doc.output('arraybuffer'));
   return {filename:`TechOrbit_PnL_${summary.range.from}_${summary.range.to}.pdf`,base64:bytes.toString('base64')};
 }
-module.exports={profitLoss,reportEntries,reportCsv,reportXlsx,reportPdf};
+module.exports={reportRange,profitLoss,reportEntries,reportCsv,reportXlsx,reportPdf};

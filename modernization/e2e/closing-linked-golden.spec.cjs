@@ -21,6 +21,8 @@ function seedBooks(filename){
  try{
   const admin=Number(db.prepare('INSERT INTO Users(username,password_hash,display_name,role_id,must_change_password,created_at,updated_at) VALUES(?,?,?,4,0,?,?)')
     .run('b04-review',bcrypt.hashSync('B04-Review-2026!',10),'B04 Reviewer',at(0),at(0)).lastInsertRowid);
+  db.prepare("INSERT INTO Users(username,password_hash,display_name,role_id,must_change_password,created_at,updated_at) SELECT 'daily-cashier',?,'Daily Cashier',id,0,?,? FROM Roles WHERE code='cashier'")
+    .run(bcrypt.hashSync('Daily-Cashier-2026!',10),at(0),at(0));
   const config=new ClosingConfigurationService(db);
   const bank=config.saveAccount({kind:'bank',name:'Statement bank'},admin),wallet=config.saveAccount({kind:'wallet',name:'Statement wallet'},admin),reserve=config.saveAccount({kind:'savings',name:'Reserve'},admin);
   const supplier=new SuppliersRepository(db).create({name:'Linked supplier'});
@@ -116,6 +118,39 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
     await expect(page.getByText(`${format} report saved.`)).toBeVisible();
     expect(fs.readFileSync(filePath).subarray(0,4).toString()).toBe(format==='PDF'?'%PDF':'PK\x03\x04');
   }
+  await page.getByRole('tab',{name:'Daily Sales'}).click();
+  await page.getByRole('combobox',{name:'Range'}).selectOption('custom');
+  await page.getByLabel('Daily sales from date').fill('2026-09-12');
+  await page.getByLabel('Daily sales to date').fill('2026-09-12');
+  await page.getByRole('button',{name:'Run report'}).click();
+  await expect(page.getByRole('row').filter({hasText:'Net sales incl GST'})).toContainText('PKR 100');
+  await expect(page.getByText('Sales: 4 · Returns: 1')).toBeVisible();
+  await page.getByLabel('Recorded batch supplier').fill('Linked supplier');
+  await page.getByRole('button',{name:'Run report'}).click();
+  await expect(page.getByRole('row').filter({hasText:'Net sales incl GST'})).toContainText('PKR 100');
+  await page.getByLabel('Customer name or phone').fill('Ali');
+  await page.getByRole('button',{name:'Run report'}).click();
+  await expect(page.getByRole('row').filter({hasText:'Net sales incl GST'})).toContainText('PKR 40');
+  await page.getByLabel('Customer name or phone').fill('');
+  await page.getByRole('button',{name:'Run report'}).click();
+  await expect(page.getByRole('row').filter({hasText:'Net sales incl GST'})).toContainText('PKR 100');
+  for(const format of ['CSV','XLSX','PDF']){
+    const filePath=path.join(dataDir,`r001-daily-sales.${format.toLowerCase()}`);
+    await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},filePath);
+    await page.getByRole('button',{name:`Export ${format}`}).click();
+    await expect(page.getByText(`${format} daily sales saved.`)).toBeVisible();
+    const saved=fs.readFileSync(filePath);
+    if(format==='CSV')expect(saved.toString()).toContain('"Net sales minor","10000"');
+    else expect(saved.subarray(0,4).toString()).toBe(format==='PDF'?'%PDF':'PK\x03\x04');
+  }
+  await page.getByRole('button',{name:'Sign out'}).click();
+  await page.getByLabel('Username',{exact:true}).fill('daily-cashier');
+  await page.getByLabel('Password',{exact:true}).fill('Daily-Cashier-2026!');
+  await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  await page.getByRole('button',{name:'Reports',exact:true}).click();
+  await expect(page.getByRole('tab',{name:'Daily Sales'})).toBeVisible();
+  await expect(page.getByRole('tab',{name:'Profit and Loss'})).toHaveCount(0);
+  await expect(page.getByText('Net batch COGS')).toHaveCount(0);
   expect(errors).toEqual([]);
  }finally{await app.close()}
  const db=openDatabase({filename});
