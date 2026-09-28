@@ -30,6 +30,7 @@ const methods = [
     "overdueBalanceSummary", "overdueBalanceEntries", "overdueBalanceExport",
     "settlementSummary", "settlementEntries", "settlementExport",
     "dailyClosingSummary", "dailyClosingEntries", "dailyClosingExport",
+    "auditSummary", "auditEntries", "auditExport",
   "logout",
   "changePassword",
   "dashboard",

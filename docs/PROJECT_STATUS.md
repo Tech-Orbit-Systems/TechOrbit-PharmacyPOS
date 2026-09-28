@@ -10,7 +10,7 @@ Verified application baseline: B02 commit `3db0a98`, pushed to `origin/feature/a
 
 
 
-The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R030 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
+The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R031 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
 
 
 
@@ -30,7 +30,7 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 
 - **B04 P055-P058 development is Done.** Shift ownership, counted handover, configurable Rs 50 variance rule, manager forced close, cross-midnight business day, dynamic bank/wallet/savings accounts, explicit digital allocation, original daily snapshot and reasoned revisions are implemented. The separate six-month view provides configured official cycles, custom Pakistan date/time ranges, monthly values/chart, history, reasoned revisions and native CSV export. A linked-book pharmacy fixture independently checks sales, returns, GST/COGS, profit, purchases, customer/supplier/vendor dues, stock, cash, bank, wallet and actual savings. Three fresh isolated Electron runs each passed for linked daily closing, shift/day workflow and six-month closing. Formal manual QA/owner accounting signoff and the wider release campaign remain open.
 
-- **B05 P059-P061 development is Done.** Accrual P&L separates GST, discounts, returns, actual batch COGS/reversal and incurred expenses from purchases, settlements and savings transfers. Reports offers Pakistan dates, paged entries, permission-safe totals, empty states and CSV/Excel/PDF Save exports. Dashboard adds the master business/stock KPIs and relevant drilldowns, with cost/profit hidden from unauthorized roles. A linked-book and GST fixture reconciled P&L independently. Five sequential Electron flows including B02/B03/B04 regression passed, and the linked desktop report/exports passed three fresh-database repetitions. Formal manual and owner accounting acceptance remain open; individual report catalogue R001 onward remains pending.
+- **B05 P059-P061 development is Done.** Accrual P&L separates GST, discounts, returns, actual batch COGS/reversal and incurred expenses from purchases, settlements and savings transfers. Reports offers Pakistan dates, paged entries, permission-safe totals, empty states and CSV/Excel/PDF Save exports. Dashboard adds the master business/stock KPIs and relevant drilldowns, with cost/profit hidden from unauthorized roles. A linked-book and GST fixture reconciled P&L independently. Five sequential Electron flows including B02/B03/B04 regression passed, and the linked desktop report/exports passed three fresh-database repetitions. Formal manual and owner accounting acceptance remain open; R001-R031 individual report development is now Done; formal owner/manual acceptance remains Open.
 
 - **R001 Daily Sales development is Done.** The report shows daily totals and paged invoice/return detail with product, category, brand, recorded batch supplier, customer, cashier and payment-method filters. Official closing day is the default, including activity after midnight until close; Pakistan calendar date is selectable. Whole invoices and their linked returns are counted, with filter scope disclosed. Net sales, GST, discounts, paid-at-sale, credit created, refunds, COGS and gross profit reconcile with the linked ledger fixture. Cost/profit require permission; CSV, Excel and PDF use native Save dialogs. Formal manual acceptance remains open.
 
@@ -148,7 +148,7 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 
 - R020 development verification on 2026-09-28: affected Jest 38/38, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Zero-batch and inventory parity, cashier denial and desktop CSV readback are in `docs/evidence/R020_BATCH_STOCK_REPORT_ACCEPTANCE_20260928.md`.
 
-- These focused results do not replace the final 91-scenario, three-run acceptance campaign or prove hardware, packaged runtime and live-data readiness. Previously accepted unrelated flows were not rerun during this status check.
+- These focused results do not replace the final 91-scenario, three-run acceptance campaign or prove hardware, packaged runtime and live-data readiness. The latest full sequential desktop suite regressed 23 automated flows; hardware, packaged runtime and live data were not used.
 
 
 
@@ -158,7 +158,7 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 
 - **P054 cash shift backend foundation is already Done** in commit `7047c78`; its shift/period fixture tests passed again on 2026-09-27 (2/2). This is foundation only, not acceptance of the full closing workflow.
 
-- **B04 P055-P058 and B05 P059-P061 development are complete** on the P054 foundation. The owner decisions are in `docs/closing-decisions-20260914.md`; linked-book and three-run automated evidence are in `docs/evidence/B04_CLOSING_ACCEPTANCE_20260928.md` and `docs/evidence/B05_REPORTING_ACCEPTANCE_20260928.md`. Formal manual QA and an actual pharmacy's statement review remain release acceptance. The individual report catalogue R001 onward is separate work.
+- **B04 P055-P058 and B05 P059-P061 development are complete** on the P054 foundation. The owner decisions are in `docs/closing-decisions-20260914.md`; linked-book and three-run automated evidence are in `docs/evidence/B04_CLOSING_ACCEPTANCE_20260928.md` and `docs/evidence/B05_REPORTING_ACCEPTANCE_20260928.md`. Formal manual QA and an actual pharmacy's statement review remain release acceptance. R001-R031 catalogue development is now Done; formal manual and owner report acceptance remain release work.
 
 - P045 needs a physical scanner run. Physical 80mm printer evidence, DPI/small-screen checks, role/security matrix, backup/restore and fault campaign, financial golden data, performance, signed installer/upgrade, production-data migration rehearsal and pilot remain release work.
 
@@ -180,8 +180,12 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 
 - **R030 Profit and Loss Report development is Done.** P059 accrual logic is individually accepted against linked GST/returns/COGS/expense books. Pakistan calendar dates, protected detail and CSV/Excel/PDF exports reconcile entries to summary; incomplete custom dates clear old totals and disable export. Purchases/settlements/savings do not create profit. Formal owner accounting acceptance remains open.
 
+- **R031 Audit Log Report development is Done.** Saved event date/user/record/action/role/reason/device filters, counts, paged detail and sanitized previous/new values require audit.view; financial/customer values follow their own access. Native CSV/Excel/PDF preserve the saved audit history. P065 audit completeness and formal security/manual acceptance remain open.
+
+- Final R013-R031 checkpoint: affected financial Jest 31/31, modern integration 27/27, TypeScript/Vite build and full sequential isolated Electron desktop regression 23/23 passed. Each report was individually committed/pushed with its own acceptance evidence.
+
 ## Next action
 
 
 
-Implement R031 Audit Log Report next. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.
+Requested R013-R031 report development is complete. Next planned package is P062 Operational and business settings UI, followed by P063 users/roles and the remaining admin/release packages in canonical dependency order. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.

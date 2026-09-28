@@ -355,6 +355,11 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
   const closingReportExport=path.join(dataDir,'r029-closing.csv');await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},closingReportExport);
   await page.getByRole('button',{name:'Export CSV',exact:true}).click();await expect(page.getByText('CSV daily closing report saved.')).toBeVisible();expect(fs.readFileSync(closingReportExport,'utf8')).toContain('"Cash variance minor","-50"');
   await page.getByLabel('Snapshot version',{exact:true}).selectOption('original');await page.getByRole('button',{name:'Run report',exact:true}).click();await expect(page.getByText(/Business day #.*Revision 0 of 1/)).toBeVisible();
+  await page.getByRole('tab',{name:'Audit Log Report',exact:true}).click();
+  await page.getByLabel('Audit action',{exact:true}).fill('business_day.revise');await page.getByLabel('Audit reason',{exact:true}).fill('Signed cash recount');await page.getByRole('button',{name:'Run report',exact:true}).click();
+  await expect(page.getByRole('cell',{name:'Signed cash recount',exact:true})).toBeVisible();await page.getByText('View changes',{exact:true}).click();await expect(page.getByText(/cash Counted Minor: 12450/)).toBeVisible();
+  const auditExport=path.join(dataDir,'r031-audit.csv');await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},auditExport);
+  await page.getByRole('button',{name:'Export CSV',exact:true}).click();await expect(page.getByText('CSV audit report saved.')).toBeVisible();expect(fs.readFileSync(auditExport,'utf8')).toContain('"Event count","1"');
   await page.getByRole('button',{name:'Sign out'}).click();
   await page.getByLabel('Username',{exact:true}).fill('daily-cashier');
   await page.getByLabel('Password',{exact:true}).fill('Daily-Cashier-2026!');
@@ -365,6 +370,7 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
   await expect(page.getByRole('heading',{name:'Sales by Medicine'})).toBeVisible();
   await expect(page.getByText('Gross profit')).toHaveCount(0);
   await expect(page.getByRole('tab',{name:'Profit and Loss'})).toHaveCount(0);
+  await expect(page.getByRole('tab',{name:'Audit Log Report'})).toHaveCount(0);
   await expect(page.getByText('Net batch COGS')).toHaveCount(0);
   expect(errors).toEqual([]);
  }finally{await app.close()}

@@ -83,6 +83,7 @@ export interface User {
   canViewDues:boolean;
   canViewVendorDues:boolean;
   canViewClosingReport:boolean;
+  canViewAuditReport:boolean;
 }
 export interface Quote {
   amountPaidMinor:number;
@@ -225,7 +226,14 @@ export interface SettlementSummary {range:{from:string;to:string};items:Settleme
 export interface DailyClosingInput {range:string;from?:string;to?:string;basis?:'original'|'latest';dateBasis?:'opened'|'closed';closer?:string;device?:string}
 export interface DailyClosingRow {id:number;openedDate:string;closedDate:string;closer:string;revisionCount:number;snapshot:ClosingDay;revisions:{revision_number:number;reason:string;revised_at:string}[]}
 export interface DailyClosingSummary {range:{from:string;to:string};items:DailyClosingRow[];totals:{dayCount:number;shiftCount:number;cashVarianceMinor:number;digitalVarianceMinor:number;savingsTransferredMinor:number};scope:string}
+export interface AuditReportInput {range:string;from?:string;to?:string;actor?:string;role?:string;action?:string;entity?:string;entityId?:string;device?:string;reason?:string}
+export interface AuditReportRow {previousValue:string;newValue:string;id:number;occurredAt:string;userId:number|null;actor:string;role:string;action:string;entity:string;entityId:string;reason:string;device:string}
+export interface AuditReportSummary {range:{from:string;to:string};items:AuditReportRow[];actions:{action:string;count:number}[];totals:{eventCount:number;actorCount:number;actionCount:number};scope:string}
 export interface Api {
+  auditSummary(input:AuditReportInput):Promise<AuditReportSummary>;
+  auditEntries(input:AuditReportInput&{page:number;pageSize?:number}):Promise<{hasMore:boolean;items:AuditReportRow[]}>;
+  auditExport(input:AuditReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
+
   dailyClosingSummary(input:DailyClosingInput):Promise<DailyClosingSummary>;
   dailyClosingEntries(input:DailyClosingInput&{page:number;pageSize?:number}):Promise<{hasMore:boolean;items:DailyClosingRow[]}>;
   dailyClosingExport(input:DailyClosingInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;

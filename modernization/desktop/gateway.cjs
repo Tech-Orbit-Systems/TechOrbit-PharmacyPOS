@@ -48,7 +48,7 @@ class Gateway {
         this.expires = Date.now() + 8 * 3600000;
         this.failures = 0;
         return { ...user, demo: this.demo,canViewProfit:hasPermission(this.db,user.id,'report.cost'),
-          canViewSalesReport:hasPermission(this.db,user.id,'invoice.search'),canViewInventory:hasPermission(this.db,user.id,'inventory.view'),canViewDues:hasPermission(this.db,user.id,'dues.manage'),canViewClosingReport:hasPermission(this.db,user.id,'closing.create'),canViewVendorDues:hasPermission(this.db,user.id,'dues.manage')&&hasPermission(this.db,user.id,'expense.manage') };
+          canViewSalesReport:hasPermission(this.db,user.id,'invoice.search'),canViewInventory:hasPermission(this.db,user.id,'inventory.view'),canViewDues:hasPermission(this.db,user.id,'dues.manage'),canViewAuditReport:hasPermission(this.db,user.id,'audit.view'),canViewClosingReport:hasPermission(this.db,user.id,'closing.create'),canViewVendorDues:hasPermission(this.db,user.id,'dues.manage')&&hasPermission(this.db,user.id,'expense.manage') };
       } catch (error) {
         if (++this.failures >= 5) {
           this.blockedUntil = Date.now() + 60000;
@@ -338,6 +338,16 @@ class Gateway {
       if(input.format==='pdf')return reports.dailyClosingPdf(this.db,input,options);
       if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
       return reports.dailyClosingCsv(this.db,input,options);
+    }
+    if(['auditSummary','auditEntries','auditExport'].includes(command)){
+      this.authorize('audit.view');
+      const reports=require('./audit-report.cjs'),options={costVisible:this.permission('report.cost'),customerVisible:this.permission('customer.history')};
+      if(command==='auditSummary')return reports.auditSummary(this.db,input,options);
+      if(command==='auditEntries')return reports.auditEntries(this.db,input,options);
+      if(input.format==='xlsx')return reports.auditXlsx(this.db,input,options);
+      if(input.format==='pdf')return reports.auditPdf(this.db,input,options);
+      if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
+      return reports.auditCsv(this.db,input,options);
     }
     if(command.startsWith('closing')){
       const cash=new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db);
