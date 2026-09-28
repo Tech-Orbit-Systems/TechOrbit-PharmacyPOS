@@ -280,6 +280,14 @@ describe('cash shift ownership and closing',()=>{
     const reportInput={range:'custom',from:'2026-09-12',to:'2026-09-12'};
     const pnl=profitLoss(db,reportInput,new Date('2026-09-13T00:00:00Z'));
     expect(pnl).toMatchObject({salesGrossMinor:12000,returnsGrossMinor:2000,netRevenueMinor:10000,soldCogsMinor:6000,returnedCogsMinor:1000,cogsMinor:5000,expensesMinor:2500,operatingProfitMinor:2500});
+    // R030 final catalogue acceptance: independently sum persisted P&L detail.
+    const pnlRows=reportEntries(db,{...reportInput,page:1,pageSize:100}).items;
+    expect(pnlRows.reduce((sum,row)=>sum+row.contribution_minor,0)).toBe(2500);
+    expect(pnlRows.filter(row=>row.kind==='expense')).toHaveLength(1);
+    expect(pnlRows.some(row=>['purchase','receivable_payment','purchase_payment','expense_payment','savings'].includes(row.kind))).toBe(false);
+    expect(profitLoss(db,{range:'custom',from:'2026-09-11',to:'2026-09-11'}).operatingProfitMinor).toBe(0);
+    expect(()=>reportEntries(db,{...reportInput,page:0})).toThrow(/valid report page/);
+
     expect(reportEntries(db,{...reportInput,page:1,pageSize:2}).items).toHaveLength(2);
     expect(reportEntries(db,{...reportInput,page:3,pageSize:2}).items).toHaveLength(2);
     const exported=reportCsv(db,reportInput,new Date('2026-09-13T00:00:00Z'));

@@ -10,7 +10,7 @@ Verified application baseline: B02 commit `3db0a98`, pushed to `origin/feature/a
 
 
 
-The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R029 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
+The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R030 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
 
 
 
@@ -178,8 +178,10 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 
 - **R029 Daily Closing Report development is Done.** Saved closed-day original/latest revision views, opening/actual-close date and closer/counter filters, cash/digital variances, actual savings, shifts and native CSV/Excel/PDF are available with closing access. It preserves cross-midnight days and avoids recomputing history from current ledgers. Formal owner reconciliation remains open.
 
+- **R030 Profit and Loss Report development is Done.** P059 accrual logic is individually accepted against linked GST/returns/COGS/expense books. Pakistan calendar dates, protected detail and CSV/Excel/PDF exports reconcile entries to summary; incomplete custom dates clear old totals and disable export. Purchases/settlements/savings do not create profit. Formal owner accounting acceptance remains open.
+
 ## Next action
 
 
 
-Finalize R030 Profit and Loss Report next. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.
+Implement R031 Audit Log Report next. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.

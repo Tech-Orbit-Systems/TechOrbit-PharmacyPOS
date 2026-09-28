@@ -34,7 +34,7 @@ function profitLoss(db,input,now=new Date()) {
 
 function reportEntries(db,input,now=new Date()) {
   const range=reportRange(input,now);
-  const page=Number(input.page||1),pageSize=Number(input.pageSize||25);
+  const page=Number(input.page??1),pageSize=Number(input.pageSize??25);
   if(!Number.isInteger(page)||page<1||!Number.isInteger(pageSize)||pageSize<1||pageSize>100)throw Error('Choose a valid report page');
   const rows=db.prepare(`SELECT * FROM (
     SELECT 'sale' kind,id,sold_at occurred_at,invoice_number reference,final_total_minor gross_minor,gst_minor,
@@ -63,12 +63,19 @@ function allEntries(db,input,now) {
   return items;
 }
 
+function reconcileEntries(summary,items) {
+  const totals=items.reduce((sum,row)=>({gross:sum.gross+row.gross_minor,gst:sum.gst+row.gst_minor,cogs:sum.cogs+row.cogs_minor,contribution:sum.contribution+row.contribution_minor}),{gross:0,gst:0,cogs:0,contribution:0});
+  if(totals.gross!==summary.salesGrossMinor-summary.returnsGrossMinor||totals.gst!==summary.salesGstMinor-summary.returnsGstMinor||totals.cogs!==summary.cogsMinor||totals.contribution!==summary.operatingProfitMinor)throw Error('P&L entries do not reconcile to the report totals');
+}
+const scope='Accrual P&L by Pakistan calendar transaction dates. Purchases remain inventory until sold; later settlements and savings transfers do not create income or expense. GST is separate from revenue. Voided expenses are excluded from this current saved-book view.';
+
 function reportCsv(db,input,now=new Date()) {
   const summary=profitLoss(db,input,now),items=allEntries(db,input,now);
+  reconcileEntries(summary,items);
   const q=x=>'"'+String(x??'').replaceAll('"','""')+'"';
-  const lines=[['Type','Date/time','Reference','Gross minor','GST minor','COGS minor','P&L contribution minor'],
+  const lines=[['TechOrbit Pharmacy POS - Accrual Profit and Loss'],['From',summary.range.from,'To',summary.range.to],['Scope',scope],[],['Type','Date/time','Reference','Gross minor','GST minor','COGS minor','P&L contribution minor'],
     ...items.map(x=>[x.kind,x.occurred_at,x.reference,x.gross_minor,x.gst_minor,x.cogs_minor,x.contribution_minor]),
-    [],['Net ex-GST revenue minor',summary.netRevenueMinor],['COGS minor',summary.cogsMinor],
+    [],['Listed sales ex-GST minor',summary.listedGrossMinor],['Discounts minor',summary.salesDiscountMinor],['Sales GST minor',summary.salesGstMinor],['Return GST minor',summary.returnsGstMinor],['Invoice rounding minor',summary.salesRoundingMinor],['Net ex-GST revenue minor',summary.netRevenueMinor],['COGS minor',summary.cogsMinor],
     ['Gross profit minor',summary.grossProfitMinor],['Incurred expenses minor',summary.expensesMinor],
     ['Operating profit minor',summary.operatingProfitMinor]];
   return {filename:`TechOrbit_PnL_${summary.range.from}_${summary.range.to}.csv`,csv:'\uFEFF'+lines.map(row=>row.map(q).join(',')).join('\r\n')+'\r\n'};
@@ -76,6 +83,7 @@ function reportCsv(db,input,now=new Date()) {
 async function reportXlsx(db,input,now=new Date()) {
   const ExcelJS=require('exceljs');
   const summary=profitLoss(db,input,now),items=allEntries(db,input,now);
+  reconcileEntries(summary,items);
   const book=new ExcelJS.Workbook(),sheet=book.addWorksheet('Profit and Loss');
   sheet.addRow(['TechOrbit Pharmacy POS - Accrual Profit and Loss']);
   sheet.addRow(['From',summary.range.from,'To',summary.range.to]);
@@ -89,19 +97,21 @@ async function reportXlsx(db,input,now=new Date()) {
   sheet.getRow(1).font={bold:true,size:14};sheet.getRow(12).font={bold:true};
   for(let row=3;row<=10;row++)sheet.getCell(row,2).numFmt='#,##0.00;[Red](#,##0.00)';
   for(let row=13;row<=sheet.rowCount;row++)for(let col=4;col<=7;col++)sheet.getCell(row,col).numFmt='#,##0.00;[Red](#,##0.00)';
+  sheet.addRow([]);sheet.addRow(['Scope',scope]);
   const buffer=Buffer.from(await book.xlsx.writeBuffer());
   return {filename:`TechOrbit_PnL_${summary.range.from}_${summary.range.to}.xlsx`,base64:buffer.toString('base64')};
 }
 function reportPdf(db,input,now=new Date()) {
   const {jsPDF}=require('jspdf');
   const summary=profitLoss(db,input,now),items=allEntries(db,input,now);
+  reconcileEntries(summary,items);
   if(items.length>10000)throw Error('PDF report is too large; use CSV or Excel');
   const doc=new jsPDF({unit:'pt',format:'a4'}),pageHeight=doc.internal.pageSize.height;
   const amount=n=>(n/100).toFixed(2);
   let y=42;
   const line=(left,right='',bold=false)=>{if(y>pageHeight-42){doc.addPage();y=42}doc.setFont('helvetica',bold?'bold':'normal');doc.text(String(left).slice(0,70),42,y);if(right)doc.text(String(right),550,y,{align:'right'});y+=17};
   line('TechOrbit Pharmacy POS - Accrual Profit and Loss','',true);
-  line(`${summary.range.from} to ${summary.range.to}`);y+=10;
+  line(`${summary.range.from} to ${summary.range.to}`);line('Pakistan calendar transaction dates; accrual basis.');y+=10;
   for(const [label,value] of [['Invoiced sales incl GST',summary.salesGrossMinor],['Net GST liability',summary.salesGstMinor-summary.returnsGstMinor],
     ['Returns incl GST',summary.returnsGrossMinor],['Net revenue ex GST',summary.netRevenueMinor],
     ['Net batch COGS',summary.cogsMinor],['Gross profit',summary.grossProfitMinor],

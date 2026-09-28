@@ -70,7 +70,7 @@ function accountBalanceSummary(db,input={},options={}){
  return {asOfDate,type,title,items,parties,totals,byType,scope:'Gross outstanding across account types is not a net asset/liability balance. Vendor scope follows expense permission. Current saved account balances including later settlements and return credits. Source-not-linked accounts are explicitly labelled and only verified against the saved account equation, not an original invoice. Original amount is debt at creation after any initial payment; later payments and credits are separate. Due-date filters select accounts, not settlement activity. Overdue is positive balance with due date before today in Pakistan; due today is not overdue. This is not a historical balance snapshot.'};
 }
 function accountBalanceEntries(db,input={},options={}){
- const {items}=data(db,input,options),page=Number(input.page||1),pageSize=Number(input.pageSize||25);
+ const {items}=data(db,input,options),page=Number(input.page??1),pageSize=Number(input.pageSize??25);
  if(!Number.isInteger(page)||page<1||!Number.isInteger(pageSize)||pageSize<1||pageSize>100)throw Error('Choose a valid report page');
  return {page,pageSize,hasMore:items.length>page*pageSize,items:items.slice((page-1)*pageSize,page*pageSize)};
 }

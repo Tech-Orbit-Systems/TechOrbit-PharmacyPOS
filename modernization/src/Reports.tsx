@@ -23,7 +23,7 @@ function ProfitLoss(){
  const [page,setPage]=useState(1),[summary,setSummary]=useState<ProfitLossReport|null>(null),[entries,setEntries]=useState<ReportEntries|null>(null);
  const [error,setError]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState('');
  useEffect(()=>{
-  if(range==='custom'&&(!from||!to))return;
+  if(range==='custom'&&(!from||!to)){setSummary(null);setEntries(null);setBusy(false);setError('');return;}
   let active=true;setBusy(true);setError('');
   const input={range,from,to};
   Promise.all([window.pharmacy.reportProfitLoss(input),window.pharmacy.reportEntries({...input,page})])
@@ -35,7 +35,7 @@ function ProfitLoss(){
  const changeRange=(value:string)=>{setRange(value);setPage(1)};
  const changeDate=(value:string,which:'from'|'to')=>{which==='from'?setFrom(value):setTo(value);setPage(1)};
  return <>
-  <div className="page-title"><div><h1>Reports</h1><p>Accrual profit and loss · Pakistan dates</p></div>
+  <div className="page-title"><div><h1>Profit and Loss Report</h1><p>Accrual profit and loss · Pakistan dates</p></div>
    {(['csv','xlsx','pdf'] as const).map(format=><button key={format} disabled={busy||!summary} onClick={async()=>{try{setError('');const result=await window.pharmacy.reportExport({range,from,to,format});if(result.saved)setNotice(`${format.toUpperCase()} report saved.`)}catch(e){setError((e as Error).message)}}}>Export {format.toUpperCase()}</button>)}
   </div>
   <section className="panel"><h2>Profit and loss</h2>
@@ -51,7 +51,7 @@ function ProfitLoss(){
      ['Sold batch cost',-summary.soldCogsMinor],['Returned batch cost',summary.returnedCogsMinor],['Net cost of goods',-summary.cogsMinor],
      ['Gross profit',summary.grossProfitMinor],['Incurred expenses',-summary.expensesMinor],['Operating profit',summary.operatingProfitMinor]
     ].map(([label,value])=><tr key={label}><th>{label}</th><td className="number">PKR {money(value as number)}</td></tr>)}
-   </tbody></table><small>Purchases stay in inventory until sold. Customer, supplier and vendor settlements do not create new income or expenses. Savings transfers do not change profit.</small></>}
+   </tbody></table><small>Accrual amounts use Pakistan calendar transaction dates. Purchases stay in inventory until sold. Customer, supplier and vendor settlements do not create new income or expenses. Savings transfers do not change profit.</small></>}
    {!summary&&!busy&&!error&&<p>Choose dates to view the report.</p>}
   </section>
   <section className="panel"><h2>Report entries</h2><p>Sales, returns and incurred expenses for this period.</p>

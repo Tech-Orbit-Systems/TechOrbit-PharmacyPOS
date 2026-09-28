@@ -99,7 +99,10 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
   await expect(page.getByText('Vendor dues')).toBeVisible();
   await expect(page.getByText('Expired stock value')).toBeVisible();
   await page.getByRole('button',{name:'Reports',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Profit and Loss Report',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Custom',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Export CSV',exact:true})).toBeDisabled();
+  await expect(page.getByRole('row').filter({hasText:'Operating profit'})).toHaveCount(0);
   await page.getByLabel('Report from date').fill('2026-09-12');
   await page.getByLabel('Report to date').fill('2026-09-12');
   await expect(page.getByRole('row').filter({hasText:'Operating profit'})).toContainText('PKR 25');

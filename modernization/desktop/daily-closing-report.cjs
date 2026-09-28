@@ -21,7 +21,7 @@ function dailyClosingSummary(db,input={},options={}){
  return {range:{from:range.from,to:range.to},basis,dateBasis,items,totals,scope:'Saved closed business-day snapshots only; open days are excluded. Original snapshot is retained; latest includes reasoned saved revisions. Dates select Pakistan opening or closing date, so a day may cross midnight. Counter filter selects whole days containing that counter. Variances and actual savings are summed; closing cash balances are not added into a new balance. No live ledger recomputation or new savings assumption.'};
 }
 function dailyClosingEntries(db,input={},options={}){
- const r=dailyClosingSummary(db,input,options),page=Number(input.page||1),pageSize=Number(input.pageSize||25);
+ const r=dailyClosingSummary(db,input,options),page=Number(input.page??1),pageSize=Number(input.pageSize??25);
  if(!Number.isInteger(page)||page<1||!Number.isInteger(pageSize)||pageSize<1||pageSize>100)throw Error('Choose a valid report page');
  return {page,pageSize,hasMore:r.items.length>page*pageSize,items:r.items.slice((page-1)*pageSize,page*pageSize)};
 }

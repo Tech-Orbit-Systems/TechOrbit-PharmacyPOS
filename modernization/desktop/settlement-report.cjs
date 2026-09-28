@@ -35,7 +35,7 @@ function settlementSummary(db,input={},options={}){
  return {range:{from:range.from,to:range.to},items,totals,methods,scope:'Later customer collections and supplier/vendor payments by payment date in Pakistan. Each payment matches one saved money movement. Initial invoice payments, return credits/refunds and savings transfers are excluded. Net is settlement cash flow, not revenue or profit. Vendor scope follows expense permission.'};
 }
 function settlementEntries(db,input={},options={}){
- const r=settlementSummary(db,input,options),page=Number(input.page||1),pageSize=Number(input.pageSize||25);
+ const r=settlementSummary(db,input,options),page=Number(input.page??1),pageSize=Number(input.pageSize??25);
  if(!Number.isInteger(page)||page<1||!Number.isInteger(pageSize)||pageSize<1||pageSize>100)throw Error('Choose a valid report page');
  return {page,pageSize,hasMore:r.items.length>page*pageSize,items:r.items.slice((page-1)*pageSize,page*pageSize)};
 }
