@@ -18,6 +18,7 @@ const {ExpensesService}=require('../infrastructure/sqlite/services/expenses');
 const {profitLoss,reportEntries,reportCsv,reportXlsx,reportPdf}=require('../modernization/desktop/reports.cjs');
 const {dashboard}=require('../modernization/desktop/dashboard.cjs');
 const dailySales=require('../modernization/desktop/daily-sales.cjs');
+const medicineSales=require('../modernization/desktop/sales-breakdown.cjs');
 
 describe('cash shift ownership and closing',()=>{
   let db,service,user1,user2;
@@ -287,6 +288,19 @@ describe('cash shift ownership and closing',()=>{
     db.prepare("UPDATE Products SET category='General care',manufacturer='Linked brand' WHERE id=?").run(product.id);
     expect(dailySales.dailySalesSummary(db,{...salesFilter,category:'General care',brand:'Linked brand'},{costVisible:true}).totals.saleCount).toBe(4);
     expect(dailySales.dailySalesSummary(db,{...salesFilter,product:'%'},{costVisible:true}).totals.saleCount).toBe(0);
+    const medicines=medicineSales.medicineSummary(db,salesFilter,{costVisible:true,now:new Date('2026-09-13T00:00:00Z')});
+    expect(medicines.groups).toHaveLength(1);
+    expect(medicines.groups[0]).toMatchObject({medicine:'Linked medicine',category:'General care',brand:'Linked brand',
+      salesMinor:12000,returnsMinor:2000,netSalesMinor:10000,cogsMinor:5000,grossProfitMinor:5000});
+    expect(medicines.totals.netSalesMinor).toBe(dailyReport.totals.netSalesMinor);
+    expect(medicineSales.medicineSummary(db,{...salesFilter,product:'Linked medicine',supplier:'Linked supplier'},{costVisible:false}).totals)
+      .toMatchObject({netSalesMinor:10000,cogsMinor:null,grossProfitMinor:null});
+    expect(medicineSales.medicineEntries(db,{...salesFilter,page:1,pageSize:2},{costVisible:false})).toMatchObject({hasMore:true,page:1});
+    expect(medicineSales.medicineCsv(db,salesFilter,{costVisible:false}).csv).not.toContain('COGS minor');
+    const medicineExcel=await medicineSales.medicineXlsx(db,salesFilter,{costVisible:true});
+    const medicineBook=new (require('exceljs').Workbook)();await medicineBook.xlsx.load(Buffer.from(medicineExcel.base64,'base64'));
+    expect(medicineBook.getWorksheet('Sales by Medicine').getCell('I7').value).toBe(100);
+    expect(Buffer.from(medicineSales.medicinePdf(db,salesFilter,{costVisible:false}).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
     expect(dailySales.dailySalesEntries(db,{...salesFilter,page:1,pageSize:2},{costVisible:true})).toMatchObject({hasMore:true,page:1});
     const dailyCsv=dailySales.dailySalesCsv(db,salesFilter,{costVisible:false});
     expect(dailyCsv.csv).toContain('"Net sales minor","10000"');

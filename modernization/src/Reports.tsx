@@ -2,6 +2,7 @@ import {useEffect,useState} from 'react';
 import type {ProfitLossReport,ReportEntries} from './contracts';
 import {money,dateLabel} from './shared';
 import {DailySales} from './DailySales';
+import {SalesByMedicine} from './SalesByMedicine';
 
 function ProfitLoss(){
  const [range,setRange]=useState('1m'),[from,setFrom]=useState(''),[to,setTo]=useState('');
@@ -46,11 +47,12 @@ function ProfitLoss(){
  </>
 }
 export function Reports({canViewProfit,canViewSalesReport}:{canViewProfit:boolean;canViewSalesReport:boolean}){
- const [tab,setTab]=useState<'pnl'|'daily'|'weekly'|'monthly'>(canViewProfit?'pnl':'daily');
+ const [tab,setTab]=useState<'pnl'|'daily'|'weekly'|'monthly'|'medicine'>(canViewProfit?'pnl':'daily');
  return <><div className="segmented" role="tablist" aria-label="Report type">
   {canViewProfit&&<button role="tab" aria-selected={tab==='pnl'} onClick={()=>setTab('pnl')}>Profit and Loss</button>}
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='daily'} onClick={()=>setTab('daily')}>Daily Sales</button>}
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='weekly'} onClick={()=>setTab('weekly')}>Weekly Sales</button>}
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='monthly'} onClick={()=>setTab('monthly')}>Monthly Sales</button>}
- </div>{tab==='pnl'&&canViewProfit?<ProfitLoss/>:<DailySales key={tab} period={tab==='weekly'?'week':tab==='monthly'?'month':'day'}/>}</>
+  {canViewSalesReport&&<button role="tab" aria-selected={tab==='medicine'} onClick={()=>setTab('medicine')}>Sales by Medicine</button>}
+ </div>{tab==='pnl'&&canViewProfit?<ProfitLoss/>:tab==='medicine'?<SalesByMedicine/>:<DailySales key={tab} period={tab==='weekly'?'week':tab==='monthly'?'month':'day'}/>}</>
 }

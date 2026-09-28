@@ -13,6 +13,7 @@ const methods = [
   "login",
   "reportProfitLoss", "reportEntries", "reportExport",
   "dailySalesSummary", "dailySalesEntries", "dailySalesExport",
+  "medicineSummary", "medicineEntries", "medicineExport",
   "logout",
   "changePassword",
   "dashboard",

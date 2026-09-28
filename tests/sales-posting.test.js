@@ -4,6 +4,7 @@ const {ProductsRepository}=require("../infrastructure/sqlite/repositories/produc
 const {ProductUnitsRepository}=require("../infrastructure/sqlite/repositories/product-units");
 const {SalesPostingService}=require("../infrastructure/sqlite/services/sales-posting");
 const {dailySalesSummary,dailySalesCsv}=require('../modernization/desktop/daily-sales.cjs');
+const {medicineSummary}=require('../modernization/desktop/sales-breakdown.cjs');
 
 describe("Atomic sales posting",()=>{
   let dir,db,product,customer;
@@ -71,6 +72,22 @@ describe("Atomic sales posting",()=>{
     expect(monthly.totals).toMatchObject({saleCount:2,salesMinor:2600,cogsMinor:1140});
     expect(dailySalesSummary(db,{...input,period:"day"},options).totals.netSalesMinor).toBe(monthly.totals.netSalesMinor);
     expect(dailySalesCsv(db,input,{costVisible:false,...options}).csv).toContain('"Month starting"');
+  });
+  test("medicine groups allocate invoice rounding across two saved product lines without losing revenue",()=>{
+    const second=new ProductsRepository(db).create({name:"Ibuprofen 200mg",genericName:"Ibuprofen",baseUnit:"tablet",taxStatus:"exempt"});
+    new ProductUnitsRepository(db).configure(second.id,[{unitName:"tablet",baseQuantity:1,sellingPriceMinor:100,isDefaultSaleUnit:true}]);
+    const stamp=new Date().toISOString();
+    db.prepare(`INSERT INTO ProductBatches(product_id,batch_number,expiry_date,unit_cost_minor,sale_price_minor,quantity_on_hand,received_at,created_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?)`).run(second.id,"IBU-1","2028-01-31",40,100,20,"2026-01-01",stamp,stamp);
+    const sale=baseSale({invoiceDiscountType:"fixed",invoiceDiscountValue:25});
+    sale.items.push({productId:second.id,saleUnit:"tablet",quantity:3});
+    new SalesPostingService(db).post(sale);
+    const input={range:"custom",from:"2026-09-11",to:"2026-09-11"},options={costVisible:true,now:new Date("2026-09-12T00:00:00Z")};
+    const byMedicine=medicineSummary(db,input,options),daily=dailySalesSummary(db,input,options);
+    expect(byMedicine.groups.map(row=>row.medicine).sort()).toEqual(["Ibuprofen 200mg","Paracetamol 500mg"]);
+    for(const field of ['salesMinor','netSalesMinor','gstMinor','netExGstMinor','cogsMinor','grossProfitMinor'])
+      expect(byMedicine.totals[field]).toBe(daily.totals[field]);
+    expect(medicineSummary(db,{...input,product:"Ibuprofen"},options).groups).toHaveLength(1);
   });
   test("creates receivable and only records money actually collected",()=>{const result=new SalesPostingService(db).post(baseSale({paymentMethod:"credit",collectionMethod:"cash",amountPaidMinor:500,customerId:Number(customer),dueDate:"2026-10-01"}));
     expect(result.balanceDueMinor).toBe(result.finalTotalMinor-500); expect(db.prepare("SELECT method,amount_minor FROM MoneyMovements").get()).toEqual({method:"cash",amount_minor:500});

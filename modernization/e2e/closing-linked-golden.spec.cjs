@@ -169,12 +169,34 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
   await page.getByRole('button',{name:'Export CSV'}).click();
   await expect(page.getByText('CSV monthly sales saved.')).toBeVisible();
   expect(fs.readFileSync(monthlyExport,'utf8')).toContain('"Month starting"');
+  await page.getByRole('tab',{name:'Sales by Medicine'}).click();
+  await page.getByRole('combobox',{name:'Range'}).selectOption('custom');
+  await page.getByLabel('Medicine sales from date').fill('2026-09-12');
+  await page.getByLabel('Medicine sales to date').fill('2026-09-12');
+  await page.getByRole('button',{name:'Run report'}).click();
+  await expect(page.getByRole('heading',{name:'Sales by Medicine'})).toBeVisible();
+  await expect(page.getByRole('row').filter({hasText:'Linked medicine'}).first()).toContainText('100');
+  const medicineExport=path.join(dataDir,'r004-sales-by-medicine.csv');
+  await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},medicineExport);
+  await page.getByRole('button',{name:'Export CSV'}).click();
+  await expect(page.getByText('CSV medicine sales saved.')).toBeVisible();
+  expect(fs.readFileSync(medicineExport,'utf8')).toContain('"Total net sales minor","10000"');
+  for(const format of ['XLSX','PDF']){
+    const filePath=path.join(dataDir,`r004-sales-by-medicine.${format.toLowerCase()}`);
+    await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},filePath);
+    await page.getByRole('button',{name:`Export ${format}`}).click();
+    await expect(page.getByText(`${format} medicine sales saved.`)).toBeVisible();
+    expect(fs.readFileSync(filePath).subarray(0,4).toString()).toBe(format==='PDF'?'%PDF':'PK\x03\x04');
+  }
   await page.getByRole('button',{name:'Sign out'}).click();
   await page.getByLabel('Username',{exact:true}).fill('daily-cashier');
   await page.getByLabel('Password',{exact:true}).fill('Daily-Cashier-2026!');
   await page.getByRole('button',{name:'Sign in',exact:true}).click();
   await page.getByRole('button',{name:'Reports',exact:true}).click();
   await expect(page.getByRole('tab',{name:'Daily Sales'})).toBeVisible();
+  await page.getByRole('tab',{name:'Sales by Medicine'}).click();
+  await expect(page.getByRole('heading',{name:'Sales by Medicine'})).toBeVisible();
+  await expect(page.getByText('Gross profit')).toHaveCount(0);
   await expect(page.getByRole('tab',{name:'Profit and Loss'})).toHaveCount(0);
   await expect(page.getByText('Net batch COGS')).toHaveCount(0);
   expect(errors).toEqual([]);
