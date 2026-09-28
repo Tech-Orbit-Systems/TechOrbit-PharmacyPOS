@@ -22,6 +22,12 @@ test('cost and profit report is denied to a cashier below the UI',async()=>{
     assert.ok(entries.items.length>0);
     assert.ok(entries.items.every(row=>row.cogsMinor===null&&row.grossProfitMinor===null));
     assert.ok(!(await gateway.call('dailySalesExport',{range:'1y',format:'csv'})).csv.includes('COGS minor'));
+    const weekly=await gateway.call('dailySalesSummary',{range:'1y',period:'week'});
+    assert.equal(weekly.period,'week');
+    assert.equal(weekly.costVisible,false);
+    assert.equal(weekly.totals.netSalesMinor,daily.totals.netSalesMinor);
+    assert.ok(weekly.days.every(row=>row.cogsMinor===null&&row.grossProfitMinor===null));
+    assert.ok(!(await gateway.call('dailySalesExport',{range:'1y',period:'week',format:'csv'})).csv.includes('COGS minor'));
     await assert.rejects(gateway.call('dailySalesSummary',{range:'7d',method:'other'}),/payment method/);
     await assert.rejects(gateway.call('reportProfitLoss',{range:'7d'}),/role does not allow/);
     await assert.rejects(gateway.call('reportEntries',{range:'7d',page:1}),/role does not allow/);

@@ -4,6 +4,20 @@ const METHODS=new Set(['cash','card','digital','credit']);
 const FIELDS=['salesMinor','returnsMinor','netSalesMinor','gstMinor','netExGstMinor','discountMinor','cogsMinor','grossProfitMinor','paidAtSaleMinor','creditCreatedMinor','refundMinor','receivableCreditMinor','saleCount','returnCount'];
 const empty=()=>Object.fromEntries(FIELDS.map(key=>[key,0]));
 const like=value=>`%${value.replace(/[\\%_]/g,'\\$&')}%`;
+function groupDays(rows,period,costVisible){
+  if(period==='day')return rows.map(row=>present(row,costVisible));
+  const grouped=new Map();
+  for(const row of rows){
+    const date=new Date(`${row.day}T00:00:00Z`);
+    const offset=(date.getUTCDay()+6)%7;
+    date.setUTCDate(date.getUTCDate()-offset);
+    const day=date.toISOString().slice(0,10);
+    const current=grouped.get(day)||{day,...empty()};
+    for(const field of FIELDS)if(field in row)current[field]+=row[field];
+    grouped.set(day,current);
+  }
+  return [...grouped.values()].sort((a,b)=>b.day.localeCompare(a.day)).map(row=>present(row,costVisible));
+}
 
 function base(input,now=new Date()) {
   if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Choose valid report filters');
@@ -73,6 +87,8 @@ function present(raw,costVisible){
 
 function dailySalesSummary(db,input,options={}) {
   const {range,sql,params,dayMode}=base(input,options.now);
+  const period=input.period||'day';
+  if(!['day','week'].includes(period))throw Error('Choose a valid sales period');
   const rows=db.prepare(`${sql} SELECT day,
     SUM(salesMinor) salesMinor,SUM(returnsMinor) returnsMinor,SUM(gstMinor) gstMinor,
     SUM(discountMinor) discountMinor,SUM(cogsMinor) cogsMinor,
@@ -84,7 +100,7 @@ function dailySalesSummary(db,input,options={}) {
   totals.netSalesMinor=totals.salesMinor-totals.returnsMinor;
   totals.netExGstMinor=totals.netSalesMinor-totals.gstMinor;
   totals.grossProfitMinor=totals.netExGstMinor-totals.cogsMinor;
-  return {range:{from:range.from,to:range.to},dayMode,days:rows.map(row=>present(row,options.costVisible)),
+  return {range:{from:range.from,to:range.to},dayMode,period,days:groupDays(rows,period,options.costVisible),
     totals:present(totals,options.costVisible),costVisible:Boolean(options.costVisible),
     filterScope:'Filters select whole invoices and related returns. Category and brand use current product metadata. Official day uses its opening date; unmatched historical events fall back to Pakistan calendar date.'};
 }
@@ -108,46 +124,53 @@ function allEntries(db,input,options){
 }
 function columns(costVisible){return ['Day','Type','Reference','Customer','Cashier','Payment method','Sales minor','Returns minor','Net sales minor','GST minor','Net ex-GST minor','Discount minor','Paid at sale minor','Credit created minor','Refund minor','Receivable credit minor',...(costVisible?['COGS minor','Gross profit minor']:[])];}
 function values(row,costVisible){return [row.day,row.kind,row.reference,row.customer||'',row.cashier||'',row.method,row.salesMinor,row.returnsMinor,row.netSalesMinor,row.gstMinor,row.netExGstMinor,row.discountMinor,row.paidAtSaleMinor,row.creditCreatedMinor,row.refundMinor,row.receivableCreditMinor,...(costVisible?[row.cogsMinor,row.grossProfitMinor]:[])];}
-function filterRows(input){return [['Day grouping',input.dayMode||'official'],['Product',input.product],['Category',input.category],['Brand',input.brand],['Recorded batch supplier',input.supplier],['Customer',input.customer],['Cashier',input.cashier],['Payment method',input.method]].filter(([,value])=>String(value||'').trim()).map(([key,value])=>[`${key} filter`,String(value).trim()]);}
+function filterRows(input){return [['Period',input.period||'day'],['Day grouping',input.dayMode||'official'],['Product',input.product],['Category',input.category],['Brand',input.brand],['Recorded batch supplier',input.supplier],['Customer',input.customer],['Cashier',input.cashier],['Payment method',input.method]].filter(([,value])=>String(value||'').trim()).map(([key,value])=>[`${key} filter`,String(value).trim()]);}
+function periodRows(summary){return summary.period==='week'?[['Week starting Monday','Sales minor','Returns minor','Net sales minor','GST minor','Net ex-GST minor',...(summary.costVisible?['COGS minor','Gross profit minor']:[])],...summary.days.map(row=>[row.day,row.salesMinor,row.returnsMinor,row.netSalesMinor,row.gstMinor,row.netExGstMinor,...(summary.costVisible?[row.cogsMinor,row.grossProfitMinor]:[])])]:[]}
+const reportTitle=summary=>summary.period==='week'?'Weekly Sales':'Daily Sales';
+const reportStem=summary=>summary.period==='week'?'Weekly_Sales':'Daily_Sales';
 const quoted=x=>'"'+String(x??'').replaceAll('"','""')+'"';
 function dailySalesCsv(db,input,options={}){
   const summary=dailySalesSummary(db,input,options),items=allEntries(db,input,options);
-  const lines=[['Daily Sales',summary.range.from,summary.range.to],...filterRows(input),['Filter scope',summary.filterScope],[],
+  const lines=[[reportTitle(summary),summary.range.from,summary.range.to],...filterRows(input),['Filter scope',summary.filterScope],[],
+    ...periodRows(summary),...(summary.period==='week'?[[]]:[]),
     columns(summary.costVisible),...items.map(row=>values(row,summary.costVisible)),[],
     ['Total sales minor',summary.totals.salesMinor],['Total returns minor',summary.totals.returnsMinor],
     ['Net sales minor',summary.totals.netSalesMinor],['Net GST minor',summary.totals.gstMinor],
     ['Net ex-GST minor',summary.totals.netExGstMinor],['Discount minor',summary.totals.discountMinor],
     ...(summary.costVisible?[['Net COGS minor',summary.totals.cogsMinor],['Gross profit minor',summary.totals.grossProfitMinor]]:[])];
-  return {filename:`TechOrbit_Daily_Sales_${summary.range.from}_${summary.range.to}.csv`,csv:'\uFEFF'+lines.map(row=>row.map(quoted).join(',')).join('\r\n')+'\r\n'};
+  return {filename:`TechOrbit_${reportStem(summary)}_${summary.range.from}_${summary.range.to}.csv`,csv:'\uFEFF'+lines.map(row=>row.map(quoted).join(',')).join('\r\n')+'\r\n'};
 }
 async function dailySalesXlsx(db,input,options={}){
   const ExcelJS=require('exceljs'),summary=dailySalesSummary(db,input,options),items=allEntries(db,input,options);
-  const book=new ExcelJS.Workbook(),sheet=book.addWorksheet('Daily Sales');
-  sheet.addRow(['TechOrbit Pharmacy POS - Daily Sales']);sheet.addRow(['From',summary.range.from,'To',summary.range.to]);
+  const book=new ExcelJS.Workbook(),sheet=book.addWorksheet(reportTitle(summary));
+  sheet.addRow([`TechOrbit Pharmacy POS - ${reportTitle(summary)}`]);sheet.addRow(['From',summary.range.from,'To',summary.range.to]);
   sheet.addRow(['Net sales PKR',summary.totals.netSalesMinor/100,'Net ex-GST PKR',summary.totals.netExGstMinor/100]);
   if(summary.costVisible)sheet.addRow(['Gross profit PKR',summary.totals.grossProfitMinor/100]);
   for(const row of filterRows(input))sheet.addRow(row);
   sheet.addRow(['Filter scope',summary.filterScope]);sheet.addRow([]);
+  for(const row of periodRows(summary))sheet.addRow(row.map((value,index)=>index>0&&typeof value==='number'?value/100:value));
+  if(summary.period==='week')sheet.addRow([]);
   const header=sheet.rowCount+1;sheet.addRow(columns(summary.costVisible).map(x=>x.replace(' minor',' PKR')));
   for(const row of items)sheet.addRow(values(row,summary.costVisible).map((value,index)=>index>=6?value/100:value));
   sheet.getRow(1).font={bold:true,size:14};sheet.getRow(header).font={bold:true};
   sheet.columns=columns(summary.costVisible).map((_,i)=>({width:i===2?26:i<6?20:18}));
   for(let row=header+1;row<=sheet.rowCount;row++)for(let col=7;col<=columns(summary.costVisible).length;col++)sheet.getCell(row,col).numFmt='#,##0.00;[Red](#,##0.00)';
   const buffer=Buffer.from(await book.xlsx.writeBuffer());
-  return {filename:`TechOrbit_Daily_Sales_${summary.range.from}_${summary.range.to}.xlsx`,base64:buffer.toString('base64')};
+  return {filename:`TechOrbit_${reportStem(summary)}_${summary.range.from}_${summary.range.to}.xlsx`,base64:buffer.toString('base64')};
 }
 function dailySalesPdf(db,input,options={}){
   const {jsPDF}=require('jspdf'),summary=dailySalesSummary(db,input,options),items=allEntries(db,input,options);
   const doc=new jsPDF({unit:'pt',format:'a4'}),max=doc.internal.pageSize.height;
   let y=42;const line=(left,right='',bold=false)=>{if(y>max-42){doc.addPage();y=42}doc.setFont('helvetica',bold?'bold':'normal');doc.text(String(left).slice(0,70),42,y);if(right)doc.text(String(right),550,y,{align:'right'});y+=17};
-  line('TechOrbit Pharmacy POS - Daily Sales','',true);line(`${summary.range.from} to ${summary.range.to}`);
+  line(`TechOrbit Pharmacy POS - ${reportTitle(summary)}`,'',true);line(`${summary.range.from} to ${summary.range.to}`);
   line('Net sales',`PKR ${(summary.totals.netSalesMinor/100).toFixed(2)}`);
   line('Net ex-GST',`PKR ${(summary.totals.netExGstMinor/100).toFixed(2)}`);
   if(summary.costVisible)line('Gross profit',`PKR ${(summary.totals.grossProfitMinor/100).toFixed(2)}`);
   for(const [key,value] of filterRows(input))line(`${key}: ${value}`);
   line('Invoice-level filters; official closing day is separate.');
+  if(summary.period==='week'){y+=10;line('Week of','Net sales PKR',true);for(const row of summary.days)line(row.day,(row.netSalesMinor/100).toFixed(2));}
   y+=12;line('Day / Type / Reference','Net sales PKR',true);
   for(const row of items)line(`${row.day} / ${row.kind} / ${row.reference}`,`${(row.netSalesMinor/100).toFixed(2)}`);
-  return {filename:`TechOrbit_Daily_Sales_${summary.range.from}_${summary.range.to}.pdf`,base64:Buffer.from(doc.output('arraybuffer')).toString('base64')};
+  return {filename:`TechOrbit_${reportStem(summary)}_${summary.range.from}_${summary.range.to}.pdf`,base64:Buffer.from(doc.output('arraybuffer')).toString('base64')};
 }
 module.exports={dailySalesSummary,dailySalesEntries,dailySalesCsv,dailySalesXlsx,dailySalesPdf};

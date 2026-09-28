@@ -143,6 +143,19 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
     if(format==='CSV')expect(saved.toString()).toContain('"Net sales minor","10000"');
     else expect(saved.subarray(0,4).toString()).toBe(format==='PDF'?'%PDF':'PK\x03\x04');
   }
+  await page.getByRole('tab',{name:'Weekly Sales'}).click();
+  await page.getByRole('combobox',{name:'Range'}).selectOption('custom');
+  await page.getByLabel('Daily sales from date').fill('2026-09-12');
+  await page.getByLabel('Daily sales to date').fill('2026-09-12');
+  await page.getByRole('button',{name:'Run report'}).click();
+  await expect(page.getByRole('heading',{name:'Weekly Sales'})).toBeVisible();
+  await expect(page.getByRole('columnheader',{name:'Week starting Monday'})).toBeVisible();
+  await expect(page.getByRole('row').filter({hasText:'Net sales incl GST'})).toContainText('PKR 100');
+  const weeklyExport=path.join(dataDir,'r002-weekly-sales.csv');
+  await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},weeklyExport);
+  await page.getByRole('button',{name:'Export CSV'}).click();
+  await expect(page.getByText('CSV weekly sales saved.')).toBeVisible();
+  expect(fs.readFileSync(weeklyExport,'utf8')).toContain('"Week starting Monday"');
   await page.getByRole('button',{name:'Sign out'}).click();
   await page.getByLabel('Username',{exact:true}).fill('daily-cashier');
   await page.getByLabel('Password',{exact:true}).fill('Daily-Cashier-2026!');

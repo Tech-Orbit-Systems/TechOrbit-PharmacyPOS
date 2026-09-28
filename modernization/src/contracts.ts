@@ -173,9 +173,9 @@ export interface ReportEntries {range:{from:string;to:string};page:number;pageSi
 export interface DailySalesRow {day:string;kind?:string;id?:number;occurred_at?:string;reference?:string;customer?:string|null;cashier?:string|null;method?:string;
   salesMinor:number;returnsMinor:number;netSalesMinor:number;gstMinor:number;netExGstMinor:number;discountMinor:number;cogsMinor:number|null;grossProfitMinor:number|null;
   paidAtSaleMinor:number;creditCreatedMinor:number;refundMinor:number;receivableCreditMinor:number;saleCount:number;returnCount:number}
-export interface DailySalesSummary {range:{from:string;to:string};dayMode:'official'|'calendar';days:DailySalesRow[];totals:DailySalesRow;costVisible:boolean;filterScope:string}
+export interface DailySalesSummary {range:{from:string;to:string};dayMode:'official'|'calendar';period:'day'|'week';days:DailySalesRow[];totals:DailySalesRow;costVisible:boolean;filterScope:string}
 export interface DailySalesEntries {range:{from:string;to:string};dayMode:'official'|'calendar';page:number;pageSize:number;hasMore:boolean;items:DailySalesRow[]}
-export interface DailySalesInput {range:string;dayMode?:'official'|'calendar';from?:string;to?:string;product?:string;category?:string;brand?:string;supplier?:string;customer?:string;cashier?:string;method?:string}
+export interface DailySalesInput {range:string;period?:'day'|'week';dayMode?:'official'|'calendar';from?:string;to?:string;product?:string;category?:string;brand?:string;supplier?:string;customer?:string;cashier?:string;method?:string}
 export interface Api {
   dailySalesSummary(input:DailySalesInput):Promise<DailySalesSummary>;
   dailySalesEntries(input:DailySalesInput&{page:number;pageSize?:number}):Promise<DailySalesEntries>;

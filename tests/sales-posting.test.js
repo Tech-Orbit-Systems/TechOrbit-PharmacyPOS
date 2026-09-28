@@ -3,7 +3,7 @@ const {openDatabase}=require("../infrastructure/sqlite/database");
 const {ProductsRepository}=require("../infrastructure/sqlite/repositories/products");
 const {ProductUnitsRepository}=require("../infrastructure/sqlite/repositories/product-units");
 const {SalesPostingService}=require("../infrastructure/sqlite/services/sales-posting");
-const {dailySalesSummary}=require('../modernization/desktop/daily-sales.cjs');
+const {dailySalesSummary,dailySalesCsv}=require('../modernization/desktop/daily-sales.cjs');
 
 describe("Atomic sales posting",()=>{
   let dir,db,product,customer;
@@ -43,6 +43,21 @@ describe("Atomic sales posting",()=>{
     expect(calendar.days).toHaveLength(1); expect(calendar.days[0].day).toBe("2026-09-12");
     expect(official.totals).toMatchObject({saleCount:1,salesMinor:calendar.totals.salesMinor});
     expect(dailySalesSummary(db,{range:"custom",from:"2026-09-12",to:"2026-09-12",dayMode:"official"},options).totals.saleCount).toBe(0);
+  });
+  test("weekly sales uses Pakistan Monday boundaries and reconciles its period totals with invoices",()=>{
+    const service=new SalesPostingService(db);
+    service.post(baseSale());
+    service.post(baseSale({invoiceNumber:"INV-101",idempotencyKey:"sale-key-101",soldAt:"2026-09-14T12:00:00Z"}));
+    const input={range:"custom",from:"2026-09-11",to:"2026-09-14",period:"week",dayMode:"calendar"};
+    const summary=dailySalesSummary(db,input,{costVisible:true,now:new Date("2026-09-15T00:00:00Z")});
+    expect(summary.days.map(row=>row.day)).toEqual(["2026-09-14","2026-09-07"]);
+    expect(summary.days.reduce((sum,row)=>sum+row.netSalesMinor,0)).toBe(summary.totals.netSalesMinor);
+    expect(summary.totals).toMatchObject({saleCount:2,salesMinor:2600,cogsMinor:1140});
+    const exported=dailySalesCsv(db,input,{costVisible:false,now:new Date("2026-09-15T00:00:00Z")});
+    expect(exported.filename).toContain("Weekly_Sales");
+    expect(exported.csv).toContain('"Week starting Monday"');
+    expect(exported.csv).not.toContain("COGS minor");
+    expect(()=>dailySalesSummary(db,{...input,period:"quarter"})).toThrow("valid sales period");
   });
   test("creates receivable and only records money actually collected",()=>{const result=new SalesPostingService(db).post(baseSale({paymentMethod:"credit",collectionMethod:"cash",amountPaidMinor:500,customerId:Number(customer),dueDate:"2026-10-01"}));
     expect(result.balanceDueMinor).toBe(result.finalTotalMinor-500); expect(db.prepare("SELECT method,amount_minor FROM MoneyMovements").get()).toEqual({method:"cash",amount_minor:500});
