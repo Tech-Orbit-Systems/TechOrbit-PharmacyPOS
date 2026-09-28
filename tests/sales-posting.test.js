@@ -59,6 +59,19 @@ describe("Atomic sales posting",()=>{
     expect(exported.csv).not.toContain("COGS minor");
     expect(()=>dailySalesSummary(db,{...input,period:"quarter"})).toThrow("valid sales period");
   });
+  test("monthly sales separates September and October at Pakistan midnight and keeps partial ranges",()=>{
+    const service=new SalesPostingService(db);
+    service.post(baseSale({soldAt:"2026-09-30T18:00:00Z"}));
+    service.post(baseSale({invoiceNumber:"INV-101",idempotencyKey:"sale-key-101",soldAt:"2026-09-30T20:00:00Z"}));
+    const input={range:"custom",from:"2026-09-30",to:"2026-10-01",period:"month",dayMode:"calendar"};
+    const options={costVisible:true,now:new Date("2026-10-02T00:00:00Z")};
+    const monthly=dailySalesSummary(db,input,options);
+    expect(monthly.days.map(row=>row.day)).toEqual(["2026-10-01","2026-09-01"]);
+    expect(monthly.days.map(row=>row.salesMinor)).toEqual([1300,1300]);
+    expect(monthly.totals).toMatchObject({saleCount:2,salesMinor:2600,cogsMinor:1140});
+    expect(dailySalesSummary(db,{...input,period:"day"},options).totals.netSalesMinor).toBe(monthly.totals.netSalesMinor);
+    expect(dailySalesCsv(db,input,{costVisible:false,...options}).csv).toContain('"Month starting"');
+  });
   test("creates receivable and only records money actually collected",()=>{const result=new SalesPostingService(db).post(baseSale({paymentMethod:"credit",collectionMethod:"cash",amountPaidMinor:500,customerId:Number(customer),dueDate:"2026-10-01"}));
     expect(result.balanceDueMinor).toBe(result.finalTotalMinor-500); expect(db.prepare("SELECT method,amount_minor FROM MoneyMovements").get()).toEqual({method:"cash",amount_minor:500});
     expect(db.prepare("SELECT balance_minor FROM Receivables").get().balance_minor).toBe(result.balanceDueMinor);

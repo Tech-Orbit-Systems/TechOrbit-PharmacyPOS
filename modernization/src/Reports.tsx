@@ -46,10 +46,11 @@ function ProfitLoss(){
  </>
 }
 export function Reports({canViewProfit,canViewSalesReport}:{canViewProfit:boolean;canViewSalesReport:boolean}){
- const [tab,setTab]=useState<'pnl'|'daily'|'weekly'>(canViewProfit?'pnl':'daily');
+ const [tab,setTab]=useState<'pnl'|'daily'|'weekly'|'monthly'>(canViewProfit?'pnl':'daily');
  return <><div className="segmented" role="tablist" aria-label="Report type">
   {canViewProfit&&<button role="tab" aria-selected={tab==='pnl'} onClick={()=>setTab('pnl')}>Profit and Loss</button>}
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='daily'} onClick={()=>setTab('daily')}>Daily Sales</button>}
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='weekly'} onClick={()=>setTab('weekly')}>Weekly Sales</button>}
- </div>{tab==='pnl'&&canViewProfit?<ProfitLoss/>:<DailySales key={tab} period={tab==='weekly'?'week':'day'}/>}</>
+  {canViewSalesReport&&<button role="tab" aria-selected={tab==='monthly'} onClick={()=>setTab('monthly')}>Monthly Sales</button>}
+ </div>{tab==='pnl'&&canViewProfit?<ProfitLoss/>:<DailySales key={tab} period={tab==='weekly'?'week':tab==='monthly'?'month':'day'}/>}</>
 }
