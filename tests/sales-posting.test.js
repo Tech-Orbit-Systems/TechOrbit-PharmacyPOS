@@ -106,6 +106,10 @@ describe("Atomic sales posting",()=>{
     expect(tax.groups.find(row=>row.groupLabel==='Taxable').gstMinor).toBe(daily.totals.gstMinor);
     expect(tax.groups.find(row=>row.groupLabel==='Taxable').taxableBaseMinor).toBeGreaterThan(0);
     expect(tax.totals.netSalesMinor).toBe(daily.totals.netSalesMinor);
+    const gst=medicineSummary(db,{...input,groupBy:'gst'},options);
+    expect(gst.groups.map(row=>row.groupLabel).sort()).toEqual(['18.00% GST','Exempt']);
+    expect(gst.groups.find(row=>row.groupLabel==='Exempt').gstMinor).toBe(0);
+    expect(gst.totals).toMatchObject({gstMinor:daily.totals.gstMinor,netSalesMinor:daily.totals.netSalesMinor});
   });
   test("generic report combines different medicines with the same saved generic snapshot",async()=>{
     const second=new ProductsRepository(db).create({name:"Paracetamol syrup",genericName:"Paracetamol",baseUnit:"bottle",taxStatus:"exempt"});

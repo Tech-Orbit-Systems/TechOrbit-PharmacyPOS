@@ -11,7 +11,10 @@ test('P037 edits price and applies line plus invoice percentage discounts once',
   await page.getByLabel('Unit price line 1',{exact:true}).fill('123.45');await page.getByLabel('Discount type line 1',{exact:true}).selectOption('percentage');await page.getByLabel('Discount value line 1',{exact:true}).fill('5');
   await page.getByLabel('Invoice discount type',{exact:true}).selectOption('percentage');await page.getByLabel('Invoice discount value',{exact:true}).fill('10');
   await expect(page.getByText('Original 120',{exact:true})).toBeVisible();await expect(page.getByTestId('totals-group').getByText('106',{exact:true})).toBeVisible();
-  await page.screenshot({path:path.resolve(__dirname,'../evidence/pricing-discounts.png')});await page.getByRole('button',{name:/Pay & Print/}).click();
+  await page.screenshot({path:path.resolve(__dirname,'../evidence/pricing-discounts.png')});
+  await page.getByLabel('Acknowledge sale warnings').check();
+  await page.getByLabel('Cash tendered PKR').fill('200');
+  await page.getByRole('button',{name:/Pay & Print/}).click();
   const dialog=page.getByRole('dialog',{name:'Sale completed'});await expect(dialog).toBeVisible();await expect(dialog.getByText(/Rate 123\.45 \(original 120\).*Line discount 6\.17/)).toBeVisible();await expect(dialog.getByText('Line discounts PKR 6.17 · Invoice discount PKR 11.73',{exact:true})).toBeVisible();await expect(dialog.getByText('Total PKR 106',{exact:true})).toBeVisible();expect(errors).toEqual([]);
  }finally{await app.close()}
 });

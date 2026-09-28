@@ -117,6 +117,10 @@ describe('cash shift ownership and closing',()=>{
       {costVisible:true,now:new Date('2026-09-02T00:00:00Z')});
     expect(dailyReport.days).toMatchObject([{day:'2026-09-01',salesMinor:1100,returnsMinor:550,netExGstMinor:500},
       {day:'2026-08-31',salesMinor:220,returnsMinor:0,netExGstMinor:200}]);
+    const gstReport=medicineSales.medicineSummary(db,{range:'custom',from:'2026-09-01',to:'2026-09-01',groupBy:'gst'},
+      {costVisible:false,now:new Date('2026-09-02T00:00:00Z')});
+    expect(gstReport.totals).toMatchObject({salesGstMinor:100,returnGstMinor:50,gstMinor:50,taxableBaseMinor:500});
+    expect(gstReport.groups[0]).toMatchObject({groupLabel:'10.00% GST',salesGstMinor:100,returnGstMinor:50,gstMinor:50,cogsMinor:null});
     expect(profitLoss(db,{range:'custom',from:'2026-09-01',to:'2026-09-01'},new Date('2026-09-02T00:00:00Z')))
       .toMatchObject({salesGrossMinor:1100,listedGrossMinor:1000,salesGstMinor:100,returnsGrossMinor:550,returnsGstMinor:50,
         netRevenueMinor:500,soldCogsMinor:300,returnedCogsMinor:150,cogsMinor:150,

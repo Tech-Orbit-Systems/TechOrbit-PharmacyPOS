@@ -47,7 +47,7 @@ function ProfitLoss(){
  </>
 }
 export function Reports({canViewProfit,canViewSalesReport}:{canViewProfit:boolean;canViewSalesReport:boolean}){
- const [tab,setTab]=useState<'pnl'|'daily'|'weekly'|'monthly'|'medicine'|'generic'|'category'|'brand'|'cashier'|'method'|'tax'>(canViewProfit?'pnl':'daily');
+ const [tab,setTab]=useState<'pnl'|'daily'|'weekly'|'monthly'|'medicine'|'generic'|'category'|'brand'|'cashier'|'method'|'tax'|'gst'>(canViewProfit?'pnl':'daily');
  return <><div className="segmented" role="tablist" aria-label="Report type">
   {canViewProfit&&<button role="tab" aria-selected={tab==='pnl'} onClick={()=>setTab('pnl')}>Profit and Loss</button>}
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='daily'} onClick={()=>setTab('daily')}>Daily Sales</button>}
@@ -60,5 +60,6 @@ export function Reports({canViewProfit,canViewSalesReport}:{canViewProfit:boolea
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='cashier'} onClick={()=>setTab('cashier')}>Sales by Cashier</button>}
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='method'} onClick={()=>setTab('method')}>Sales by Payment Method</button>}
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='tax'} onClick={()=>setTab('tax')}>Taxable vs Exempt Sales</button>}
- </div>{tab==='pnl'&&canViewProfit?<ProfitLoss/>:tab==='medicine'||tab==='generic'||tab==='category'||tab==='brand'||tab==='cashier'||tab==='method'||tab==='tax'?<SalesByMedicine key={tab} groupBy={tab}/>:<DailySales key={tab} period={tab==='weekly'?'week':tab==='monthly'?'month':'day'}/>}</>
+  {canViewSalesReport&&<button role="tab" aria-selected={tab==='gst'} onClick={()=>setTab('gst')}>GST Report</button>}
+ </div>{tab==='pnl'&&canViewProfit?<ProfitLoss/>:tab==='medicine'||tab==='generic'||tab==='category'||tab==='brand'||tab==='cashier'||tab==='method'||tab==='tax'||tab==='gst'?<SalesByMedicine key={tab} groupBy={tab}/>:<DailySales key={tab} period={tab==='weekly'?'week':tab==='monthly'?'month':'day'}/>}</>
 }

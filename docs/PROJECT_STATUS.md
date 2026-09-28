@@ -4,7 +4,7 @@
 - Branch: `feature/approved-dashboard-pos-ui`
 Verified application baseline: B02 commit `3db0a98`, pushed to `origin/feature/approved-dashboard-pos-ui`. B03 application delivery is recorded in the canonical tracker with its final commit and test evidence.
 
-The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R010 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
+The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R011 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
 
 ## Delivered application increments
 
@@ -25,6 +25,7 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 - **R008 Sales by Cashier development is Done.** Original sale cashier receives linked return reversals; the current user display name labels the group, with Unattributed cashier for missing user links. The same filters, line reconciliation, protected detail and exports apply. Formal manual acceptance remains open.
 - **R009 Sales by Payment Method development is Done.** Original invoice method groups sales and linked return reversals; later due collections remain separate from new sale revenue. The linked cash/card/digital/credit totals reconcile to Daily Sales, with filters, protected detail and CSV/Excel/PDF exports. Formal manual acceptance remains open.
 - **R010 Taxable vs Exempt Sales development is Done.** Posted line taxable base/GST rate separates taxable and exempt sale/return values; ambiguous zero-value lines remain explicitly unverified. Net GST and taxable base appear with the usual filters, protected detail and CSV/Excel/PDF exports. Formal pharmacy tax review remains open.
+- **R011 GST Report development is Done.** Saved GST rate groups show sales GST, linked return GST, net GST and taxable base; exempt and uncertain zero-value lines remain distinct. Paged detail, relevant filters, protected cost/profit and CSV/Excel/PDF exports passed linked desktop checks. Formal pharmacy tax review remains open.
 - The B02 Electron test launcher now uses Playwright's default Electron resolution, so its loader is injected. Managed-host sandbox/GPU compatibility is test-only; production window security settings remain unchanged. Earlier Electron launch timeouts and ambiguous test locators were resolved before B02 completion.
 
 ## Verification checkpoint
@@ -48,6 +49,7 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 - R008 development verification on 2026-09-28: affected Jest 23/23, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. Two-cashier invoice attribution, linked returns, role-safe detail and desktop CSV readback are recorded in `docs/evidence/R008_SALES_BY_CASHIER_ACCEPTANCE_20260928.md`.
 - R009 development verification on 2026-09-28: affected Jest 23/23, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. Original payment-method attribution, later collection exclusion, cashier cost denial and desktop CSV readback are recorded in `docs/evidence/R009_SALES_BY_METHOD_ACCEPTANCE_20260928.md`.
 - R010 development verification on 2026-09-28: affected Jest 23/23, modern integration 25/25, TypeScript/Vite build and five sequential isolated Electron flows passed. Mixed taxable/exempt line totals, linked GST/return reconciliation, cashier cost denial and desktop CSV readback are recorded in `docs/evidence/R010_TAXABLE_EXEMPT_ACCEPTANCE_20260928.md`.
+- R011 development verification on 2026-09-28: affected Jest 23/23, modern integration 25/25 and TypeScript/Vite build passed. The linked Electron flow checked GST CSV/Excel/PDF exports and prior report/closing flows. A broad desktop run passed 22/23; its slow Excel export wait was increased and the linked flow passed individually. The GST sale/return and cashier evidence is in `docs/evidence/R011_GST_REPORT_ACCEPTANCE_20260928.md`.
 - These focused results do not replace the final 91-scenario, three-run acceptance campaign or prove hardware, packaged runtime and live-data readiness. Previously accepted unrelated flows were not rerun during this status check.
 
 ## Open work and release boundaries
@@ -59,4 +61,4 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 
 ## Next action
 
-Implement the next individual report R011 GST Report. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.
+Implement the next individual report R012 Discount Report. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.

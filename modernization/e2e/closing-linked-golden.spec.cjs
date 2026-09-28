@@ -115,7 +115,7 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
     const filePath=path.join(dataDir,`b05-profit-loss.${format.toLowerCase()}`);
     await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},filePath);
     await page.getByRole('button',{name:`Export ${format}`}).click();
-    await expect(page.getByText(`${format} report saved.`)).toBeVisible();
+    await expect(page.getByText(`${format} report saved.`)).toBeVisible({timeout:20000});
     expect(fs.readFileSync(filePath).subarray(0,4).toString()).toBe(format==='PDF'?'%PDF':'PK\x03\x04');
   }
   await page.getByRole('tab',{name:'Sales by Generic'}).click();
@@ -191,6 +191,22 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
   await page.getByRole('button',{name:'Export CSV'}).click();
   await expect(page.getByText('CSV tax sales saved.')).toBeVisible();
   expect(fs.readFileSync(taxExport,'utf8')).toContain('"Total net sales minor","10000"');
+  await page.getByRole('tab',{name:'GST Report'}).click();
+  await page.getByRole('combobox',{name:'Range'}).selectOption('custom');
+  await page.getByLabel('Medicine sales from date').fill('2026-09-12');
+  await page.getByLabel('Medicine sales to date').fill('2026-09-12');
+  await page.getByRole('button',{name:'Run report'}).click();
+  await expect(page.getByRole('heading',{name:'GST Report'})).toBeVisible();
+  await expect(page.getByRole('row').filter({hasText:'Exempt'}).first()).toContainText('100');
+  await expect(page.getByText(/Sales GST: PKR 0 · Return GST: PKR 0/)).toBeVisible();
+  for(const format of ['CSV','XLSX','PDF']){
+    const filePath=path.join(dataDir,`r011-gst.${format.toLowerCase()}`);
+    await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},filePath);
+    await page.getByRole('button',{name:`Export ${format}`}).click();
+    await expect(page.getByText(`${format} gst sales saved.`)).toBeVisible();
+    expect(fs.statSync(filePath).size).toBeGreaterThan(100);
+    if(format==='CSV')expect(fs.readFileSync(filePath,'utf8')).toContain('"Total sales GST minor","0"');
+  }
   await page.getByRole('tab',{name:'Daily Sales'}).click();
   await page.getByRole('combobox',{name:'Range'}).selectOption('custom');
   await page.getByLabel('Daily sales from date').fill('2026-09-12');

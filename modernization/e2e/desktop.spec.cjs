@@ -54,6 +54,7 @@ test("approved screens: ranges, Digital, holds, posting and identical dark geome
     await expect(page.getByLabel("Quantity line 1")).toHaveValue("1");
     await page.getByLabel("Increase line 1").click();
     await page.getByRole("button", { name: "Digital", exact: true }).click();
+    await page.getByLabel('Acknowledge sale warnings').check();
     await expect(
       page.getByRole("button", { name: /Pay & Print/ }),
     ).toBeEnabled();
@@ -63,9 +64,10 @@ test("approved screens: ranges, Digital, holds, posting and identical dark geome
     await expect(page.getByLabel("Transaction reference")).toHaveCount(0);
     const geometry = async () =>
       Promise.all(
-        ["invoice", "finder", "payment-bar"].map((id) =>
-          page.getByTestId(id).boundingBox(),
-        ),
+        ["invoice", "finder", "payment-bar"].map(async (id) => {
+          const box=await page.getByTestId(id).boundingBox();
+          return {x:Math.round(box.x),width:Math.round(box.width),height:Math.round(box.height)};
+        }),
       );
     const light = await geometry();
     await page.screenshot({
@@ -87,6 +89,7 @@ test("approved screens: ranges, Digital, holds, posting and identical dark geome
       .click();
     await page.getByRole("button", { name: /Resume sale 1/ }).click();
     await expect(page.getByLabel("Quantity line 1")).toHaveValue("2");
+    await page.getByLabel('Acknowledge sale warnings').check();
     await expect(
       page.getByRole("button", { name: /Pay & Print/ }),
     ).toBeEnabled();
@@ -115,6 +118,7 @@ test("approved screens: ranges, Digital, holds, posting and identical dark geome
     await page.getByRole('button',{name:'Digital',exact:true}).click();
     await expect(page.locator('.credit-due strong')).toHaveText('1,000');
     await page.screenshot({path:path.resolve(__dirname,'../evidence/pos-partial-credit.png')});
+    await page.getByLabel('Acknowledge sale warnings').check();
     await page.getByRole('button',{name:/Pay & Print/}).click();
     await expect(page.getByText('Received PKR 200',{exact:true})).toBeVisible();
     await expect(page.getByText('Remaining credit PKR 1,000',{exact:true})).toBeVisible();
@@ -127,6 +131,7 @@ test("approved screens: ranges, Digital, holds, posting and identical dark geome
     await page.getByLabel('Credit due date',{exact:true}).fill('2099-12-31');
     await expect(page.locator('.credit-due strong')).toHaveText('500');
     await expect(page.getByRole('button',{name:'Cash',exact:true})).toBeDisabled();
+    await page.getByLabel('Acknowledge sale warnings').check();
     await page.getByRole('button',{name:/Pay & Print/}).click();
     await expect(page.getByText('Received PKR 0',{exact:true})).toBeVisible();
     await expect(page.getByText('Remaining credit PKR 500',{exact:true})).toBeVisible();

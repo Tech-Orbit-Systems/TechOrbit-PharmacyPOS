@@ -17,7 +17,8 @@ test('P039 warning review blocks payment until acknowledged and saves prescripti
     const pay=page.getByRole('button',{name:/Pay & Print/});await expect(pay).toBeDisabled();
     await page.getByLabel('Doctor name',{exact:true}).fill('Dr Sana');
     await page.getByLabel('Prescription reference',{exact:true}).fill('RX-P039-001');
-    await page.getByLabel('Acknowledge sale warnings',{exact:true}).check();await expect(pay).toBeEnabled();
+    await page.getByLabel('Acknowledge sale warnings',{exact:true}).check();
+    await page.getByLabel('Cash tendered PKR').fill('1000');await expect(pay).toBeEnabled();
     await page.screenshot({path:path.resolve(__dirname,'../evidence/warning-acknowledgement.png')});
     await pay.click();const dialog=page.getByRole('dialog',{name:'Sale completed'});await expect(dialog).toBeVisible();await expect(dialog).toContainText('Warnings acknowledged by Demo Pharmacist');await expect(dialog).toContainText('RX-P039-001');
     expect(errors).toEqual([]);
