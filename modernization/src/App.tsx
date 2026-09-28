@@ -153,7 +153,7 @@ export function App() {
               key={label}
               title={label}
               disabled={
-                !["Dashboard", "Point of Sale", "Sales History", "Settings", "Products", "Inventory", "Purchases", "Accounts", "Closing", "Suppliers", "Reports"].includes(label)||(label==='Reports'&&!user.canViewProfit&&!user.canViewSalesReport&&!user.canViewInventory)
+                !["Dashboard", "Point of Sale", "Sales History", "Settings", "Products", "Inventory", "Purchases", "Accounts", "Closing", "Suppliers", "Reports"].includes(label)||(label==='Reports'&&!user.canViewProfit&&!user.canViewSalesReport&&!user.canViewInventory&&!user.canViewDues)
               }
               aria-current={page === label ? "page" : undefined}
               onClick={() => setPage(label)}
@@ -206,7 +206,7 @@ export function App() {
           {page === 'Purchases' && <Purchases initialTab="purchases"/>}
           {page === 'Accounts' && <Accounts/>}
           {page === 'Closing' && <Closing/>}
-          {page === 'Reports' && <Reports canViewProfit={user.canViewProfit} canViewSalesReport={user.canViewSalesReport} canViewInventory={user.canViewInventory}/>}
+          {page === 'Reports' && <Reports canViewProfit={user.canViewProfit} canViewSalesReport={user.canViewSalesReport} canViewInventory={user.canViewInventory} canViewDues={user.canViewDues}/>}
           {page === 'Suppliers' && <Purchases initialTab="suppliers"/>}
           {page === "Settings" && (
             <>

@@ -66,4 +66,4 @@ function rangeFor(input = {}, now = new Date()) {
     end: new Date(addDays(to, 1) + "T00:00:00+05:00").toISOString(),
   };
 }
-module.exports = { dayKey, addDays, rangeFor };
+module.exports = { dayKey, addDays, rangeFor, validDate };

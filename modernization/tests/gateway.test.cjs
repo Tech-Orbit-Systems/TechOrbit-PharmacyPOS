@@ -16,6 +16,8 @@ test('cost and profit report is denied to a cashier below the UI',async()=>{
     assert.equal(user.canViewProfit,false);
     assert.equal(user.canViewSalesReport,true);
     assert.equal(user.canViewInventory,false);
+    assert.equal(user.canViewDues,false);
+    await assert.rejects(gateway.call('customerBalanceSummary',{}),/role does not allow/);
     await assert.rejects(gateway.call('lowStockSummary',{}),/role does not allow/);
     await assert.rejects(gateway.call('expirySummary',{}),/role does not allow/);
     await assert.rejects(gateway.call('batchStockSummary',{}),/role does not allow/);

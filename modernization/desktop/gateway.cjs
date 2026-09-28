@@ -48,7 +48,7 @@ class Gateway {
         this.expires = Date.now() + 8 * 3600000;
         this.failures = 0;
         return { ...user, demo: this.demo,canViewProfit:hasPermission(this.db,user.id,'report.cost'),
-          canViewSalesReport:hasPermission(this.db,user.id,'invoice.search'),canViewInventory:hasPermission(this.db,user.id,'inventory.view') };
+          canViewSalesReport:hasPermission(this.db,user.id,'invoice.search'),canViewInventory:hasPermission(this.db,user.id,'inventory.view'),canViewDues:hasPermission(this.db,user.id,'dues.manage') };
       } catch (error) {
         if (++this.failures >= 5) {
           this.blockedUntil = Date.now() + 60000;
@@ -278,6 +278,16 @@ class Gateway {
       if(input.format==='pdf')return reports.stockValuationPdf(this.db,input);
       if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
       return reports.stockValuationCsv(this.db,input);
+    }
+    if(['customerBalanceSummary','customerBalanceEntries','customerBalanceExport'].includes(command)){
+      this.authorize('dues.manage');
+      const reports=require('./account-balance-reports.cjs');
+      if(command==='customerBalanceSummary')return reports.accountBalanceSummary(this.db,input);
+      if(command==='customerBalanceEntries')return reports.accountBalanceEntries(this.db,input);
+      if(input.format==='xlsx')return reports.accountBalanceXlsx(this.db,input);
+      if(input.format==='pdf')return reports.accountBalancePdf(this.db,input);
+      if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
+      return reports.accountBalanceCsv(this.db,input);
     }
     if(command.startsWith('closing')){
       const cash=new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db);

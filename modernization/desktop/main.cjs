@@ -88,6 +88,7 @@ app.whenReady().then(() => {
     "stockMovementSummary", "stockMovementEntries", "stockMovementExport",
     "adjustmentSummary", "adjustmentEntries", "adjustmentExport",
     "stockValuationSummary", "stockValuationEntries", "stockValuationExport",
+    "customerBalanceSummary", "customerBalanceEntries", "customerBalanceExport",
     "logout",
     "changePassword",
     "dashboard",
@@ -138,10 +139,10 @@ app.whenReady().then(() => {
         pending.set(id, { resolve, reject, timer });
         worker.postMessage({ id, command, input });
       });
-      if(command!=='closingPeriodExport'&&command!=='reportExport'&&command!=='dailySalesExport'&&command!=='medicineExport'&&command!=='customerReturnExport'&&command!=='supplierReturnExport'&&command!=='purchaseExport'&&command!=='supplierPurchaseExport'&&command!=='bonusStockExport'&&command!=='lowStockExport'&&command!=='expiryExport'&&command!=='batchStockExport'&&command!=='stockMovementExport'&&command!=='adjustmentExport'&&command!=='stockValuationExport')return result;
+      if(command!=='closingPeriodExport'&&command!=='reportExport'&&command!=='dailySalesExport'&&command!=='medicineExport'&&command!=='customerReturnExport'&&command!=='supplierReturnExport'&&command!=='purchaseExport'&&command!=='supplierPurchaseExport'&&command!=='bonusStockExport'&&command!=='lowStockExport'&&command!=='expiryExport'&&command!=='batchStockExport'&&command!=='stockMovementExport'&&command!=='adjustmentExport'&&command!=='stockValuationExport'&&command!=='customerBalanceExport')return result;
       return result.then(async ({filename,csv,base64})=>{
         const extension=filename.split('.').at(-1);
-        const title=command==='reportExport'?'Export P&L report':command==='dailySalesExport'?'Export daily sales report':command==='medicineExport'?'Export sales by medicine':'Export six-month report';
+        const title=command==='reportExport'?'Export P&L report':command==='dailySalesExport'?'Export daily sales report':command==='medicineExport'?'Export sales by medicine':`Export ${filename.replace(/^TechOrbit_/, '').replace(/\.[^.]+$/, '').replaceAll('_', ' ')}`;
         const choice=await dialog.showSaveDialog(window,{title,defaultPath:filename,filters:[{name:`${extension.toUpperCase()} report`,extensions:[extension]} ]});
         if(choice.canceled||!choice.filePath)return {saved:false};
         await fs.writeFile(choice.filePath,base64?Buffer.from(base64,'base64'):csv,base64?undefined:'utf8');

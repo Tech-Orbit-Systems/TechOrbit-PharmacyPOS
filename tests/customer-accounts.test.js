@@ -21,6 +21,25 @@ describe('customer accounts and sale returns',()=>{
  });
  afterEach(()=>db.close());
 
+ test('R024 balances reconcile collections and return credit, due boundaries and native exports',async()=>{
+  const reports=require('../modernization/desktop/account-balance-reports.cjs'),options={now:new Date('2026-10-02T00:00:00Z')};
+  new CustomerAccountsService(db).collect({receivableId:receivable.id,amountMinor:100,method:'cash',idempotencyKey:'r024-collect'});
+  new CustomerReturnsService(db).post({saleId:sale.saleId,idempotencyKey:key(24),reason:'Unopened return',items:[{saleItemId:item.id,baseQuantity:2,restockable:true,conditionConfirmed:true}]});
+  const report=reports.accountBalanceSummary(db,{party:'ali'},options);
+  expect(report.totals).toMatchObject({originalMinor:500,paymentsMinor:100,creditMinor:200,balanceMinor:200,overdueMinor:200});
+  expect(report.items[0]).toMatchObject({reference:'INV-C1',daysOverdue:1});
+  expect(reports.accountBalanceSummary(db,{status:'overdue'},{now:new Date('2026-10-01T00:00:00Z')}).items).toHaveLength(0);
+  expect(reports.accountBalanceSummary(db,{reference:'missing'},options).totals.balanceMinor).toBe(0);
+  expect(reports.accountBalanceEntries(db,{page:1,pageSize:1},options).items).toHaveLength(1);
+  expect(()=>reports.accountBalanceSummary(db,{dueFrom:'2026-10-10',dueTo:'2026-10-01'})).toThrow(/reversed/);
+  expect(()=>reports.accountBalanceSummary(db,{dueFrom:'2026-02-30'})).toThrow(/Invalid date/);
+  expect(reports.accountBalanceCsv(db,{},options).csv).toContain('"Total balance minor","200"');
+  expect(Buffer.from((await reports.accountBalanceXlsx(db,{},options)).base64,'base64').subarray(0,2).toString()).toBe('PK');
+  expect(Buffer.from(reports.accountBalancePdf(db,{},options).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+  db.prepare('UPDATE Receivables SET balance_minor=199').run();
+  expect(()=>reports.accountBalanceSummary(db,{},options)).toThrow(/do not reconcile/);
+ });
+
  test('collects receivable idempotently and reconciles sale',()=>{
   const service=new CustomerAccountsService(db);
   const input={receivableId:receivable.id,amountMinor:200,method:'cash',idempotencyKey:'collect-1'};

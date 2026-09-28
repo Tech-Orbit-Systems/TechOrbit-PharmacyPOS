@@ -18,6 +18,16 @@ test('B02 customers, dues and expense settlements reconcile through one desktop 
 
   await page.getByRole('button',{name:'Expenses',exact:true}).click();await page.getByRole('button',{name:'Add vendor',exact:true}).click();dialog=page.getByRole('dialog',{name:'Add vendor'});await dialog.getByLabel('Vendor name').fill('Utility Vendor');await dialog.getByLabel('Vendor phone').fill('0420000000');await dialog.getByRole('button',{name:'Save vendor'}).click();await page.getByLabel('Expense vendor').selectOption({label:'Utility Vendor'});await page.getByLabel('Expense amount').fill('90');await page.getByLabel('Expense paid amount').fill('20');await page.getByLabel('Expense due date').fill(future());await page.getByLabel('Expense reference').fill('B02-EXP-001');await page.getByLabel('Expense description').fill('Internet and utilities');await page.getByRole('button',{name:'Post expense'}).click();await expect(page.getByText(/Expense #\d+ posted\. Paid 20 · Due 70/)).toBeVisible();
   await page.getByRole('button',{name:'Dues',exact:true}).click();const vendorRow=page.getByRole('row').filter({hasText:'Utility Vendor'});await expect(vendorRow).toBeVisible();await vendorRow.getByRole('button',{name:'Settle',exact:true}).click();dialog=page.getByRole('dialog');await dialog.getByLabel('Settlement method').selectOption('card');await dialog.getByLabel('Settlement reference').fill('B02-VENDOR');await dialog.getByRole('button',{name:'Record payment'}).click();await expect(page.getByText(/Utility Vendor payment recorded/)).toBeVisible();
-  await page.getByLabel('Dues account type').selectOption('vendor');await page.getByLabel('Dues status').selectOption('paid');await expect(page.getByRole('row').filter({hasText:'Utility Vendor'})).toBeVisible();await page.screenshot({path:path.resolve(__dirname,'../evidence/accounts-batch-p046-p051.png')});expect(errors).toEqual([]);
+  await page.getByLabel('Dues account type').selectOption('vendor');await page.getByLabel('Dues status').selectOption('paid');await expect(page.getByRole('row').filter({hasText:'Utility Vendor'})).toBeVisible();await page.screenshot({path:path.resolve(__dirname,'../evidence/accounts-batch-p046-p051.png')});await page.getByRole('button',{name:'Reports',exact:true}).click();
+  await page.getByRole('tab',{name:'Customer Receivable Report',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Customer Receivable Report',exact:true})).toBeVisible();
+  await page.getByLabel('Customer name',{exact:true}).fill('Ahmed');await page.getByRole('button',{name:'Run report',exact:true}).click();
+  await expect(page.getByRole('cell',{name:'Ahmed Khan',exact:true})).toBeVisible();
+  const exportPath=path.join(env.TECHORBIT_UI_DATA_DIR,'r024-customer-receivable.csv');
+  await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},exportPath);
+  await page.getByRole('button',{name:'Export CSV',exact:true}).click();
+  await expect(page.getByText('CSV customer receivable report saved.')).toBeVisible();
+  expect(fs.readFileSync(exportPath,'utf8')).toContain('"Total later payments minor","1000"');
+  expect(errors).toEqual([]);
  }finally{await app.close()}
 });
