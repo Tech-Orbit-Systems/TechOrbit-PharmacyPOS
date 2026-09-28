@@ -4,6 +4,8 @@ const {ProductsRepository}=require('../infrastructure/sqlite/repositories/produc
 const {ProductUnitsRepository}=require('../infrastructure/sqlite/repositories/product-units');
 const {PurchaseReceivingService}=require('../infrastructure/sqlite/services/purchase-receiving');
 const {PurchaseReturnsService}=require('../infrastructure/sqlite/services/purchase-returns');
+const {PurchasePaymentsService}=require('../infrastructure/sqlite/services/purchase-payments');
+const {supplierReturnSummary,supplierReturnEntries,supplierReturnCsv,supplierReturnXlsx,supplierReturnPdf}=require('../modernization/desktop/supplier-return-report.cjs');
 const key=n=>`TO-${String(n).padStart(8,'0')}-2222-2222-2222-222222222222`;
 
 describe('supplier purchase returns',()=>{
@@ -45,6 +47,26 @@ describe('supplier purchase returns',()=>{
   const input={purchaseId:purchase.purchaseId,idempotencyKey:key(3),reason:'Supplier agreed refund',refundMethod:'bank_transfer',items:[{purchaseItemId:item.id,quantity:2}]};
   expect(service.post(input)).toMatchObject({totalMinor:200,payableCreditMinor:0,refundMinor:200});
   expect(db.prepare("SELECT direction,amount_minor FROM MoneyMovements WHERE reference_type='purchase_return'").get()).toEqual({direction:'in',amount_minor:200});
+ });
+ test('supplier return report reconciles payable credit, actual refund and batch stock',async()=>{
+  const service=new PurchaseReturnsService(db);
+  service.post({purchaseId:purchase.purchaseId,idempotencyKey:key(11),reason:'Damaged',items:[{purchaseItemId:item.id,quantity:4}]});
+  new PurchasePaymentsService(db).post({payableId:db.prepare('SELECT id FROM Payables').get().id,amountMinor:600,
+    method:'bank_transfer',idempotencyKey:'paid-before-second-return',paidAt:new Date().toISOString()});
+  service.post({purchaseId:purchase.purchaseId,idempotencyKey:key(12),reason:'Supplier refund',refundMethod:'bank_transfer',
+    items:[{purchaseItemId:item.id,quantity:2}]});
+  const day=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Karachi'});
+  const input={range:'custom',from:day,to:day},report=supplierReturnSummary(db,input);
+  expect(report.totals).toMatchObject({returnMinor:600,payableCreditMinor:400,refundMinor:200,quantity:6,returnCount:2});
+  expect(db.prepare('SELECT quantity_on_hand FROM ProductBatches WHERE id=?').get(batch.id).quantity_on_hand).toBe(4);
+  expect(db.prepare('SELECT balance_minor FROM Payables').get().balance_minor).toBe(0);
+  expect(db.prepare("SELECT amount_minor FROM MoneyMovements WHERE reference_type='purchase_return'").get().amount_minor).toBe(200);
+  expect(supplierReturnSummary(db,{...input,supplier:'Supplier'}).totals.returnMinor).toBe(600);
+  expect(supplierReturnSummary(db,{...input,product:'Unknown'}).totals.returnMinor).toBe(0);
+  expect(supplierReturnEntries(db,{...input,page:1,pageSize:1}).hasMore).toBe(true);
+  expect(supplierReturnCsv(db,input).csv).toContain('"Total supplier returns minor","600"');
+  expect(Buffer.from((await supplierReturnXlsx(db,input)).base64,'base64').subarray(0,2).toString()).toBe('PK');
+  expect(Buffer.from(supplierReturnPdf(db,input).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
  });
 
  test('ambiguous batch source blocks supplier return before stock changes',()=>{

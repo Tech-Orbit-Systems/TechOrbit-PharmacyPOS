@@ -69,6 +69,7 @@ test('cost and profit report is denied to a cashier below the UI',async()=>{
     assert.equal(customerReturns.costVisible,false);
     assert.equal(customerReturns.totals.cogsMinor,null);
     assert.ok(!(await gateway.call('customerReturnExport',{range:'1y',format:'csv'})).csv.includes('COGS reversal minor'));
+    await assert.rejects(gateway.call('supplierReturnSummary',{range:'1y'}),/role does not allow/);
     await assert.rejects(gateway.call('dailySalesSummary',{range:'7d',method:'other'}),/payment method/);
     await assert.rejects(gateway.call('reportProfitLoss',{range:'7d'}),/role does not allow/);
     await assert.rejects(gateway.call('reportEntries',{range:'7d',page:1}),/role does not allow/);

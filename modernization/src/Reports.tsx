@@ -4,6 +4,7 @@ import {money,dateLabel} from './shared';
 import {DailySales} from './DailySales';
 import {SalesByMedicine} from './SalesByMedicine';
 import {CustomerReturnReport} from './CustomerReturnReport';
+import {SupplierReturnReport} from './SupplierReturnReport';
 
 function ProfitLoss(){
  const [range,setRange]=useState('1m'),[from,setFrom]=useState(''),[to,setTo]=useState('');
@@ -48,7 +49,7 @@ function ProfitLoss(){
  </>
 }
 export function Reports({canViewProfit,canViewSalesReport}:{canViewProfit:boolean;canViewSalesReport:boolean}){
- const [tab,setTab]=useState<'pnl'|'daily'|'weekly'|'monthly'|'medicine'|'generic'|'category'|'brand'|'cashier'|'method'|'tax'|'gst'|'discount'|'customerReturn'>(canViewProfit?'pnl':'daily');
+ const [tab,setTab]=useState<'pnl'|'daily'|'weekly'|'monthly'|'medicine'|'generic'|'category'|'brand'|'cashier'|'method'|'tax'|'gst'|'discount'|'customerReturn'|'supplierReturn'>(canViewProfit?'pnl':'daily');
  return <><div className="segmented" role="tablist" aria-label="Report type">
   {canViewProfit&&<button role="tab" aria-selected={tab==='pnl'} onClick={()=>setTab('pnl')}>Profit and Loss</button>}
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='daily'} onClick={()=>setTab('daily')}>Daily Sales</button>}
@@ -64,5 +65,6 @@ export function Reports({canViewProfit,canViewSalesReport}:{canViewProfit:boolea
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='gst'} onClick={()=>setTab('gst')}>GST Report</button>}
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='discount'} onClick={()=>setTab('discount')}>Discount Report</button>}
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='customerReturn'} onClick={()=>setTab('customerReturn')}>Customer Return Report</button>}
- </div>{tab==='pnl'&&canViewProfit?<ProfitLoss/>:tab==='customerReturn'?<CustomerReturnReport/>:tab==='medicine'||tab==='generic'||tab==='category'||tab==='brand'||tab==='cashier'||tab==='method'||tab==='tax'||tab==='gst'||tab==='discount'?<SalesByMedicine key={tab} groupBy={tab}/>:<DailySales key={tab} period={tab==='weekly'?'week':tab==='monthly'?'month':'day'}/>}</>
+  {canViewProfit&&<button role="tab" aria-selected={tab==='supplierReturn'} onClick={()=>setTab('supplierReturn')}>Supplier Return Report</button>}
+ </div>{tab==='pnl'&&canViewProfit?<ProfitLoss/>:tab==='customerReturn'?<CustomerReturnReport/>:tab==='supplierReturn'&&canViewProfit?<SupplierReturnReport/>:tab==='medicine'||tab==='generic'||tab==='category'||tab==='brand'||tab==='cashier'||tab==='method'||tab==='tax'||tab==='gst'||tab==='discount'?<SalesByMedicine key={tab} groupBy={tab}/>:<DailySales key={tab} period={tab==='weekly'?'week':tab==='monthly'?'month':'day'}/>}</>
 }

@@ -179,7 +179,14 @@ export interface DailySalesInput {range:string;period?:'day'|'week'|'month';grou
 export interface CustomerReturnRow {id:number;returnId:number;saleId:number;day:string;returnedAt:string;invoice:string;customer:string;cashier:string;method:string;medicine:string;generic:string;category:string;brand:string;quantity:number;restockQuantity:number;disposalQuantity:number;reason:string;returnMinor:number;gstMinor:number;refundMinor:number;receivableCreditMinor:number;cogsMinor:number|null}
 export interface CustomerReturnGroup {returnId:number;day:string;invoice:string;customer:string;cashier:string;method:string;reason:string;returnMinor:number;gstMinor:number;refundMinor:number;receivableCreditMinor:number;cogsMinor:number|null;quantity:number;restockQuantity:number;disposalQuantity:number;returnCount:number}
 export interface CustomerReturnSummary {range:{from:string;to:string};dayMode:string;groups:CustomerReturnGroup[];totals:Omit<CustomerReturnGroup,'returnId'|'day'|'invoice'|'customer'|'cashier'|'method'|'reason'>;costVisible:boolean;scope:string}
+export interface SupplierReturnReportInput {range:string;dayMode?:'official'|'calendar';from?:string;to?:string;supplier?:string;product?:string;generic?:string;category?:string;brand?:string;batch?:string}
+export interface SupplierReturnRow {id:number;returnId:number;purchaseId:number;day:string;returnedAt:string;invoice:string;supplier:string;reason:string;medicine:string;generic:string;category:string;brand:string;batch:string;expiryDate:string;quantity:number;returnMinor:number;payableCreditMinor:number;refundMinor:number;refundMethod:string}
+export interface SupplierReturnGroup {returnId:number;day:string;invoice:string;supplier:string;reason:string;refundMethod:string;returnMinor:number;payableCreditMinor:number;refundMinor:number;quantity:number;returnCount:number}
+export interface SupplierReturnSummary {range:{from:string;to:string};dayMode:string;groups:SupplierReturnGroup[];totals:Omit<SupplierReturnGroup,'returnId'|'day'|'invoice'|'supplier'|'reason'|'refundMethod'>;scope:string}
 export interface Api {
+  supplierReturnSummary(input:SupplierReturnReportInput):Promise<SupplierReturnSummary>;
+  supplierReturnEntries(input:SupplierReturnReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:SupplierReturnRow[]}>;
+  supplierReturnExport(input:SupplierReturnReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
   customerReturnSummary(input:DailySalesInput):Promise<CustomerReturnSummary>;
   customerReturnEntries(input:DailySalesInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:CustomerReturnRow[]}>;
   customerReturnExport(input:DailySalesInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
