@@ -1,6 +1,6 @@
 const {dayKey,validDate}=require('./ranges.cjs');
 const quote=value=>'"'+String(value??'').replaceAll('"','""')+'"';
-const titles={customer:'Customer Receivable Report'};
+const titles={customer:'Customer Receivable Report',supplier:'Supplier Payable Report'};
 function data(db,input={},options={}){
  const type=options.type||'customer';
  if(!titles[type])throw Error('Choose a supported balance report');
@@ -13,7 +13,12 @@ function data(db,input={},options={}){
  if(input.dueFrom&&input.dueTo&&input.dueFrom>input.dueTo)throw Error('Due dates are reversed');
  const status=input.status||'open';if(!['all','open','paid','overdue'].includes(status))throw Error('Choose a valid balance status');
  const asOfDate=dayKey(options.now||new Date());
- const rows=db.prepare(`SELECT r.id,r.customer_id party_id,c.name party,c.phone,r.source_type,r.source_id,
+ const rows=type==='supplier'?db.prepare(`SELECT r.id,r.supplier_id party_id,c.name party,c.phone,r.source_type,r.source_id,
+  r.original_minor,r.balance_minor,r.due_date,r.status,s.invoice_number reference,s.purchased_at origin_date,s.balance_due_minor source_balance,
+  COALESCE((SELECT SUM(p.amount_minor) FROM PurchasePayments p WHERE p.payable_id=r.id),0) payments_minor,
+  COALESCE((SELECT SUM(sr.payable_credit_minor) FROM PurchaseReturns sr WHERE sr.purchase_id=s.id),0) credit_minor
+  FROM Payables r LEFT JOIN Suppliers c ON c.id=r.supplier_id LEFT JOIN Purchases s ON r.source_type='purchase' AND s.id=CAST(r.source_id AS INTEGER) AND s.supplier_id=r.supplier_id
+  ORDER BY c.name,r.due_date,r.id`).all():db.prepare(`SELECT r.id,r.customer_id party_id,c.name party,c.phone,r.source_type,r.source_id,
   r.original_minor,r.balance_minor,r.due_date,r.status,s.invoice_number reference,s.sold_at origin_date,s.balance_due_minor source_balance,
   COALESCE((SELECT SUM(p.amount_minor) FROM ReceivablePayments p WHERE p.receivable_id=r.id),0) payments_minor,
   COALESCE((SELECT SUM(sr.receivable_credit_minor) FROM SaleReturns sr WHERE sr.sale_id=s.id),0) credit_minor
@@ -21,12 +26,14 @@ function data(db,input={},options={}){
   ORDER BY c.name,r.due_date,r.id`).all();
  if(rows.length>10000)throw Error('Balance report exceeds 10,000 accounts; reconcile or narrow source data');
  const items=rows.map(row=>{
-  if(row.source_type!=='sale'||row.source_balance==null)throw Error('Receivable source cannot be reconciled to a saved sale');
-  if(row.original_minor-row.payments_minor-row.credit_minor!==row.balance_minor||row.source_balance!==row.balance_minor)
-   throw Error('Receivable payments and credits do not reconcile to the saved balance');
+  const sourceVerified=row.source_type===(type==='supplier'?'purchase':'sale')&&row.source_balance!=null;
+  if(!sourceVerified&&type==='customer')throw Error('Receivable source cannot be reconciled to a saved sale');
+  if(type==='supplier'&&row.source_type==='purchase'&&!sourceVerified)throw Error('Supplier payable source cannot be reconciled to a saved purchase');
+  if(row.original_minor-row.payments_minor-row.credit_minor!==row.balance_minor||sourceVerified&&row.source_balance!==row.balance_minor)
+   throw Error('Account payments and credits do not reconcile to the saved balance');
   const overdue=Boolean(row.balance_minor>0&&row.due_date&&row.due_date<asOfDate);
   const daysOverdue=overdue?Math.ceil((Date.parse(asOfDate+'T00:00:00Z')-Date.parse(row.due_date+'T00:00:00Z'))/86400000):0;
-  return {id:row.id,type,partyId:row.party_id,party:row.party||'Not linked',phone:row.phone||'',reference:row.reference||`Account #${row.id}`,
+  return {id:row.id,type,sourceVerified,partyId:row.party_id,party:row.party||'Not linked',phone:row.phone||'',reference:row.reference||`Account #${row.id} (source not linked)`,
    originDate:row.origin_date||'',dueDate:row.due_date||'',originalMinor:row.original_minor,paymentsMinor:row.payments_minor,
    creditMinor:row.credit_minor,balanceMinor:row.balance_minor,status:row.status,overdue,daysOverdue};
  }).filter(row=>{
@@ -46,7 +53,7 @@ function accountBalanceSummary(db,input={},options={}){
  const parties=[...groups.values()],totals={accountCount:items.length,partyCount:parties.length,originalMinor:0,paymentsMinor:0,creditMinor:0,balanceMinor:0,overdueMinor:0};
  for(const row of parties)for(const field of ['originalMinor','paymentsMinor','creditMinor','balanceMinor','overdueMinor'])totals[field]+=row[field];
  if(totals.originalMinor-totals.paymentsMinor-totals.creditMinor!==totals.balanceMinor)throw Error('Balance report totals do not reconcile');
- return {asOfDate,type,title,items,parties,totals,scope:'Current saved account balances including later settlements and return credits. Original amount is debt at creation after any initial payment; later payments and credits are separate. Due-date filters select accounts, not settlement activity. Overdue is positive balance with due date before today in Pakistan; due today is not overdue. This is not a historical balance snapshot.'};
+ return {asOfDate,type,title,items,parties,totals,scope:'Current saved account balances including later settlements and return credits. Source-not-linked accounts are explicitly labelled and only verified against the saved account equation, not an original invoice. Original amount is debt at creation after any initial payment; later payments and credits are separate. Due-date filters select accounts, not settlement activity. Overdue is positive balance with due date before today in Pakistan; due today is not overdue. This is not a historical balance snapshot.'};
 }
 function accountBalanceEntries(db,input={},options={}){
  const {items}=data(db,input,options),page=Number(input.page||1),pageSize=Number(input.pageSize||25);

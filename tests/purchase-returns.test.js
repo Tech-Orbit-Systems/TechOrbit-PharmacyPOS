@@ -28,6 +28,19 @@ describe('supplier purchase returns',()=>{
  });
  afterEach(()=>db.close());
 
+ test('R025 supplier payable reconciles later payment and return credit with native exports',async()=>{
+  const reports=require('../modernization/desktop/account-balance-reports.cjs'),options={type:'supplier',now:new Date('2027-01-02T00:00:00Z')};
+  const payable=db.prepare('SELECT id FROM Payables').get();
+  new PurchasePaymentsService(db).post({payableId:payable.id,amountMinor:200,method:'cash',idempotencyKey:'r025-payment'});
+  new PurchaseReturnsService(db).post({purchaseId:purchase.purchaseId,idempotencyKey:key(25),reason:'Damaged',items:[{purchaseItemId:item.id,quantity:3}]});
+  expect(reports.accountBalanceSummary(db,{party:'supplier'},options).totals).toMatchObject({originalMinor:1000,paymentsMinor:200,creditMinor:300,balanceMinor:500,overdueMinor:500});
+  expect(reports.accountBalanceSummary(db,{status:'paid'},options).items).toHaveLength(0);
+  expect(reports.accountBalanceEntries(db,{page:1},options).items[0].sourceVerified).toBe(true);
+  expect(reports.accountBalanceCsv(db,{},options).csv).toContain('"Total balance minor","500"');
+  expect(Buffer.from((await reports.accountBalanceXlsx(db,{},options)).base64,'base64').subarray(0,2).toString()).toBe('PK');
+  expect(Buffer.from(reports.accountBalancePdf(db,{},options).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+  db.prepare('UPDATE Purchases SET balance_due_minor=499').run();expect(()=>reports.accountBalanceSummary(db,{},options)).toThrow(/do not reconcile/);
+ });
  test('reduces original batch and payable atomically with replay protection',()=>{
   const service=new PurchaseReturnsService(db);
   const input={purchaseId:purchase.purchaseId,idempotencyKey:key(1),reason:'Damaged at delivery',items:[{purchaseItemId:item.id,quantity:4}]};
