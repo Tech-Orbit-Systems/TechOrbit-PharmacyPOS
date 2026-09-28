@@ -169,7 +169,7 @@ describe('cash shift ownership and closing',()=>{
     expect(service.sixMonthReport(t(10)).totals.savingsTransferredMinor).toBe(5000);
   });
 
-  test('business day stays open past midnight, requires allocation, and preserves revisions',()=>{
+  test('business day stays open past midnight, requires allocation, and preserves revisions',async()=>{
     const config=new ClosingConfigurationService(db),daily=new DailyClosingService(db);
     const manager=Number(db.prepare("INSERT INTO Users(username,password_hash,display_name,role_id,created_at,updated_at) VALUES('manager-daily','fixture','Manager',3,?,?)")
       .run(t(0),t(0)).lastInsertRowid);
@@ -194,6 +194,16 @@ describe('cash shift ownership and closing',()=>{
     expect(detail.original.cashVarianceMinor).toBe(0);
     expect(detail.current.cashVarianceMinor).toBe(-100);
     expect(detail.revisions).toHaveLength(1);
+    const reports=require('../modernization/desktop/daily-closing-report.cjs'),input={range:'custom',from:'2026-09-13',to:'2026-09-13'};
+    expect(reports.dailyClosingSummary(db,input).totals).toMatchObject({dayCount:1,cashVarianceMinor:-100});
+    expect(reports.dailyClosingSummary(db,{...input,basis:'original'}).totals.cashVarianceMinor).toBe(0);
+    expect(reports.dailyClosingSummary(db,{...input,dateBasis:'opened'}).totals.dayCount).toBe(0);
+    expect(reports.dailyClosingSummary(db,{...input,from:'2026-09-12',to:'2026-09-12',dateBasis:'opened',device:'COUNTER-1'}).totals.dayCount).toBe(1);
+    expect(reports.dailyClosingEntries(db,{...input,page:1}).items[0].snapshot.accounts[0].actualNetMinor).toBe(12000);
+    expect(reports.dailyClosingCsv(db,input).csv).toContain('"Cash variance minor","-100"');
+    expect(Buffer.from((await reports.dailyClosingXlsx(db,input)).base64,'base64').subarray(0,2).toString()).toBe('PK');
+    expect(Buffer.from(reports.dailyClosingPdf(db,input).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+
     const next=service.open({userId:user2,deviceId:'COUNTER-1',openingCashMinor:8000,openedAt:'2026-09-13T02:00:00Z'});
     expect(next.business_day_id).not.toBe(shift.business_day_id);
     expect(daily.preview({asOf:'2026-09-13T03:00:00Z'}).businessDayId).toBe(next.business_day_id);

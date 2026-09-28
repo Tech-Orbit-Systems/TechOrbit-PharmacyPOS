@@ -17,6 +17,8 @@ test('cost and profit report is denied to a cashier below the UI',async()=>{
     assert.equal(user.canViewSalesReport,true);
     assert.equal(user.canViewInventory,false);
     assert.equal(user.canViewDues,false);
+    db.prepare("DELETE FROM RolePermissions WHERE role_id=(SELECT id FROM Roles WHERE code='cashier') AND permission_id=(SELECT id FROM Permissions WHERE code='closing.create')").run();
+    await assert.rejects(gateway.call('dailyClosingSummary',{}),/role does not allow/);
     await assert.rejects(gateway.call('customerBalanceSummary',{}),/role does not allow/);
     await assert.rejects(gateway.call('supplierBalanceSummary',{}),/role does not allow/);
     await assert.rejects(gateway.call('vendorBalanceSummary',{}),/role does not allow/);

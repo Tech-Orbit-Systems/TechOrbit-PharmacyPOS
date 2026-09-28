@@ -10,7 +10,7 @@ Verified application baseline: B02 commit `3db0a98`, pushed to `origin/feature/a
 
 
 
-The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R028 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
+The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R029 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
 
 
 
@@ -176,8 +176,10 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 
 - **R028 Due Payment/Collection Report development is Done.** Later collections/payments use Pakistan payment dates and match one saved money movement each. Account/party/method/reference/actor filters, paged detail and CSV/Excel/PDF protect vendor scope. Initial invoice payments and return credits remain outside this activity report; net is cash flow. Formal owner reconciliation remains open.
 
+- **R029 Daily Closing Report development is Done.** Saved closed-day original/latest revision views, opening/actual-close date and closer/counter filters, cash/digital variances, actual savings, shifts and native CSV/Excel/PDF are available with closing access. It preserves cross-midnight days and avoids recomputing history from current ledgers. Formal owner reconciliation remains open.
+
 ## Next action
 
 
 
-Implement R029 Daily Closing Report next. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.
+Finalize R030 Profit and Loss Report next. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.

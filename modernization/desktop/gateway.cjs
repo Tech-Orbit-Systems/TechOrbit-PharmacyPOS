@@ -48,7 +48,7 @@ class Gateway {
         this.expires = Date.now() + 8 * 3600000;
         this.failures = 0;
         return { ...user, demo: this.demo,canViewProfit:hasPermission(this.db,user.id,'report.cost'),
-          canViewSalesReport:hasPermission(this.db,user.id,'invoice.search'),canViewInventory:hasPermission(this.db,user.id,'inventory.view'),canViewDues:hasPermission(this.db,user.id,'dues.manage'),canViewVendorDues:hasPermission(this.db,user.id,'dues.manage')&&hasPermission(this.db,user.id,'expense.manage') };
+          canViewSalesReport:hasPermission(this.db,user.id,'invoice.search'),canViewInventory:hasPermission(this.db,user.id,'inventory.view'),canViewDues:hasPermission(this.db,user.id,'dues.manage'),canViewClosingReport:hasPermission(this.db,user.id,'closing.create'),canViewVendorDues:hasPermission(this.db,user.id,'dues.manage')&&hasPermission(this.db,user.id,'expense.manage') };
       } catch (error) {
         if (++this.failures >= 5) {
           this.blockedUntil = Date.now() + 60000;
@@ -328,6 +328,16 @@ class Gateway {
       if(input.format==='pdf')return reports.settlementPdf(this.db,input,options);
       if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
       return reports.settlementCsv(this.db,input,options);
+    }
+    if(['dailyClosingSummary','dailyClosingEntries','dailyClosingExport'].includes(command)){
+      this.authorize('closing.create');
+      const reports=require('./daily-closing-report.cjs'),options={};
+      if(command==='dailyClosingSummary')return reports.dailyClosingSummary(this.db,input,options);
+      if(command==='dailyClosingEntries')return reports.dailyClosingEntries(this.db,input,options);
+      if(input.format==='xlsx')return reports.dailyClosingXlsx(this.db,input,options);
+      if(input.format==='pdf')return reports.dailyClosingPdf(this.db,input,options);
+      if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
+      return reports.dailyClosingCsv(this.db,input,options);
     }
     if(command.startsWith('closing')){
       const cash=new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db);

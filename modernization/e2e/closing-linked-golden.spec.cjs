@@ -345,6 +345,13 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
     await expect(page.getByText(`${format} medicine sales saved.`)).toBeVisible();
     expect(fs.readFileSync(filePath).subarray(0,4).toString()).toBe(format==='PDF'?'%PDF':'PK\x03\x04');
   }
+  await page.getByRole('tab',{name:'Daily Closing Report',exact:true}).click();
+  await page.getByLabel('Closing date basis',{exact:true}).selectOption('opened');await page.getByLabel('Closing range',{exact:true}).selectOption('custom');await page.getByLabel('Closing report from',{exact:true}).fill('2026-09-12');await page.getByLabel('Closing report to',{exact:true}).fill('2026-09-12');await page.getByRole('button',{name:'Run report',exact:true}).click();
+  await expect(page.getByText(/Business day #.*Revision 1 of 1/)).toBeVisible();
+  await page.getByText(/Business day #.*Revision 1 of 1/).click();await expect(page.getByText('Reason: Signed cash recount',{exact:true})).toBeVisible();
+  const closingReportExport=path.join(dataDir,'r029-closing.csv');await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},closingReportExport);
+  await page.getByRole('button',{name:'Export CSV',exact:true}).click();await expect(page.getByText('CSV daily closing report saved.')).toBeVisible();expect(fs.readFileSync(closingReportExport,'utf8')).toContain('"Cash variance minor","-50"');
+  await page.getByLabel('Snapshot version',{exact:true}).selectOption('original');await page.getByRole('button',{name:'Run report',exact:true}).click();await expect(page.getByText(/Business day #.*Revision 0 of 1/)).toBeVisible();
   await page.getByRole('button',{name:'Sign out'}).click();
   await page.getByLabel('Username',{exact:true}).fill('daily-cashier');
   await page.getByLabel('Password',{exact:true}).fill('Daily-Cashier-2026!');
