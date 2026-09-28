@@ -24,5 +24,15 @@ test('P032 batch live-stock workflow passes once with isolated data',async()=>{
   await page.getByRole('button',{name:'Export CSV'}).click();
   await expect(page.getByText('CSV low stock report saved.')).toBeVisible();
   expect(fs.readFileSync(lowExport,'utf8')).toContain('"Sellable units"');
+  await page.getByRole('tab',{name:'Expiry Report'}).click();
+  await page.getByRole('combobox',{name:'Expiry horizon'}).selectOption('30');
+  await page.getByRole('button',{name:'Run report'}).click();
+  await expect(page.getByRole('heading',{name:'Expiry Report'})).toBeVisible();
+  await expect(page.getByText(/Physical value: PKR/)).toBeVisible();
+  const expiryExport=path.join(env.TECHORBIT_UI_DATA_DIR,'r019-expiry.csv');
+  await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},expiryExport);
+  await page.getByRole('button',{name:'Export CSV'}).click();
+  await expect(page.getByText('CSV expiry report saved.')).toBeVisible();
+  expect(fs.readFileSync(expiryExport,'utf8')).toContain('"Physical value minor"');
  }finally{await app.close()}
 });

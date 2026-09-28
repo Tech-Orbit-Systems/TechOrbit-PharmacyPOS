@@ -195,6 +195,10 @@ export interface BonusStockSummary {range:{from:string;to:string};dayMode:string
 export interface LowStockInput {q?:string;generic?:string;category?:string;brand?:string;supplier?:string;status?:'all'|'low'|'out'}
 export interface LowStockRow {productId:number;sku:string;medicine:string;generic:string;category:string;brand:string;supplier:string;baseUnit:string;minimumStock:number;reorderLevel:number;threshold:number;physicalQuantity:number;sellableQuantity:number;expiredQuantity:number;batchCount:number;status:'low'|'out';unitsToClearAlert:number}
 export interface LowStockSummary {asOfDate:string;items:LowStockRow[];totals:{productCount:number;outCount:number;lowCount:number;physicalQuantity:number;sellableQuantity:number;expiredQuantity:number;unitsToClearAlert:number};scope:string}
+export interface ExpiryInput {q?:string;generic?:string;category?:string;brand?:string;supplier?:string;horizon?:'all'|'expired'|'30'|'60'|'90'|'safe'|'none'}
+export interface ExpiryRow {batchId:number;productId:number;sku:string;medicine:string;generic:string;category:string;brand:string;supplier:string;batch:string;expiryDate:string;baseUnit:string;active:boolean;daysToExpiry:number|null;band:string;physicalQuantity:number;sellableQuantity:number;physicalValueMinor:number|null;sellableValueMinor:number|null}
+export interface ExpiryGroup {band:string;batchCount:number;physicalQuantity:number;sellableQuantity:number;physicalValueMinor:number|null;sellableValueMinor:number|null}
+export interface ExpirySummary {asOfDate:string;horizon:string;costVisible:boolean;items:ExpiryRow[];groups:ExpiryGroup[];totals:{batchCount:number;physicalQuantity:number;sellableQuantity:number;physicalValueMinor:number|null;sellableValueMinor:number|null};scope:string}
 export interface Api {
   purchaseSummary(input:PurchaseReportInput):Promise<PurchaseReportSummary>;
   purchaseEntries(input:PurchaseReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:PurchaseReportRow[]}>;
@@ -208,6 +212,9 @@ export interface Api {
   lowStockSummary(input:LowStockInput):Promise<LowStockSummary>;
   lowStockEntries(input:LowStockInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:LowStockRow[]}>;
   lowStockExport(input:LowStockInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
+  expirySummary(input:ExpiryInput):Promise<ExpirySummary>;
+  expiryEntries(input:ExpiryInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:ExpiryRow[]}>;
+  expiryExport(input:ExpiryInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
   supplierReturnSummary(input:SupplierReturnReportInput):Promise<SupplierReturnSummary>;
   supplierReturnEntries(input:SupplierReturnReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:SupplierReturnRow[]}>;
   supplierReturnExport(input:SupplierReturnReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;

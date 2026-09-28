@@ -1,8 +1,33 @@
 const { openDatabase } = require('../infrastructure/sqlite/database');
 const { InventoryLiveStockService, expiryStatus } = require('../infrastructure/sqlite/services/inventory-live-stock');
 const {lowStockSummary,lowStockEntries,lowStockCsv,lowStockXlsx,lowStockPdf}=require('../modernization/desktop/low-stock-report.cjs');
+const {expirySummary,expiryEntries,expiryCsv,expiryXlsx,expiryPdf}=require('../modernization/desktop/expiry-report.cjs');
 
 describe('P032 batch live stock', () => {
+  test('R019 expiry report keeps expired physical stock and cumulative 30/60/90 filters with cost redaction',async()=>{
+    const db=openDatabase({filename:':memory:'});
+    try{
+      const now='2026-09-18T08:00:00Z',product=db.prepare(`INSERT INTO Products(name,sku,base_unit,created_at,updated_at) VALUES('Expiry Bands','EXP-BANDS','piece',?,?)`).run(now,now).lastInsertRowid;
+      const add=(batch,days,qty)=>{
+        const date=new Date(Date.parse('2026-09-18T00:00:00Z')+days*86400000).toISOString().slice(0,10);
+        db.prepare(`INSERT INTO ProductBatches(product_id,batch_number,expiry_date,unit_cost_minor,sale_price_minor,quantity_on_hand,received_at,created_at,updated_at) VALUES(?,?,?,100,200,?,?,?,?)`).run(product,batch,date,qty,now,now,now);
+      };
+      add('OLD',0,2);add('D30',30,3);add('D60',60,4);add('D90',90,5);add('SAFE',91,6);
+      const options={now:new Date(now),costVisible:true},report=expirySummary(db,{horizon:'all'},options);
+      expect(report.totals).toMatchObject({batchCount:5,physicalQuantity:20,sellableQuantity:18,physicalValueMinor:2000,sellableValueMinor:1800});
+      expect(report.groups.map(row=>row.batchCount)).toEqual([1,1,1,1,1,0]);
+      expect(expirySummary(db,{horizon:'30'},options).totals.batchCount).toBe(1);
+      expect(expirySummary(db,{horizon:'60'},options).totals.batchCount).toBe(2);
+      expect(expirySummary(db,{horizon:'90'},options).totals.batchCount).toBe(3);
+      expect(expirySummary(db,{horizon:'expired'},options).items[0]).toMatchObject({physicalQuantity:2,sellableQuantity:0});
+      expect(expiryEntries(db,{page:1,pageSize:2},options).hasMore).toBe(true);
+      const hidden=expirySummary(db,{horizon:'all'},{now:new Date(now),costVisible:false});
+      expect(hidden.totals.physicalValueMinor).toBeNull();
+      expect(expiryCsv(db,{}, {now:new Date(now),costVisible:false}).csv).not.toContain('value minor');
+      expect(Buffer.from((await expiryXlsx(db,{},options)).base64,'base64').subarray(0,2).toString()).toBe('PK');
+      expect(Buffer.from(expiryPdf(db,{},options).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+    }finally{db.close()}
+  });
   test('R018 groups active product stock, excludes expired sellable units and exports alerts',async()=>{
     const db=openDatabase({filename:':memory:'});
     try{

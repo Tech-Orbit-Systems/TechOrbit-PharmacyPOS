@@ -229,6 +229,16 @@ class Gateway {
       if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
       return reports.lowStockCsv(this.db,input);
     }
+    if(['expirySummary','expiryEntries','expiryExport'].includes(command)){
+      this.authorize('inventory.view');
+      const reports=require('./expiry-report.cjs'),options={costVisible:this.permission('report.cost')};
+      if(command==='expirySummary')return reports.expirySummary(this.db,input,options);
+      if(command==='expiryEntries')return reports.expiryEntries(this.db,input,options);
+      if(input.format==='xlsx')return reports.expiryXlsx(this.db,input,options);
+      if(input.format==='pdf')return reports.expiryPdf(this.db,input,options);
+      if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
+      return reports.expiryCsv(this.db,input,options);
+    }
     if(command.startsWith('closing')){
       const cash=new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db);
       const daily=new (require('../../infrastructure/sqlite/services/daily-closing').DailyClosingService)(this.db);
