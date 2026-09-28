@@ -89,6 +89,28 @@ describe("Atomic sales posting",()=>{
       expect(byMedicine.totals[field]).toBe(daily.totals[field]);
     expect(medicineSummary(db,{...input,product:"Ibuprofen"},options).groups).toHaveLength(1);
   });
+  test("generic report combines different medicines with the same saved generic snapshot",async()=>{
+    const second=new ProductsRepository(db).create({name:"Paracetamol syrup",genericName:"Paracetamol",baseUnit:"bottle",taxStatus:"exempt"});
+    new ProductUnitsRepository(db).configure(second.id,[{unitName:"bottle",baseQuantity:1,sellingPriceMinor:300,isDefaultSaleUnit:true}]);
+    const stamp=new Date().toISOString();
+    db.prepare(`INSERT INTO ProductBatches(product_id,batch_number,expiry_date,unit_cost_minor,sale_price_minor,quantity_on_hand,received_at,created_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?)`).run(second.id,"SYRUP-1","2028-01-31",120,300,10,"2026-01-01",stamp,stamp);
+    const sale=baseSale();sale.items.push({productId:second.id,saleUnit:"bottle",quantity:1});
+    new SalesPostingService(db).post(sale);
+    const input={range:"custom",from:"2026-09-11",to:"2026-09-11",groupBy:"generic"};
+    const grouped=medicineSummary(db,input,{costVisible:true,now:new Date("2026-09-12T00:00:00Z")});
+    expect(grouped.groups).toHaveLength(1);
+    expect(grouped.groups[0].groupLabel).toBe("Paracetamol");
+    expect(grouped.groups[0].netSalesMinor).toBe(grouped.totals.netSalesMinor);
+    expect(grouped.totals.netSalesMinor).toBe(dailySalesSummary(db,input,{costVisible:true,now:new Date("2026-09-12T00:00:00Z")}).totals.netSalesMinor);
+    expect(medicineSummary(db,{...input,generic:"Ibu"}).groups).toHaveLength(0);
+    const reports=require('../modernization/desktop/sales-breakdown.cjs');
+    expect(reports.medicineCsv(db,input,{costVisible:false}).csv).toContain('"Sales by Generic"');
+    const workbook=new (require('exceljs').Workbook)();
+    await workbook.xlsx.load(Buffer.from((await reports.medicineXlsx(db,input,{costVisible:true})).base64,'base64'));
+    expect(workbook.getWorksheet('Sales by Generic').getCell('A7').value).toBe('Paracetamol');
+    expect(Buffer.from(reports.medicinePdf(db,input).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+  });
   test("creates receivable and only records money actually collected",()=>{const result=new SalesPostingService(db).post(baseSale({paymentMethod:"credit",collectionMethod:"cash",amountPaidMinor:500,customerId:Number(customer),dueDate:"2026-10-01"}));
     expect(result.balanceDueMinor).toBe(result.finalTotalMinor-500); expect(db.prepare("SELECT method,amount_minor FROM MoneyMovements").get()).toEqual({method:"cash",amount_minor:500});
     expect(db.prepare("SELECT balance_minor FROM Receivables").get().balance_minor).toBe(result.balanceDueMinor);
