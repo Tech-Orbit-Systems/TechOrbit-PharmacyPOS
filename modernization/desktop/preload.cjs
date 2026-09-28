@@ -20,6 +20,7 @@ const methods = [
   "bonusStockSummary", "bonusStockEntries", "bonusStockExport",
   "lowStockSummary", "lowStockEntries", "lowStockExport",
   "expirySummary", "expiryEntries", "expiryExport",
+  "batchStockSummary", "batchStockEntries", "batchStockExport",
   "logout",
   "changePassword",
   "dashboard",

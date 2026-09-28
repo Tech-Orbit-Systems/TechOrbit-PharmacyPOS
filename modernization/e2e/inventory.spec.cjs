@@ -34,5 +34,13 @@ test('P032 batch live-stock workflow passes once with isolated data',async()=>{
   await page.getByRole('button',{name:'Export CSV'}).click();
   await expect(page.getByText('CSV expiry report saved.')).toBeVisible();
   expect(fs.readFileSync(expiryExport,'utf8')).toContain('"Physical value minor"');
+  await page.getByRole('tab',{name:'Batch Stock Report'}).click();
+  await expect(page.getByRole('heading',{name:'Batch Stock Report'})).toBeVisible();
+  await expect(page.getByText(/Zero stock:/)).toBeVisible();
+  const batchExport=path.join(env.TECHORBIT_UI_DATA_DIR,'r020-batch-stock.csv');
+  await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},batchExport);
+  await page.getByRole('button',{name:'Export CSV'}).click();
+  await expect(page.getByText('CSV batch stock report saved.')).toBeVisible();
+  expect(fs.readFileSync(batchExport,'utf8')).toContain('"Zero-stock batches"');
  }finally{await app.close()}
 });

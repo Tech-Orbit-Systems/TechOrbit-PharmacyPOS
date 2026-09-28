@@ -2,8 +2,29 @@ const { openDatabase } = require('../infrastructure/sqlite/database');
 const { InventoryLiveStockService, expiryStatus } = require('../infrastructure/sqlite/services/inventory-live-stock');
 const {lowStockSummary,lowStockEntries,lowStockCsv,lowStockXlsx,lowStockPdf}=require('../modernization/desktop/low-stock-report.cjs');
 const {expirySummary,expiryEntries,expiryCsv,expiryXlsx,expiryPdf}=require('../modernization/desktop/expiry-report.cjs');
+const {batchStockSummary,batchStockEntries,batchStockCsv,batchStockXlsx,batchStockPdf}=require('../modernization/desktop/batch-stock-report.cjs');
 
 describe('P032 batch live stock', () => {
+  test('R020 batch stock preserves zero batches and matches live inventory quantities and cost redaction',async()=>{
+    const db=openDatabase({filename:':memory:'});
+    try{
+      const now='2026-09-18T08:00:00Z',product=db.prepare(`INSERT INTO Products(name,sku,base_unit,created_at,updated_at) VALUES('Batch Item','BATCH-1','piece',?,?)`).run(now,now).lastInsertRowid;
+      const add=(number,expiry,qty)=>db.prepare(`INSERT INTO ProductBatches(product_id,batch_number,expiry_date,unit_cost_minor,sale_price_minor,quantity_on_hand,received_at,created_at,updated_at) VALUES(?,?,?,100,200,?,?,?,?)`).run(product,number,expiry,qty,now,now,now).lastInsertRowid;
+      const live=add('LIVE','2027-12-31',8),zero=add('EMPTY','2027-12-31',0);add('OLD','2026-09-17',2);
+      const options={now:new Date(now),costVisible:true},report=batchStockSummary(db,{},options);
+      expect(report.totals).toMatchObject({batchCount:3,physicalQuantity:10,sellableQuantity:8,zeroStockBatches:1,expiredBatches:1,stockValueMinor:1000});
+      expect(report.items.find(row=>row.id===zero)).toMatchObject({physicalQuantity:0,sellableQuantity:0});
+      const detail=new InventoryLiveStockService(db).detail({batchId:live},{asOfDate:'2026-09-18',costVisible:true});
+      expect(report.items.find(row=>row.id===live)).toMatchObject({physicalQuantity:detail.batch.physicalQuantity,sellableQuantity:detail.batch.sellableQuantity,stockValueMinor:detail.batch.stockValueMinor});
+      expect(batchStockSummary(db,{batch:'EMPTY'},options).totals.batchCount).toBe(1);
+      expect(batchStockEntries(db,{page:1,pageSize:1},options).hasMore).toBe(true);
+      const hidden=batchStockSummary(db,{}, {now:new Date(now),costVisible:false});
+      expect(hidden.totals.stockValueMinor).toBeNull();
+      expect(batchStockCsv(db,{}, {now:new Date(now),costVisible:false}).csv).not.toContain('Stock value minor');
+      expect(Buffer.from((await batchStockXlsx(db,{},options)).base64,'base64').subarray(0,2).toString()).toBe('PK');
+      expect(Buffer.from(batchStockPdf(db,{},options).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+    }finally{db.close()}
+  });
   test('R019 expiry report keeps expired physical stock and cumulative 30/60/90 filters with cost redaction',async()=>{
     const db=openDatabase({filename:':memory:'});
     try{

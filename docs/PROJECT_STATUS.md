@@ -4,7 +4,7 @@
 - Branch: `feature/approved-dashboard-pos-ui`
 Verified application baseline: B02 commit `3db0a98`, pushed to `origin/feature/approved-dashboard-pos-ui`. B03 application delivery is recorded in the canonical tracker with its final commit and test evidence.
 
-The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R019 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
+The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R020 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
 
 ## Delivered application increments
 
@@ -34,6 +34,7 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 - **R017 Bonus Stock/Scheme Report development is Done.** Posted bonus purchase lines reconcile paid/free base units and paid/effective cost to original batch receipts, with product grouping, detail, filters and CSV/Excel/PDF. Cost access is permission-gated. Formal physical stock/owner reconciliation remains open.
 - **R018 Low Stock Report development is Done.** Active products group live batch quantities into physical, sellable and expired units; configured reorder thresholds drive low/out alerts. Filters, paged detail, `inventory.view` permission and CSV/Excel/PDF are implemented. Formal physical stock/owner reconciliation remains open.
 - **R019 Expiry Report development is Done.** Live batches show expired and cumulative 30/60/90-day horizons with physical/sellable quantities and estimated values. Filters, paged detail, cost redaction and CSV/Excel/PDF are implemented. Formal physical stock/owner reconciliation remains open.
+- **R020 Batch Stock Report development is Done.** All batches, including zero stock, show live physical/sellable quantities, expiry and movement components with product grouping. Filters, paged detail, cost redaction and CSV/Excel/PDF are implemented. Formal physical stock/owner reconciliation remains open.
 - The B02 Electron test launcher now uses Playwright's default Electron resolution, so its loader is injected. Managed-host sandbox/GPU compatibility is test-only; production window security settings remain unchanged. Earlier Electron launch timeouts and ambiguous test locators were resolved before B02 completion.
 
 ## Verification checkpoint
@@ -66,6 +67,7 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 - R017 development verification on 2026-09-28: affected Jest 34/34, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Bonus receipt reconciliation, cashier denial and linked desktop CSV readback are in `docs/evidence/R017_BONUS_STOCK_SCHEME_REPORT_ACCEPTANCE_20260928.md`.
 - R018 development verification on 2026-09-28: affected Jest 36/36, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Threshold/expiry reconciliation, cashier denial and desktop CSV readback are in `docs/evidence/R018_LOW_STOCK_REPORT_ACCEPTANCE_20260928.md`.
 - R019 development verification on 2026-09-28: affected Jest 37/37, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Expiry boundaries, value redaction and desktop CSV readback are in `docs/evidence/R019_EXPIRY_REPORT_ACCEPTANCE_20260928.md`.
+- R020 development verification on 2026-09-28: affected Jest 38/38, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Zero-batch and inventory parity, cashier denial and desktop CSV readback are in `docs/evidence/R020_BATCH_STOCK_REPORT_ACCEPTANCE_20260928.md`.
 - These focused results do not replace the final 91-scenario, three-run acceptance campaign or prove hardware, packaged runtime and live-data readiness. Previously accepted unrelated flows were not rerun during this status check.
 
 ## Open work and release boundaries
@@ -77,4 +79,4 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 
 ## Next action
 
-Implement R020 Batch Stock Report next. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.
+Implement R021 Stock Movement Report next. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.
