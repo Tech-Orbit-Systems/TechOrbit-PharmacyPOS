@@ -14,6 +14,7 @@ const methods = [
   "reportProfitLoss", "reportEntries", "reportExport",
   "dailySalesSummary", "dailySalesEntries", "dailySalesExport",
   "medicineSummary", "medicineEntries", "medicineExport",
+  "customerReturnSummary", "customerReturnEntries", "customerReturnExport",
   "logout",
   "changePassword",
   "dashboard",

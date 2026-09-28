@@ -222,6 +222,19 @@ test('B04 linked books reconcile through desktop closing and survive restart',as
     expect(fs.statSync(filePath).size).toBeGreaterThan(100);
     if(format==='CSV')expect(fs.readFileSync(filePath,'utf8')).toContain('"Total net discount minor","0"');
   }
+  await page.getByRole('tab',{name:'Customer Return Report'}).click();
+  await page.getByRole('combobox',{name:'Range'}).selectOption('custom');
+  await page.getByLabel('Customer return from date').fill('2026-09-12');
+  await page.getByLabel('Customer return to date').fill('2026-09-12');
+  await page.getByRole('button',{name:'Run report'}).click();
+  await expect(page.getByRole('heading',{name:'Customer Return Report'})).toBeVisible();
+  await expect(page.getByText(/Returns: PKR 20 · GST reversed: PKR 0 · Cash refunds: PKR 20/)).toBeVisible();
+  await expect(page.getByRole('row').filter({hasText:'GOLD-CASH'}).first()).toContainText('Unopened');
+  const returnExport=path.join(dataDir,'r013-customer-returns.csv');
+  await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},returnExport);
+  await page.getByRole('button',{name:'Export CSV'}).click();
+  await expect(page.getByText('CSV customer return report saved.')).toBeVisible();
+  expect(fs.readFileSync(returnExport,'utf8')).toContain('"Total returns minor","2000"');
   await page.getByRole('tab',{name:'Daily Sales'}).click();
   await page.getByRole('combobox',{name:'Range'}).selectOption('custom');
   await page.getByLabel('Daily sales from date').fill('2026-09-12');

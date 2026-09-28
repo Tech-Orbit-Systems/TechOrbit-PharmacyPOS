@@ -7,6 +7,7 @@ const {CustomerReturnsService}=require("../infrastructure/sqlite/services/custom
 const {randomUUID}=require('crypto');
 const {dailySalesSummary,dailySalesCsv}=require('../modernization/desktop/daily-sales.cjs');
 const {medicineSummary,medicineCsv,medicineXlsx,medicinePdf}=require('../modernization/desktop/sales-breakdown.cjs');
+const {customerReturnSummary,customerReturnEntries,customerReturnCsv,customerReturnXlsx,customerReturnPdf}=require('../modernization/desktop/customer-return-report.cjs');
 
 describe("Atomic sales posting",()=>{
   let dir,db,product,customer;
@@ -55,6 +56,46 @@ describe("Atomic sales posting",()=>{
     expect(csv.csv).not.toContain('COGS minor');
     expect(Buffer.from((await medicineXlsx(db,input,options)).base64,'base64').subarray(0,2).toString()).toBe('PK');
     expect(Buffer.from(medicinePdf(db,input,options).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+  });
+  test('customer return report reconciles cash refunds, credit relief, GST, restock and disposal',async()=>{
+    const service=new SalesPostingService(db),returns=new CustomerReturnsService(db);
+    service.post(baseSale());
+    service.post(baseSale({invoiceNumber:'INV-101',idempotencyKey:'sale-key-101',paymentMethod:'credit',amountPaidMinor:0,customerId:Number(customer),dueDate:'2026-10-01'}));
+    const saleIds=db.prepare('SELECT id,invoice_number FROM Sales ORDER BY id').all();
+    for(const [index,sale] of saleIds.entries()){
+      const itemId=db.prepare('SELECT id FROM SaleItems WHERE sale_id=?').get(sale.id).id;
+      returns.post({saleId:sale.id,reason:index?'Damaged':'Unopened',returnedAt:`2026-09-11T14:0${index}:00Z`,
+        refundMethod:index?null:'cash',idempotencyKey:`TO-${randomUUID()}`,
+        items:[{saleItemId:itemId,baseQuantity:index?4:2,restockable:!index,conditionConfirmed:!index}]});
+    }
+    const input={range:'custom',from:'2026-09-11',to:'2026-09-11'},options={costVisible:true,now:new Date('2026-09-12T00:00:00Z')};
+    const report=customerReturnSummary(db,input,options),daily=dailySalesSummary(db,input,options);
+    expect(report.totals).toMatchObject({returnMinor:780,refundMinor:260,receivableCreditMinor:520,returnCount:2,restockQuantity:2,disposalQuantity:4});
+    expect(report.totals.returnMinor).toBe(daily.totals.returnsMinor);
+    expect(report.totals.refundMinor).toBe(daily.totals.refundMinor);
+    expect(report.totals.receivableCreditMinor).toBe(daily.totals.receivableCreditMinor);
+    expect(report.totals.gstMinor).toBe(-daily.totals.gstMinor+db.prepare('SELECT SUM(gst_minor) gst FROM Sales').get().gst);
+    expect(customerReturnSummary(db,{...input,customer:'Ali'},options).totals).toMatchObject({returnMinor:520,refundMinor:0,receivableCreditMinor:520});
+    expect(customerReturnSummary(db,{...input,product:'Unknown'},options).totals.returnMinor).toBe(0);
+    expect(customerReturnEntries(db,{...input,page:1,pageSize:1},options)).toMatchObject({hasMore:true});
+    expect(customerReturnSummary(db,input,{...options,costVisible:false}).totals.cogsMinor).toBeNull();
+    const csv=customerReturnCsv(db,input,{...options,costVisible:false});
+    expect(csv.csv).toContain('"Total returns minor","780"');
+    expect(csv.csv).not.toContain('COGS reversal minor');
+    expect(Buffer.from((await customerReturnXlsx(db,input,options)).base64,'base64').subarray(0,2).toString()).toBe('PK');
+    expect(Buffer.from(customerReturnPdf(db,input,options).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+  });
+  test('customer return report retains an after-midnight return on the open official day',()=>{
+    db.prepare("INSERT INTO BusinessDays(opened_at,closed_at,status) VALUES('2026-09-11T08:00:00Z','2026-09-12T02:00:00Z','closed')").run();
+    new SalesPostingService(db).post(baseSale());
+    const saleId=db.prepare("SELECT id FROM Sales WHERE invoice_number='INV-100'").get().id;
+    const itemId=db.prepare('SELECT id FROM SaleItems WHERE sale_id=?').get(saleId).id;
+    new CustomerReturnsService(db).post({saleId,reason:'Late shift return',returnedAt:'2026-09-11T21:00:00Z',
+      refundMethod:'cash',idempotencyKey:`TO-${randomUUID()}`,items:[{saleItemId:itemId,baseQuantity:1,restockable:false}]});
+    const options={costVisible:false,now:new Date('2026-09-13T00:00:00Z')};
+    expect(customerReturnSummary(db,{range:'custom',from:'2026-09-11',to:'2026-09-11',dayMode:'official'},options).totals.returnCount).toBe(1);
+    expect(customerReturnSummary(db,{range:'custom',from:'2026-09-11',to:'2026-09-11',dayMode:'calendar'},options).totals.returnCount).toBe(0);
+    expect(customerReturnSummary(db,{range:'custom',from:'2026-09-12',to:'2026-09-12',dayMode:'calendar'},options).totals.returnCount).toBe(1);
   });
   test("keeps a sale after midnight on the open official day while calendar view uses its local date",()=>{
     db.prepare("INSERT INTO BusinessDays(opened_at,closed_at,status) VALUES (?,?,?)")
