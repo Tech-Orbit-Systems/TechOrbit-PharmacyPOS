@@ -100,6 +100,12 @@ describe("Atomic sales posting",()=>{
     expect(brand.groups[0].groupLabel).toBe('North Labs');
     expect(brand.totals.netSalesMinor).toBe(daily.totals.netSalesMinor);
     expect(medicineSummary(db,{...input,groupBy:'brand',brand:'South Labs'},options).groups).toHaveLength(0);
+    const tax=medicineSummary(db,{...input,groupBy:'tax'},options);
+    expect(tax.groups.map(row=>row.groupLabel).sort()).toEqual(['Exempt','Taxable']);
+    expect(tax.groups.find(row=>row.groupLabel==='Exempt').gstMinor).toBe(0);
+    expect(tax.groups.find(row=>row.groupLabel==='Taxable').gstMinor).toBe(daily.totals.gstMinor);
+    expect(tax.groups.find(row=>row.groupLabel==='Taxable').taxableBaseMinor).toBeGreaterThan(0);
+    expect(tax.totals.netSalesMinor).toBe(daily.totals.netSalesMinor);
   });
   test("generic report combines different medicines with the same saved generic snapshot",async()=>{
     const second=new ProductsRepository(db).create({name:"Paracetamol syrup",genericName:"Paracetamol",baseUnit:"bottle",taxStatus:"exempt"});

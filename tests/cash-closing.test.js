@@ -305,6 +305,9 @@ describe('cash shift ownership and closing',()=>{
     expect(Object.fromEntries(methods.groups.map(row=>[row.groupLabel,row.netSalesMinor])))
       .toEqual({cash:2000,card:2000,digital:2000,credit:4000});
     expect(methods.totals.netSalesMinor).toBe(dailyReport.totals.netSalesMinor);
+    const taxClasses=medicineSales.medicineSummary(db,{...salesFilter,groupBy:'tax'},{costVisible:true,now:new Date('2026-09-13T00:00:00Z')});
+    expect(taxClasses.groups).toHaveLength(1);
+    expect(taxClasses.groups[0]).toMatchObject({groupLabel:'Exempt',netSalesMinor:10000,gstMinor:0,taxableBaseMinor:0});
     expect(medicineSales.medicineSummary(db,{...salesFilter,groupBy:'method',method:'credit'},{costVisible:false}).totals)
       .toMatchObject({netSalesMinor:4000,cogsMinor:null,grossProfitMinor:null});
     expect(medicineSales.medicineSummary(db,{...salesFilter,product:'Linked medicine',supplier:'Linked supplier'},{costVisible:false}).totals)
