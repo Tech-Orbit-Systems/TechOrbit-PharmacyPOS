@@ -215,13 +215,17 @@ export interface AdjustmentSummary {range:{from:string;to:string};dayMode:string
 export type StockValuationRow=BatchStockRow&{batchCostMinor:number;physicalValueMinor:number;sellableValueMinor:number;blockedValueMinor:number};
 export interface StockValuationGroup {productId:number;name:string;sku:string;batchCount:number;physicalQuantity:number;sellableQuantity:number;physicalValueMinor:number;sellableValueMinor:number;blockedValueMinor:number}
 export interface StockValuationSummary {asOfDate:string;items:StockValuationRow[];products:StockValuationGroup[];totals:{batchCount:number;physicalQuantity:number;sellableQuantity:number;physicalValueMinor:number;sellableValueMinor:number;blockedValueMinor:number};scope:string}
-export interface AccountBalanceInput {party?:string;reference?:string;dueFrom?:string;dueTo?:string;status?:'all'|'open'|'paid'|'overdue'}
+export interface AccountBalanceInput {accountType?:'all'|'customer'|'supplier'|'vendor';aging?:'all'|'1-30'|'31-60'|'61-90'|'90+';party?:string;reference?:string;dueFrom?:string;dueTo?:string;status?:'all'|'open'|'paid'|'overdue'}
 export interface AccountBalanceRow {id:number;type:string;partyId:number;party:string;phone:string;reference:string;originDate:string;dueDate:string;originalMinor:number;paymentsMinor:number;creditMinor:number;balanceMinor:number;status:string;overdue:boolean;daysOverdue:number}
-export interface AccountBalanceSummary {asOfDate:string;title:string;items:AccountBalanceRow[];totals:{accountCount:number;partyCount:number;originalMinor:number;paymentsMinor:number;creditMinor:number;balanceMinor:number;overdueMinor:number};scope:string}
+export interface AccountBalanceSummary {asOfDate:string;title:string;byType:{type:string;accountCount:number;balanceMinor:number}[];items:AccountBalanceRow[];totals:{accountCount:number;partyCount:number;originalMinor:number;paymentsMinor:number;creditMinor:number;balanceMinor:number;overdueMinor:number};scope:string}
 export interface Api {
   customerBalanceSummary(input:AccountBalanceInput):Promise<AccountBalanceSummary>;
   customerBalanceEntries(input:AccountBalanceInput&{page:number;pageSize?:number}):Promise<{hasMore:boolean;items:AccountBalanceRow[]}>;
   customerBalanceExport(input:AccountBalanceInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
+
+  overdueBalanceSummary(input:AccountBalanceInput):Promise<AccountBalanceSummary>;
+  overdueBalanceEntries(input:AccountBalanceInput&{page:number;pageSize?:number}):Promise<{hasMore:boolean;items:AccountBalanceRow[]}>;
+  overdueBalanceExport(input:AccountBalanceInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
 
   supplierBalanceSummary(input:AccountBalanceInput):Promise<AccountBalanceSummary>;
   supplierBalanceEntries(input:AccountBalanceInput&{page:number;pageSize?:number}):Promise<{hasMore:boolean;items:AccountBalanceRow[]}>;

@@ -91,6 +91,7 @@ app.whenReady().then(() => {
     "customerBalanceSummary", "customerBalanceEntries", "customerBalanceExport",
     "supplierBalanceSummary", "supplierBalanceEntries", "supplierBalanceExport",
     "vendorBalanceSummary", "vendorBalanceEntries", "vendorBalanceExport",
+    "overdueBalanceSummary", "overdueBalanceEntries", "overdueBalanceExport",
     "logout",
     "changePassword",
     "dashboard",
@@ -141,7 +142,7 @@ app.whenReady().then(() => {
         pending.set(id, { resolve, reject, timer });
         worker.postMessage({ id, command, input });
       });
-      if(command!=='closingPeriodExport'&&command!=='reportExport'&&command!=='dailySalesExport'&&command!=='medicineExport'&&command!=='customerReturnExport'&&command!=='supplierReturnExport'&&command!=='purchaseExport'&&command!=='supplierPurchaseExport'&&command!=='bonusStockExport'&&command!=='lowStockExport'&&command!=='expiryExport'&&command!=='batchStockExport'&&command!=='stockMovementExport'&&command!=='adjustmentExport'&&command!=='stockValuationExport'&&command!=='customerBalanceExport'&&command!=='supplierBalanceExport'&&command!=='vendorBalanceExport')return result;
+      if(command!=='closingPeriodExport'&&command!=='reportExport'&&command!=='dailySalesExport'&&command!=='medicineExport'&&command!=='customerReturnExport'&&command!=='supplierReturnExport'&&command!=='purchaseExport'&&command!=='supplierPurchaseExport'&&command!=='bonusStockExport'&&command!=='lowStockExport'&&command!=='expiryExport'&&command!=='batchStockExport'&&command!=='stockMovementExport'&&command!=='adjustmentExport'&&command!=='stockValuationExport'&&command!=='customerBalanceExport'&&command!=='supplierBalanceExport'&&command!=='vendorBalanceExport'&&command!=='overdueBalanceExport')return result;
       return result.then(async ({filename,csv,base64})=>{
         const extension=filename.split('.').at(-1);
         const title=command==='reportExport'?'Export P&L report':command==='dailySalesExport'?'Export daily sales report':command==='medicineExport'?'Export sales by medicine':`Export ${filename.replace(/^TechOrbit_/, '').replace(/\.[^.]+$/, '').replaceAll('_', ' ')}`;

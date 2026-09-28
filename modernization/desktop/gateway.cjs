@@ -309,6 +309,16 @@ class Gateway {
       if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
       return reports.accountBalanceCsv(this.db,input,{type:'vendor'});
     }
+    if(['overdueBalanceSummary','overdueBalanceEntries','overdueBalanceExport'].includes(command)){
+      this.authorize('dues.manage');
+      const reports=require('./account-balance-reports.cjs'),options={type:'overdue',vendorVisible:this.permission('expense.manage')};
+      if(command==='overdueBalanceSummary')return reports.accountBalanceSummary(this.db,input,options);
+      if(command==='overdueBalanceEntries')return reports.accountBalanceEntries(this.db,input,options);
+      if(input.format==='xlsx')return reports.accountBalanceXlsx(this.db,input,options);
+      if(input.format==='pdf')return reports.accountBalancePdf(this.db,input,options);
+      if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
+      return reports.accountBalanceCsv(this.db,input,options);
+    }
     if(command.startsWith('closing')){
       const cash=new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db);
       const daily=new (require('../../infrastructure/sqlite/services/daily-closing').DailyClosingService)(this.db);
