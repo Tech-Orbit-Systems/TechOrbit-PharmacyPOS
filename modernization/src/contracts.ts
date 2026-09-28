@@ -188,6 +188,9 @@ export interface PurchaseReportRow {id:number;day:string;purchasedAt:string;invo
 export interface PurchaseReportSummary {range:{from:string;to:string};dayMode:string;items:PurchaseReportRow[];totals:Omit<PurchaseReportRow,'id'|'day'|'purchasedAt'|'invoice'|'supplierId'|'supplier'|'method'|'dueDate'|'lineCount'>&{purchaseCount:number};scope:string}
 export type SupplierPurchaseGroup=PurchaseReportSummary['totals']&{supplierId:number;supplier:string};
 export interface SupplierPurchaseSummary {range:{from:string;to:string};dayMode:string;suppliers:SupplierPurchaseGroup[];totals:PurchaseReportSummary['totals'];scope:string}
+export interface BonusStockRow {id:number;purchaseId:number;day:string;invoice:string;supplierId:number;supplier:string;productId:number;medicine:string;sku:string;generic:string;category:string;brand:string;batch:string;expiryDate:string;purchaseUnit:string;unitsPerPurchaseUnit:number;purchasedQuantity:number;bonusQuantity:number;purchasedBaseQuantity:number;bonusBaseQuantity:number;receivedBaseQuantity:number;paidCostMinor:number;effectiveUnitCostMinor:number}
+export interface BonusStockGroup {productId:number;medicine:string;sku:string;generic:string;category:string;brand:string;lineCount:number;purchasedBaseQuantity:number;bonusBaseQuantity:number;receivedBaseQuantity:number;paidCostMinor:number}
+export interface BonusStockSummary {range:{from:string;to:string};dayMode:string;items:BonusStockRow[];products:BonusStockGroup[];totals:{lineCount:number;purchasedBaseQuantity:number;bonusBaseQuantity:number;receivedBaseQuantity:number;paidCostMinor:number};scope:string}
 export interface Api {
   purchaseSummary(input:PurchaseReportInput):Promise<PurchaseReportSummary>;
   purchaseEntries(input:PurchaseReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:PurchaseReportRow[]}>;
@@ -195,6 +198,9 @@ export interface Api {
   supplierPurchaseSummary(input:PurchaseReportInput):Promise<SupplierPurchaseSummary>;
   supplierPurchaseEntries(input:PurchaseReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:PurchaseReportRow[]}>;
   supplierPurchaseExport(input:PurchaseReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
+  bonusStockSummary(input:PurchaseReportInput):Promise<BonusStockSummary>;
+  bonusStockEntries(input:PurchaseReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:BonusStockRow[]}>;
+  bonusStockExport(input:PurchaseReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;
   supplierReturnSummary(input:SupplierReturnReportInput):Promise<SupplierReturnSummary>;
   supplierReturnEntries(input:SupplierReturnReportInput&{page:number;pageSize?:number}):Promise<{page:number;pageSize:number;hasMore:boolean;items:SupplierReturnRow[]}>;
   supplierReturnExport(input:SupplierReturnReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;

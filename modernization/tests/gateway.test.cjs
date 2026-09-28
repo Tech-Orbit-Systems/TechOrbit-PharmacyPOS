@@ -72,6 +72,7 @@ test('cost and profit report is denied to a cashier below the UI',async()=>{
     await assert.rejects(gateway.call('supplierReturnSummary',{range:'1y'}),/role does not allow/);
     await assert.rejects(gateway.call('purchaseSummary',{range:'1y'}),/role does not allow/);
     await assert.rejects(gateway.call('supplierPurchaseSummary',{range:'1y'}),/role does not allow/);
+    await assert.rejects(gateway.call('bonusStockSummary',{range:'1y'}),/role does not allow/);
     await assert.rejects(gateway.call('dailySalesSummary',{range:'7d',method:'other'}),/payment method/);
     await assert.rejects(gateway.call('reportProfitLoss',{range:'7d'}),/role does not allow/);
     await assert.rejects(gateway.call('reportEntries',{range:'7d',page:1}),/role does not allow/);

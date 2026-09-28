@@ -4,7 +4,7 @@
 - Branch: `feature/approved-dashboard-pos-ui`
 Verified application baseline: B02 commit `3db0a98`, pushed to `origin/feature/approved-dashboard-pos-ui`. B03 application delivery is recorded in the canonical tracker with its final commit and test evidence.
 
-The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R016 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
+The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/TechOrbit_PharmacyPOS_Master_Development_Tracker.xlsx) owns feature status, dependencies, acceptance criteria, test evidence and release gates. This page is a concise checkpoint, not a separate plan. B04 P055-P058, B05 P059-P061 and R001-R017 development are complete; formal manual QA and the wider master acceptance campaign remain separate. All 15 release gates remain Open. Production readiness is **Not ready**.
 
 ## Delivered application increments
 
@@ -31,6 +31,7 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 - **R014 Supplier Return Report development is Done.** Saved purchase-return lines reconcile returned batch value, supplier payable credits and actual refunds to the original purchase and money movements. Date and supplier/product/batch filters, paged detail, cost permission and CSV/Excel/PDF exports are implemented. Formal supplier statement/owner reconciliation remains open.
 - **R015 Purchase Report development is Done.** Posted purchase totals reconcile saved lines, receiving-time and later payments, supplier returns, current payables and net purchases. Purchased and bonus base units are separate. Date/supplier/product filters, paged invoice detail, cost permission and CSV/Excel/PDF exports are implemented. Formal supplier statement/owner reconciliation remains open.
 - **R016 Supplier Purchase Report development is Done.** Posted purchases group by supplier ID with reconciled invoice detail, returns, payments, payable balances and base/bonus units. Filters, cost permission and CSV/Excel/PDF exports are implemented. Formal supplier statement/owner reconciliation remains open.
+- **R017 Bonus Stock/Scheme Report development is Done.** Posted bonus purchase lines reconcile paid/free base units and paid/effective cost to original batch receipts, with product grouping, detail, filters and CSV/Excel/PDF. Cost access is permission-gated. Formal physical stock/owner reconciliation remains open.
 - The B02 Electron test launcher now uses Playwright's default Electron resolution, so its loader is injected. Managed-host sandbox/GPU compatibility is test-only; production window security settings remain unchanged. Earlier Electron launch timeouts and ambiguous test locators were resolved before B02 completion.
 
 ## Verification checkpoint
@@ -60,6 +61,7 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 - R014 development verification on 2026-09-28: affected Jest 31/31, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Payable credit/actual bank refund, original batch reduction, cashier denial and linked desktop CSV readback are in `docs/evidence/R014_SUPPLIER_RETURN_REPORT_ACCEPTANCE_20260928.md`.
 - R015 development verification on 2026-09-28: affected Jest 32/32, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Mixed purchase/payment/return/bonus quantities, cashier denial and linked desktop CSV readback are in `docs/evidence/R015_PURCHASE_REPORT_ACCEPTANCE_20260928.md`.
 - R016 development verification on 2026-09-28: affected Jest 33/33, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Two-supplier reconciliation, cashier denial and linked desktop CSV readback are in `docs/evidence/R016_SUPPLIER_PURCHASE_REPORT_ACCEPTANCE_20260928.md`.
+- R017 development verification on 2026-09-28: affected Jest 34/34, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Bonus receipt reconciliation, cashier denial and linked desktop CSV readback are in `docs/evidence/R017_BONUS_STOCK_SCHEME_REPORT_ACCEPTANCE_20260928.md`.
 - These focused results do not replace the final 91-scenario, three-run acceptance campaign or prove hardware, packaged runtime and live-data readiness. Previously accepted unrelated flows were not rerun during this status check.
 
 ## Open work and release boundaries
@@ -71,4 +73,4 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 
 ## Next action
 
-Implement R017 Bonus Stock/Scheme Report next. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.
+Implement R018 Low Stock Report next. Keep release gates Open until formal manual/owner accounting checks, the wider three-run scenario campaign and other recorded gates are satisfied.

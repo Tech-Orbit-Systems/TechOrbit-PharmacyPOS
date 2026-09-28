@@ -8,6 +8,7 @@ const {PurchasePaymentsService}=require('../infrastructure/sqlite/services/purch
 const {supplierReturnSummary,supplierReturnEntries,supplierReturnCsv,supplierReturnXlsx,supplierReturnPdf}=require('../modernization/desktop/supplier-return-report.cjs');
 const {purchaseSummary,purchaseEntries,purchaseCsv,purchaseXlsx,purchasePdf}=require('../modernization/desktop/purchase-report.cjs');
 const {supplierPurchaseSummary,supplierPurchaseEntries,supplierPurchaseCsv,supplierPurchaseXlsx,supplierPurchasePdf}=require('../modernization/desktop/purchase-report.cjs');
+const {bonusStockSummary,bonusStockEntries,bonusStockCsv,bonusStockXlsx,bonusStockPdf}=require('../modernization/desktop/bonus-stock-report.cjs');
 const key=n=>`TO-${String(n).padStart(8,'0')}-2222-2222-2222-222222222222`;
 
 describe('supplier purchase returns',()=>{
@@ -107,6 +108,22 @@ describe('supplier purchase returns',()=>{
   expect(supplierPurchaseCsv(db,input).csv).toContain('"Total purchases minor","1300"');
   expect(Buffer.from((await supplierPurchaseXlsx(db,input)).base64,'base64').subarray(0,2).toString()).toBe('PK');
   expect(Buffer.from(supplierPurchasePdf(db,input).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+ });
+ test('bonus stock report reconciles paid/free receipt units and paid cost without inventing savings',async()=>{
+  new PurchaseReceivingService(db).receive({supplierId:db.prepare('SELECT id FROM Suppliers').get().id,invoiceNumber:'BONUS-3',
+   idempotencyKey:'bonus-report-buy',paymentMethod:'cash',amountPaidMinor:200,
+   items:[{productId:item.product_id,purchasedQuantity:2,bonusQuantity:1,unitCostMinor:100,salePriceMinor:200,batchNumber:'BONUS-3',expiryDate:'2028-12-31'}]});
+  const day=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Karachi'}),input={range:'custom',from:day,to:day};
+  const report=bonusStockSummary(db,input);
+  expect(report.totals).toMatchObject({lineCount:1,purchasedBaseQuantity:2,bonusBaseQuantity:1,receivedBaseQuantity:3,paidCostMinor:200});
+  expect(report.products[0]).toMatchObject({purchasedBaseQuantity:2,bonusBaseQuantity:1,paidCostMinor:200});
+  expect(bonusStockSummary(db,{...input,product:'Unknown'}).items).toHaveLength(0);
+  expect(bonusStockEntries(db,{...input,page:1}).items).toHaveLength(1);
+  expect(bonusStockCsv(db,input).csv).toContain('"Total bonus base units","1"');
+  expect(Buffer.from((await bonusStockXlsx(db,input)).base64,'base64').subarray(0,2).toString()).toBe('PK');
+  expect(Buffer.from(bonusStockPdf(db,input).base64,'base64').subarray(0,4).toString()).toBe('%PDF');
+  db.prepare('UPDATE BatchReceipts SET bonus_base_quantity=2 WHERE purchase_id=(SELECT id FROM Purchases WHERE invoice_number=?)').run('BONUS-3');
+  expect(()=>bonusStockSummary(db,input)).toThrow(/does not reconcile/);
  });
 
  test('ambiguous batch source blocks supplier return before stock changes',()=>{

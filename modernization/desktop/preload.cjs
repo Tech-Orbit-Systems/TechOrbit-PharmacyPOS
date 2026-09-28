@@ -17,6 +17,7 @@ const methods = [
   "customerReturnSummary", "customerReturnEntries", "customerReturnExport",
   "supplierReturnSummary", "supplierReturnEntries", "supplierReturnExport",
   "purchaseSummary", "purchaseEntries", "purchaseExport", "supplierPurchaseSummary", "supplierPurchaseEntries", "supplierPurchaseExport",
+  "bonusStockSummary", "bonusStockEntries", "bonusStockExport",
   "logout",
   "changePassword",
   "dashboard",

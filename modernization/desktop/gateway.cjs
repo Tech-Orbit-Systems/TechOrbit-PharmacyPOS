@@ -209,6 +209,16 @@ class Gateway {
       if(command==='closingPeriodDetail')return service.detail(input.closingId);
       return service.revise({...input,userId:this.session.id});
     }
+    if(['bonusStockSummary','bonusStockEntries','bonusStockExport'].includes(command)){
+      this.authorize('report.cost');
+      const reports=require('./bonus-stock-report.cjs');
+      if(command==='bonusStockSummary')return reports.bonusStockSummary(this.db,input);
+      if(command==='bonusStockEntries')return reports.bonusStockEntries(this.db,input);
+      if(input.format==='xlsx')return reports.bonusStockXlsx(this.db,input);
+      if(input.format==='pdf')return reports.bonusStockPdf(this.db,input);
+      if(input.format&&input.format!=='csv')throw Error('Choose a supported export format');
+      return reports.bonusStockCsv(this.db,input);
+    }
     if(command.startsWith('closing')){
       const cash=new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(this.db);
       const daily=new (require('../../infrastructure/sqlite/services/daily-closing').DailyClosingService)(this.db);

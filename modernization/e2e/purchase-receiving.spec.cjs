@@ -23,5 +23,15 @@ test('P036 receives a partial-paid bonus purchase and shows saved history',async
   await page.getByRole('button',{name:'Post purchase',exact:true}).click();await expect(page.getByText(/Purchase #\d+ posted\. Paid 40 · Due 60\./)).toBeVisible();
   await page.getByRole('button',{name:'Purchase history',exact:true}).click();await expect(page.getByText('P036-E2E-001',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'View',exact:true}).last().click();await expect(page.getByText('2 + 1 bonus strip',{exact:false})).toBeVisible();expect(errors).toEqual([]);
+  await page.getByRole('button',{name:'Close dialog'}).click();
+  await page.getByRole('button',{name:'Reports',exact:true}).click();
+  await page.getByRole('tab',{name:'Bonus Stock/Scheme Report'}).click();
+  await expect(page.getByRole('heading',{name:'Bonus Stock/Scheme Report'})).toBeVisible();
+  await expect(page.getByRole('row').filter({hasText:'P036-E2E-001'})).toContainText('Panadol 500 mg');
+  const bonusExport=path.join(env.TECHORBIT_UI_DATA_DIR,'r017-bonus-stock.csv');
+  await app.evaluate(({dialog},chosen)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:chosen})},bonusExport);
+  await page.getByRole('button',{name:'Export CSV'}).click();
+  await expect(page.getByText('CSV bonus stock report saved.')).toBeVisible();
+  expect(fs.readFileSync(bonusExport,'utf8')).toContain('"P036-E2E-001"');
  }finally{await app.close()}
 });
