@@ -47,7 +47,7 @@ function ProfitLoss(){
  </>
 }
 export function Reports({canViewProfit,canViewSalesReport}:{canViewProfit:boolean;canViewSalesReport:boolean}){
- const [tab,setTab]=useState<'pnl'|'daily'|'weekly'|'monthly'|'medicine'|'generic'|'category'|'brand'|'cashier'>(canViewProfit?'pnl':'daily');
+ const [tab,setTab]=useState<'pnl'|'daily'|'weekly'|'monthly'|'medicine'|'generic'|'category'|'brand'|'cashier'|'method'>(canViewProfit?'pnl':'daily');
  return <><div className="segmented" role="tablist" aria-label="Report type">
   {canViewProfit&&<button role="tab" aria-selected={tab==='pnl'} onClick={()=>setTab('pnl')}>Profit and Loss</button>}
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='daily'} onClick={()=>setTab('daily')}>Daily Sales</button>}
@@ -58,5 +58,6 @@ export function Reports({canViewProfit,canViewSalesReport}:{canViewProfit:boolea
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='category'} onClick={()=>setTab('category')}>Sales by Category</button>}
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='brand'} onClick={()=>setTab('brand')}>Sales by Brand/Manufacturer</button>}
   {canViewSalesReport&&<button role="tab" aria-selected={tab==='cashier'} onClick={()=>setTab('cashier')}>Sales by Cashier</button>}
- </div>{tab==='pnl'&&canViewProfit?<ProfitLoss/>:tab==='medicine'||tab==='generic'||tab==='category'||tab==='brand'||tab==='cashier'?<SalesByMedicine key={tab} groupBy={tab}/>:<DailySales key={tab} period={tab==='weekly'?'week':tab==='monthly'?'month':'day'}/>}</>
+  {canViewSalesReport&&<button role="tab" aria-selected={tab==='method'} onClick={()=>setTab('method')}>Sales by Payment Method</button>}
+ </div>{tab==='pnl'&&canViewProfit?<ProfitLoss/>:tab==='medicine'||tab==='generic'||tab==='category'||tab==='brand'||tab==='cashier'||tab==='method'?<SalesByMedicine key={tab} groupBy={tab}/>:<DailySales key={tab} period={tab==='weekly'?'week':tab==='monthly'?'month':'day'}/>}</>
 }

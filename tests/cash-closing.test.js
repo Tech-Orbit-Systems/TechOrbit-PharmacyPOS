@@ -301,6 +301,12 @@ describe('cash shift ownership and closing',()=>{
     const cashiers=medicineSales.medicineSummary(db,{...salesFilter,groupBy:'cashier'},{costVisible:true,now:new Date('2026-09-13T00:00:00Z')});
     expect(cashiers.groups).toHaveLength(1);
     expect(cashiers.groups[0]).toMatchObject({netSalesMinor:10000,returnsMinor:2000,cogsMinor:5000});
+    const methods=medicineSales.medicineSummary(db,{...salesFilter,groupBy:'method'},{costVisible:true,now:new Date('2026-09-13T00:00:00Z')});
+    expect(Object.fromEntries(methods.groups.map(row=>[row.groupLabel,row.netSalesMinor])))
+      .toEqual({cash:2000,card:2000,digital:2000,credit:4000});
+    expect(methods.totals.netSalesMinor).toBe(dailyReport.totals.netSalesMinor);
+    expect(medicineSales.medicineSummary(db,{...salesFilter,groupBy:'method',method:'credit'},{costVisible:false}).totals)
+      .toMatchObject({netSalesMinor:4000,cogsMinor:null,grossProfitMinor:null});
     expect(medicineSales.medicineSummary(db,{...salesFilter,product:'Linked medicine',supplier:'Linked supplier'},{costVisible:false}).totals)
       .toMatchObject({netSalesMinor:10000,cogsMinor:null,grossProfitMinor:null});
     expect(medicineSales.medicineEntries(db,{...salesFilter,page:1,pageSize:2},{costVisible:false})).toMatchObject({hasMore:true,page:1});
