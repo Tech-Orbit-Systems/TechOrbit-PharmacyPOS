@@ -4,6 +4,7 @@ const { Gateway } = require("./gateway.cjs");
 const db = openDatabase({ filename: workerData.filename });
 if (workerData.demo) require("./demo.cjs").seedDemo(db);
 const gateway = new Gateway(db, { demo: workerData.demo });
+parentPort.postMessage({ ready: true });
 parentPort.on("message", async ({ id, command, input }) => {
   try {
     parentPort.postMessage({ id, result: await gateway.call(command, input) });

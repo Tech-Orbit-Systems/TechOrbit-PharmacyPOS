@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 // No arbitrary IPC, filesystem, database, or Node access is exposed to the renderer.
 const methods = [
+  "resetDemo",
   "productList", "productDetail", "productSave", "productSuppliers", "packingDetail", "packingSave",
   "productImportInspect", "productImportPreview", "productImportTemplate", "productImportErrors", "productImportCommit",
   "shiftStatus", "closingShiftPreview", "closingPeriodPreview", "closingHandover", "closingShiftOpen", "closingShiftClose",

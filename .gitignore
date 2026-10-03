@@ -8,3 +8,5 @@ LICENSE
 coverage
 *.old*
 *.log
+.demo-package-stage/
+releases/demo/

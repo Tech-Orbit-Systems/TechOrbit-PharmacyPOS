@@ -4,7 +4,7 @@ const path = require("path"),
 const fs = require('node:fs/promises');
 const { pathToFileURL } = require("url");
 // This separate entry never imports legacy server.js or opens the production data by default.
-app.setName("TechOrbit UI Review");
+app.setName("TechOrbit Pharmacy POS Demo");
 const e2eCompatibility = process.env.TECHORBIT_E2E_COMPATIBILITY === "1";
 if (process.env.TECHORBIT_DISABLE_HARDWARE_ACCELERATION === "1" || e2eCompatibility)
   app.disableHardwareAcceleration();
@@ -16,18 +16,28 @@ if (e2eCompatibility) {
 }
 const userData = process.env.TECHORBIT_UI_DATA_DIR;
 if (userData) app.setPath("userData", path.resolve(userData));
-let worker, window;
+let worker, window, databaseFilename, demoWorkspace;
 let sequence = 0;
 const pending = new Map();
-app.whenReady().then(() => {
-  const demo = !process.env.TECHORBIT_UI_DATABASE;
-  const filename =
-    process.env.TECHORBIT_UI_DATABASE ||
-    path.join(app.getPath("userData"), "review.sqlite3");
+function rejectPending(message) {
+  for (const entry of pending.values()) {
+    clearTimeout(entry.timer);
+    entry.reject(Error(message));
+  }
+  pending.clear();
+}
+function startWorker(filename, demo) {
+  return new Promise((resolve, reject) => {
+    let ready = false;
   worker = new Worker(path.join(__dirname, "worker.cjs"), {
     workerData: { filename, demo },
   });
-  worker.on("message", ({ id, result, error }) => {
+    worker.on("message", ({ id, result, error, ready: isReady }) => {
+      if (isReady) {
+        ready = true;
+        resolve();
+        return;
+      }
     const entry = pending.get(id);
     if (!entry) return;
     pending.delete(id);
@@ -35,12 +45,25 @@ app.whenReady().then(() => {
     error ? entry.reject(Error(error)) : entry.resolve(result);
   });
   worker.on("error", (error) => {
-    for (const entry of pending.values()) {
-      clearTimeout(entry.timer);
-      entry.reject(Error("Data service unavailable: " + error.message));
-    }
-    pending.clear();
+      rejectPending("Data service unavailable: " + error.message);
+      if (!ready) reject(error);
   });
+  });
+}
+async function resetDemoData() {
+  if (!demoWorkspace) throw Error("Demo reset is unavailable for a live database.");
+  rejectPending("Demo data reset in progress.");
+  await worker?.terminate();
+  for (const suffix of ["", "-wal", "-shm"])
+    await fs.rm(databaseFilename + suffix, { force: true });
+  await startWorker(databaseFilename, true);
+}
+app.whenReady().then(async () => {
+  demoWorkspace = !process.env.TECHORBIT_UI_DATABASE;
+  databaseFilename =
+    process.env.TECHORBIT_UI_DATABASE ||
+    path.join(app.getPath("userData"), "review.sqlite3");
+  await startWorker(databaseFilename, demoWorkspace);
   const entryUrl = pathToFileURL(
     path.join(__dirname, "../dist/index.html"),
   ).href;
@@ -64,6 +87,16 @@ app.whenReady().then(() => {
   window.webContents.session.setPermissionRequestHandler(
     (_contents, _permission, callback) => callback(false),
   );
+  ipcMain.handle("pharmacy:resetDemo", async (event) => {
+    if (
+      event.sender !== window.webContents ||
+      event.senderFrame !== window.webContents.mainFrame ||
+      event.senderFrame.url !== entryUrl
+    )
+      throw Error("Untrusted sender");
+    await resetDemoData();
+    return { reset: true };
+  });
   for (const command of [
   "productList", "productDetail", "productSave", "productSuppliers", "packingDetail", "packingSave",
     "productImportInspect", "productImportPreview", "productImportTemplate", "productImportErrors", "productImportCommit",

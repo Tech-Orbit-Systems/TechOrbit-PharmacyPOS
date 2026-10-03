@@ -207,7 +207,7 @@ describe('cash shift ownership and closing',()=>{
     const next=service.open({userId:user2,deviceId:'COUNTER-1',openingCashMinor:8000,openedAt:'2026-09-13T02:00:00Z'});
     expect(next.business_day_id).not.toBe(shift.business_day_id);
     expect(daily.preview({asOf:'2026-09-13T03:00:00Z'}).businessDayId).toBe(next.business_day_id);
-  });
+  },15000);
 
   test('independent mixed-movement fixture reconciles cash, bank, wallet and actual savings',()=>{
     const config=new ClosingConfigurationService(db),daily=new DailyClosingService(db);

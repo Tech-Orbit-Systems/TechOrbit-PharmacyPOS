@@ -230,6 +230,7 @@ export interface AuditReportInput {range:string;from?:string;to?:string;actor?:s
 export interface AuditReportRow {previousValue:string;newValue:string;id:number;occurredAt:string;userId:number|null;actor:string;role:string;action:string;entity:string;entityId:string;reason:string;device:string}
 export interface AuditReportSummary {range:{from:string;to:string};items:AuditReportRow[];actions:{action:string;count:number}[];totals:{eventCount:number;actorCount:number;actionCount:number};scope:string}
 export interface Api {
+  resetDemo():Promise<{reset:boolean}>;
   auditSummary(input:AuditReportInput):Promise<AuditReportSummary>;
   auditEntries(input:AuditReportInput&{page:number;pageSize?:number}):Promise<{hasMore:boolean;items:AuditReportRow[]}>;
   auditExport(input:AuditReportInput&{format:'csv'|'xlsx'|'pdf'}):Promise<{saved:boolean}>;

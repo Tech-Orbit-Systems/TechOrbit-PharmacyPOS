@@ -102,6 +102,8 @@
     "package-win": "electron-packager . TechOrbit-PharmacyPOS --overwrite --asar=false --platform=win32 --arch=x64 --icon=assets/images/icon.ico --prune=true --out=release-builds --version-string.ProductName=\"TechOrbit Pharmacy POS\"",
     "start": "electron-forge start",
     "package": "electron-forge package",
+    "demo:release": "node scripts/build-demo-release.cjs",
+    "demo:smoke": "node scripts/smoke-demo-release.cjs",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "test": "jest",

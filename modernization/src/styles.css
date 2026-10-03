@@ -175,6 +175,25 @@ kbd {
   display: flex;
   flex-direction: column;
 }
+.demo-banner {
+  background: #fff4cc;
+  color: #704d00;
+  border-bottom: 1px solid #e7c55a;
+  padding: 7px 24px;
+  text-align: center;
+  font-weight: 600;
+}
+[data-theme="dark"] .demo-banner {
+  background: #3a2e08;
+  color: #ffe28a;
+  border-bottom-color: #6c581c;
+}
+.demo-tools {
+  margin-top: 18px;
+}
+.demo-tools button {
+  border-color: #c58a00;
+}
 .topbar {
   height: 56px;
   background: var(--surface);

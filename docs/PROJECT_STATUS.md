@@ -149,6 +149,7 @@ The [canonical master tracker](../../docs/outputs/pharmacy-pos-tracker-20260913/
 - R020 development verification on 2026-09-28: affected Jest 38/38, modern integration 25/25, TypeScript/Vite build and the full sequential isolated Electron desktop suite 23/23 passed. Zero-batch and inventory parity, cashier denial and desktop CSV readback are in `docs/evidence/R020_BATCH_STOCK_REPORT_ACCEPTANCE_20260928.md`.
 
 - These focused results do not replace the final 91-scenario, three-run acceptance campaign or prove hardware, packaged runtime and live-data readiness. The latest full sequential desktop suite regressed 23 automated flows; hardware, packaged runtime and live data were not used.
+- Demo Edition 0.9.0 was prepared on 2026-10-04 for controlled client walkthroughs. It adds a persistent Demo Edition/sample-data warning, confirmed isolated-data reset, repeatable Windows x64 packaging, an installer plus portable ZIP, checksums and a Roman Urdu handover guide. Root Jest 33/33 suites and 139/139 tests, modern integration 27/27, TypeScript/Vite build and Electron 24/24 passed. Both the portable executable and the actually installed app passed login/POS/Reports smoke with zero renderer errors. The installer is unsigned and does not close any production release gate.
 
 
 

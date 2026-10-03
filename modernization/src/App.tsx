@@ -177,6 +177,11 @@ export function App() {
         </div>
       </aside>
       <div className="workspace">
+        {user.demo && (
+          <div className="demo-banner" role="status">
+            Demo Edition · Sample data only · Real pharmacy operations ke liye use na karein
+          </div>
+        )}
         <header className="topbar">
           <button
             onClick={() => setCollapsed(!collapsed)}
@@ -229,13 +234,39 @@ export function App() {
                   System follows your Windows appearance preference.
                 </small>
               </section>
+              {user.demo && (
+                <section className="panel demo-tools">
+                  <h2>Demo data</h2>
+                  <p>
+                    Demo ke dauran ki gayi sales, purchases aur dusri entries hata
+                    kar original sample data dobara load karein.
+                  </p>
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm("Reset demo data? Demo ke dauran ki gayi tamam entries remove ho jayengi.")) return;
+                      setError("");
+                      try {
+                        await window.pharmacy.resetDemo();
+                        setUser(null);
+                        setPage("Dashboard");
+                      } catch (e) {
+                        setError((e as Error).message);
+                      }
+                    }}
+                  >
+                    Reset demo data
+                  </button>
+                  {error && <p role="alert" className="error">{error}</p>}
+                  <small>Reset sirf isolated Demo Edition database par available hai.</small>
+                </section>
+              )}
             </>
           )}
         </main>
         <footer className="status">
           <span className="dot" />
           {user.demo
-            ? "Isolated review database · Test data"
+            ? "Demo Edition · Isolated sample database"
             : "Local SQLite database"}
           <span className="top-spacer" />
           <span>TechOrbit Systems</span>
