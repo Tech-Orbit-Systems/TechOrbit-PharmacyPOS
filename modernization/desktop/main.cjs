@@ -4,6 +4,7 @@ const path = require("path"),
 const fs = require('node:fs/promises');
 const crypto = require('node:crypto');
 const { pathToFileURL } = require("url");
+const {validateInput}=require('./ipc-contract.cjs');
 // This separate entry never imports legacy server.js or opens the production data by default.
 app.setName("TechOrbit Pharmacy POS Demo");
 const e2eCompatibility = process.env.TECHORBIT_E2E_COMPATIBILITY === "1";
@@ -96,7 +97,7 @@ app.whenReady().then(async () => {
     show: false,
     title: "TechOrbit Pharmacy POS",
     webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
+      preload: path.join(__dirname, "preload.bundle.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -118,66 +119,7 @@ app.whenReady().then(async () => {
     await resetDemoData();
     return { reset: true };
   });
-  for (const command of [
-  "settingsRead", "settingsSave", "counterDefaults",
-  "productList", "productDetail", "productSave", "productSuppliers", "packingDetail", "packingSave",
-    "productImportInspect", "productImportPreview", "productImportTemplate", "productImportErrors", "productImportCommit",
-    "shiftStatus", "closingShiftPreview", "closingPeriodPreview", "closingHandover", "closingShiftOpen", "closingShiftClose",
-    "closingDayPreview", "closingDayClose", "closingDayHistory", "closingDayDetail", "closingDayRevise",
-    "closingConfig", "closingSavePolicy", "closingSaveAccount", "closingAllocate", "closingSavingsTransfer",
-    "closingPeriodRangePreview", "closingPeriodCompletedPreview", "closingPeriodClose", "closingPeriodHistory", "closingPeriodDetail", "closingPeriodRevise", "closingPeriodExport",
-    "createCustomer",
-    "customerSearch", "customerDetail", "duesList", "duesHistory", "receivableCollect", "supplierPay", "vendorPay",
-    "expenseMetadata", "vendorSave", "expenseList", "expensePost", "expenseVoid",
-    "login",
-    "usersCatalog", "usersList", "userDetail", "userCreate", "userUpdate", "userResetPassword", "userSetPermission",
-    "reportProfitLoss", "reportEntries", "reportExport",
-    "dailySalesSummary", "dailySalesEntries", "dailySalesExport",
-    "medicineSummary", "medicineEntries", "medicineExport",
-    "customerReturnSummary", "customerReturnEntries", "customerReturnExport",
-    "supplierReturnSummary", "supplierReturnEntries", "supplierReturnExport",
-    "purchaseSummary", "purchaseEntries", "purchaseExport", "supplierPurchaseSummary", "supplierPurchaseEntries", "supplierPurchaseExport",
-    "bonusStockSummary", "bonusStockEntries", "bonusStockExport",
-    "lowStockSummary", "lowStockEntries", "lowStockExport",
-    "expirySummary", "expiryEntries", "expiryExport",
-    "batchStockSummary", "batchStockEntries", "batchStockExport",
-    "stockMovementSummary", "stockMovementEntries", "stockMovementExport",
-    "adjustmentSummary", "adjustmentEntries", "adjustmentExport",
-    "stockValuationSummary", "stockValuationEntries", "stockValuationExport",
-    "customerBalanceSummary", "customerBalanceEntries", "customerBalanceExport",
-    "supplierBalanceSummary", "supplierBalanceEntries", "supplierBalanceExport",
-    "vendorBalanceSummary", "vendorBalanceEntries", "vendorBalanceExport",
-    "overdueBalanceSummary", "overdueBalanceEntries", "overdueBalanceExport",
-    "settlementSummary", "settlementEntries", "settlementExport",
-    "dailyClosingSummary", "dailyClosingEntries", "dailyClosingExport",
-    "auditSummary", "auditEntries", "auditExport",
-    "logout",
-    "changePassword",
-    "dashboard",
-    "search",
-    "barcode",
-    "alternativeSearch",
-    "alternativeSelect",
-    "inventoryList",
-    "inventoryDetail",
-    "stockAdjustmentDetail",
-    "stockAdjustmentPost",
-    "supplierList", "supplierSave", "purchaseProducts", "purchasePreview", "purchasePost", "purchaseHistory", "purchaseDetail",
-    "openingStockProducts",
-    "openingStockPreviewManual",
-    "openingStockPreviewFile",
-    "openingStockTemplate",
-    "openingStockCommit",
-    "customers",
-    "customerReturnPreview", "customerReturnPost", "supplierReturnPreview", "supplierReturnPost",
-    "invoiceSearch",
-    "invoiceDetail",
-    "customerHistory",
-    "ledger",
-    "quote",
-    "post",
-    "saleRecovery",
-  ]) {
+  for (const command of require("./commands.cjs").filter(name => name !== "resetDemo" && name !== "reviewAccess")) {
     ipcMain.handle("pharmacy:" + command, (event, input) => {
       if (
         event.sender !== window.webContents ||
@@ -185,6 +127,7 @@ app.whenReady().then(async () => {
         event.senderFrame.url !== entryUrl
       )
         throw Error("Untrusted sender");
+      input=validateInput(command,input);
       const requestLimit = ["openingStockPreviewFile","productImportInspect","productImportPreview"].includes(command) ? 12000000 : 100000;
       if (JSON.stringify(input ?? {}).length > requestLimit)
         throw Error("Request too large");
