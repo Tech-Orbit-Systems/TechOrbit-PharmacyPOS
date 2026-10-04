@@ -2,7 +2,7 @@ const { parentPort, workerData } = require("node:worker_threads");
 const { openDatabase } = require("../../infrastructure/sqlite/database");
 const { Gateway } = require("./gateway.cjs");
 const db = openDatabase({ filename: workerData.filename });
-if (workerData.demo) require("./demo.cjs").seedDemo(db);
+if (workerData.demo) require("./demo.cjs").seedDemo(db,workerData.reviewPassword);
 const gateway = new Gateway(db, { demo: workerData.demo });
 parentPort.postMessage({ ready: true });
 parentPort.on("message", async ({ id, command, input }) => {

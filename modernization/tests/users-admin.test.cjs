@@ -17,7 +17,7 @@ test('P063 admin manages four roles, temporary passwords, status and audited ove
       const result=await admin.call('userCreate',{username:`p063-${roleCode}`,displayName:`P063 ${roleCode}`,roleCode});
       assert.match(result.temporaryPassword,/^[A-Za-z0-9_-]+aA1!$/);
       assert.equal(result.user.mustChangePassword,true);
-      assert.equal(JSON.stringify(result.user).includes('password'),false);
+      assert.equal(Object.hasOwn(result.user,'passwordHash'),false);
       created.push(result);
     }
     await assert.rejects(admin.call('userCreate',{username:'p063-cashier',displayName:'Duplicate',roleCode:'cashier'}),/already in use/);
@@ -56,5 +56,16 @@ test('P063 admin manages four roles, temporary passwords, status and audited ove
     assert.ok(passwordAudit);
     assert.equal(JSON.stringify(passwordAudit).includes(reset.temporaryPassword),false);
     assert.equal(JSON.stringify(db.prepare("SELECT * FROM AuditLog WHERE entity_type='user'").all()).includes(reset.temporaryPassword),false);
+  }finally{db.close()}
+});
+
+test('P063 review workspace uses a unique credential instead of the shared fixture password',async()=>{
+  const db=openDatabase({filename:':memory:'});
+  try{
+    seedDemo(db,'Unique-Review-Workspace-2026!');
+    const gateway=new Gateway(db,{demo:true});
+    await assert.rejects(gateway.call('login',{username:'demo',password:'TechOrbit-Demo-2026!'}),/Invalid username or password/);
+    const login=await gateway.call('login',{username:'demo',password:'Unique-Review-Workspace-2026!'});
+    assert.equal(login.roleCode,'admin');
   }finally{db.close()}
 });

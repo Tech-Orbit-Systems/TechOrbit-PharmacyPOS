@@ -389,6 +389,7 @@ export interface Api {
   expensePost(input:ExpenseInput):Promise<{expenseId:number;incurredAmountMinor:number;amountPaidMinor:number;balanceDueMinor:number;status:string;idempotent:boolean}>;
   expenseVoid(input:{expenseId:number;reason:string}):Promise<{expenseId:number;status:string}>;
   login(input: { username: string; password: string }): Promise<User>;
+  reviewAccess():Promise<{username:string;password:string}>;
   logout(): Promise<unknown>;
   changePassword(input: {
     currentPassword: string;

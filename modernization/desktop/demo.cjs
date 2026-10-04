@@ -93,7 +93,14 @@ function seedInitial(db) {
   new (require('../../infrastructure/sqlite/services/cash-closing').CashClosingService)(db)
     .open({userId:Number(userId),deviceId:'modern-desktop',openedAt:now,openingCashMinor:3240000});
 }
-function seedDemo(db){seedInitial(db);upgradeDemoUnits(db);}
+function seedDemo(db,reviewPassword){
+  seedInitial(db);
+  if(reviewPassword){
+    db.prepare("UPDATE Users SET password_hash=?,must_change_password=0,updated_at=? WHERE username='demo'")
+      .run(bcrypt.hashSync(reviewPassword,12),new Date().toISOString());
+  }
+  upgradeDemoUnits(db);
+}
 function upgradeDemoUnits(db){
  const key='review.demoUnits.v2';
  if(db.prepare('SELECT 1 FROM Settings WHERE key=?').get(key))return;

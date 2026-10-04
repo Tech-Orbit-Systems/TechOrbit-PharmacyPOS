@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, Menu, dialog } = require("electron");
 const path = require("path"),
   { Worker } = require("node:worker_threads");
 const fs = require('node:fs/promises');
+const crypto = require('node:crypto');
 const { pathToFileURL } = require("url");
 // This separate entry never imports legacy server.js or opens the production data by default.
 app.setName("TechOrbit Pharmacy POS Demo");
@@ -16,7 +17,7 @@ if (e2eCompatibility) {
 }
 const userData = process.env.TECHORBIT_UI_DATA_DIR;
 if (userData) app.setPath("userData", path.resolve(userData));
-let worker, window, databaseFilename, demoWorkspace;
+let worker, window, databaseFilename, demoWorkspace, reviewPassword;
 let sequence = 0;
 const pending = new Map();
 function rejectPending(message) {
@@ -30,7 +31,7 @@ function startWorker(filename, demo) {
   return new Promise((resolve, reject) => {
     let ready = false;
   worker = new Worker(path.join(__dirname, "worker.cjs"), {
-    workerData: { filename, demo },
+    workerData: { filename, demo, reviewPassword:demo?reviewPassword:null },
   });
     worker.on("message", ({ id, result, error, ready: isReady }) => {
       if (isReady) {
@@ -60,6 +61,22 @@ async function resetDemoData() {
 }
 app.whenReady().then(async () => {
   demoWorkspace = !process.env.TECHORBIT_UI_DATABASE;
+  if(demoWorkspace){
+    if(e2eCompatibility) reviewPassword='TechOrbit-Demo-2026!';
+    else {
+      const accessFile=path.join(app.getPath('userData'),'review-access.json');
+      try {
+        const saved=JSON.parse(await fs.readFile(accessFile,'utf8'));
+        if(typeof saved.password!=='string'||saved.password.length<20)throw Error('Invalid review access');
+        reviewPassword=saved.password;
+      } catch(error) {
+        if(error.code!=='ENOENT'&&error.message!=='Invalid review access'&&!(error instanceof SyntaxError))throw error;
+        reviewPassword=`${crypto.randomBytes(18).toString('base64url')}aA1!`;
+        await fs.mkdir(path.dirname(accessFile),{recursive:true});
+        await fs.writeFile(accessFile,JSON.stringify({password:reviewPassword}),{flag:'w',mode:0o600});
+      }
+    }
+  }
   databaseFilename =
     process.env.TECHORBIT_UI_DATABASE ||
     path.join(app.getPath("userData"), "review.sqlite3");
@@ -67,6 +84,10 @@ app.whenReady().then(async () => {
   const entryUrl = pathToFileURL(
     path.join(__dirname, "../dist/index.html"),
   ).href;
+  ipcMain.handle('pharmacy:reviewAccess',event=>{
+    if(!demoWorkspace||event.sender!==window?.webContents||event.senderFrame!==window.webContents.mainFrame||event.senderFrame.url!==entryUrl)throw Error('Review access unavailable');
+    return {username:'demo',password:reviewPassword};
+  });
   window = new BrowserWindow({
     width: 1440,
     height: 940,

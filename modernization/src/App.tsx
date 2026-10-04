@@ -42,6 +42,7 @@ const nav = [
   ["Settings", Settings],
 ] as const;
 export function App() {
+  const [reviewAccess,setReviewAccess]=useState<{username:string;password:string}|null>(null);
   const [user, setUser] = useState<User | null>(null),
     [page, setPage] = useState("Dashboard"),
     [theme, setTheme] = useState<Theme>(() => {
@@ -50,6 +51,9 @@ export function App() {
     }),
     [collapsed, setCollapsed] = useState(false),
     [error, setError] = useState("");
+  useEffect(() => {
+    window.pharmacy.reviewAccess().then(setReviewAccess).catch(()=>{});
+  },[]);
   useEffect(() => {
     const media = matchMedia("(prefers-color-scheme: dark)");
     const apply = () =>
@@ -131,7 +135,7 @@ export function App() {
           <button className="primary">
             {user ? "Save password" : "Sign in"}
           </button>
-          <small>Sign in with your assigned account. Demo credentials are provided separately for the isolated review workspace.</small>
+          {reviewAccess?<small>Isolated review workspace: {reviewAccess.username} / {reviewAccess.password}<br/>Sample data only. This password is unique to this Windows workspace.</small>:<small>Sign in with your assigned account.</small>}
         </form>
       </main>
     );
