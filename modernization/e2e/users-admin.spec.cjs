@@ -27,7 +27,8 @@ test('P063 admin creates an isolated cashier and first-login password change is 
     await page.getByLabel('Password',{exact:true}).fill(temporary);
     await page.getByLabel('New password').fill('E2E-Cashier-Unique-2026!');
     await page.getByRole('button',{name:'Save password'}).click();
-    await expect(page.getByRole('button',{name:'Dashboard',exact:true})).toBeVisible();
+    // bcrypt hashing and worker IPC may take longer on a loaded Windows test host.
+    await expect(page.getByRole('button',{name:'Dashboard',exact:true})).toBeVisible({timeout:20000});
     await page.getByRole('button',{name:'Settings',exact:true}).click();
     await expect(page.getByRole('heading',{name:'Users and roles'})).toHaveCount(0);
     expect(errors).toEqual([]);

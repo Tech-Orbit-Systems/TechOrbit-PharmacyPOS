@@ -184,7 +184,11 @@ contextBridge.exposeInMainWorld(
   Object.fromEntries(
     methods.map((name) => [
       name,
-      (input) => ipcRenderer.invoke("pharmacy:" + name, input)
+      async (input) => {
+        const response = await ipcRenderer.invoke("pharmacy:" + name, input);
+        if (response.ok) return response.result;
+        throw { name: "PharmacyError", ...response.error };
+      }
     ])
   )
 );

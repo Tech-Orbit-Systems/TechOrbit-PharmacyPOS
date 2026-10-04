@@ -31,4 +31,21 @@ test('P064 IPC rejects malformed account commands and dangerous nested values be
   assert.throws(()=>validateInput('dashboard',malicious),/Invalid request payload/);
   assert.throws(()=>validateInput('dashboard',{range:'today\u0000'}),/Invalid request payload/);
   assert.throws(()=>validateInput('dashboard',{range:Number.POSITIVE_INFINITY}),/Invalid request payload/);
+  assert.throws(()=>validateInput('dashboard',{range:'today',unexpected:'x'}),/Invalid request payload/);
+  assert.throws(()=>validateInput('purchaseDetail',{id:'1'}),/Invalid request payload/);
+  assert.throws(()=>validateInput('purchasePost',{supplierId:1,items:[{productId:1,unexpected:true}]}),/Invalid request payload/);
+  assert.deepEqual(validateInput('invoiceSearch',{invoiceNumber:'TO-1',page:1,phone:undefined}),{invoiceNumber:'TO-1',page:1,phone:undefined});
+  assert.throws(()=>validateInput('invoiceSearch',{pageSize:1001}),/Invalid request payload/);
+  assert.throws(()=>validateInput('invoiceSearch',{phone:'x'.repeat(4097)}),/Invalid request payload/);
+  assert.throws(()=>validateInput('productImportInspect',{name:'../stock.csv',base64:'YWJj'}),/Invalid request payload/);
+  assert.throws(()=>validateInput('productImportInspect',{name:'stock.csv',base64:'not base64'}),/Invalid request payload/);
+  assert.deepEqual(validateInput('productImportInspect',{name:'stock.csv',base64:'YWJj'}),{name:'stock.csv',base64:'YWJj'});
+});
+
+test('P064 every command has a generated runtime schema from the renderer contract',()=>{
+  const schemas=require('../desktop/ipc-schemas.json');
+  assert.deepEqual(Object.keys(schemas).sort(),[...methods].sort());
+  assert.equal(schemas.dashboard.kind,'object');
+  assert.equal(schemas.post.properties.items.schema.kind,'array');
+  assert.equal(schemas.userCreate.properties.roleCode.schema.kind,'string');
 });

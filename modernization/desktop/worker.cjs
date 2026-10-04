@@ -8,7 +8,11 @@ const gateway = new Gateway(db, { demo: workerData.demo });
 parentPort.postMessage({ ready: true });
 parentPort.on("message", async ({ id, command, input }) => {
   try {
-    parentPort.postMessage({ id, result: await gateway.call(command, validateInput(command,input)) });
+    if(command==='__authorizeDemoReset'){
+      if(!workerData.demo)throw Error('Demo reset is unavailable for a live database.');
+      await gateway.call('usersList',{});
+      parentPort.postMessage({id,result:true});
+    }else parentPort.postMessage({ id, result: await gateway.call(command, validateInput(command,input)) });
   } catch (error) {
     parentPort.postMessage({ id, error: error.message });
   }

@@ -1,11 +1,14 @@
-const { app, BrowserWindow, ipcMain, Menu, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, dialog, protocol, net } = require("electron");
 const path = require("path"),
   { Worker } = require("node:worker_threads");
 const fs = require('node:fs/promises');
 const crypto = require('node:crypto');
 const { pathToFileURL } = require("url");
 const {validateInput}=require('./ipc-contract.cjs');
+const { SCHEME, ENTRY_URL, resolveAppAsset } = require('./app-protocol.cjs');
+const {publicError}=require('./ipc-error.cjs');
 // This separate entry never imports legacy server.js or opens the production data by default.
+protocol.registerSchemesAsPrivileged([{scheme:SCHEME,privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 app.setName("TechOrbit Pharmacy POS Demo");
 const e2eCompatibility = process.env.TECHORBIT_E2E_COMPATIBILITY === "1";
 if (process.env.TECHORBIT_DISABLE_HARDWARE_ACCELERATION === "1" || e2eCompatibility)
@@ -21,6 +24,22 @@ if (userData) app.setPath("userData", path.resolve(userData));
 let worker, window, databaseFilename, demoWorkspace, reviewPassword;
 let sequence = 0;
 const pending = new Map();
+function requestWorker(command,input,timeoutMs=30000) {
+  return new Promise((resolve,reject)=>{
+    const id=++sequence;
+    const timer=setTimeout(()=>{
+      pending.delete(id);
+      reject(Error('Operation timed out. Retry the same sale to check its result.'));
+    },timeoutMs);
+    pending.set(id,{resolve,reject,timer});
+    worker.postMessage({id,command,input});
+  });
+}
+async function ipcResponse(work) {
+  const requestId=`IPC-${++sequence}`;
+  try { return {ok:true,result:await work()}; }
+  catch (error) { return {ok:false,error:publicError(error,requestId)}; }
+}
 function rejectPending(message) {
   for (const entry of pending.values()) {
     clearTimeout(entry.timer);
@@ -61,6 +80,13 @@ async function resetDemoData() {
   await startWorker(databaseFilename, true);
 }
 app.whenReady().then(async () => {
+  const distDirectory = path.join(__dirname, '../dist');
+  protocol.handle(SCHEME, request => {
+    if (request.method !== 'GET') return new Response('Method not allowed', {status:405});
+    const asset = resolveAppAsset(request.url, distDirectory);
+    if (!asset) return new Response('Not found', {status:404});
+    return net.fetch(pathToFileURL(asset).href);
+  });
   demoWorkspace = !process.env.TECHORBIT_UI_DATABASE;
   if(demoWorkspace){
     if(e2eCompatibility) reviewPassword='TechOrbit-Demo-2026!';
@@ -82,13 +108,11 @@ app.whenReady().then(async () => {
     process.env.TECHORBIT_UI_DATABASE ||
     path.join(app.getPath("userData"), "review.sqlite3");
   await startWorker(databaseFilename, demoWorkspace);
-  const entryUrl = pathToFileURL(
-    path.join(__dirname, "../dist/index.html"),
-  ).href;
-  ipcMain.handle('pharmacy:reviewAccess',event=>{
+  const entryUrl = ENTRY_URL;
+  ipcMain.handle('pharmacy:reviewAccess',event=>ipcResponse(()=>{
     if(!demoWorkspace||event.sender!==window?.webContents||event.senderFrame!==window.webContents.mainFrame||event.senderFrame.url!==entryUrl)throw Error('Review access unavailable');
     return {username:'demo',password:reviewPassword};
-  });
+  }));
   window = new BrowserWindow({
     width: 1440,
     height: 940,
@@ -109,18 +133,20 @@ app.whenReady().then(async () => {
   window.webContents.session.setPermissionRequestHandler(
     (_contents, _permission, callback) => callback(false),
   );
-  ipcMain.handle("pharmacy:resetDemo", async (event) => {
+  ipcMain.handle("pharmacy:resetDemo", event => ipcResponse(async () => {
     if (
       event.sender !== window.webContents ||
       event.senderFrame !== window.webContents.mainFrame ||
       event.senderFrame.url !== entryUrl
     )
       throw Error("Untrusted sender");
+    if (!demoWorkspace) throw Error('Demo reset is unavailable for a live database.');
+    await requestWorker('__authorizeDemoReset',{});
     await resetDemoData();
     return { reset: true };
-  });
+  }));
   for (const command of require("./commands.cjs").filter(name => name !== "resetDemo" && name !== "reviewAccess")) {
-    ipcMain.handle("pharmacy:" + command, (event, input) => {
+    ipcMain.handle("pharmacy:" + command, (event, input) => ipcResponse(async () => {
       if (
         event.sender !== window.webContents ||
         event.senderFrame !== window.webContents.mainFrame ||
@@ -131,19 +157,7 @@ app.whenReady().then(async () => {
       const requestLimit = ["openingStockPreviewFile","productImportInspect","productImportPreview"].includes(command) ? 12000000 : 100000;
       if (JSON.stringify(input ?? {}).length > requestLimit)
         throw Error("Request too large");
-      const result=new Promise((resolve, reject) => {
-        const id = ++sequence;
-        const timer = setTimeout(() => {
-          pending.delete(id);
-          reject(
-            Error(
-              "Operation timed out. Retry the same sale to check its result.",
-            ),
-          );
-        }, 30000);
-        pending.set(id, { resolve, reject, timer });
-        worker.postMessage({ id, command, input });
-      });
+      const result=requestWorker(command,input);
       if(command!=='closingPeriodExport'&&command!=='reportExport'&&command!=='dailySalesExport'&&command!=='medicineExport'&&command!=='customerReturnExport'&&command!=='supplierReturnExport'&&command!=='purchaseExport'&&command!=='supplierPurchaseExport'&&command!=='bonusStockExport'&&command!=='lowStockExport'&&command!=='expiryExport'&&command!=='batchStockExport'&&command!=='stockMovementExport'&&command!=='adjustmentExport'&&command!=='stockValuationExport'&&command!=='customerBalanceExport'&&command!=='supplierBalanceExport'&&command!=='vendorBalanceExport'&&command!=='overdueBalanceExport'&&command!=='settlementExport'&&command!=='dailyClosingExport'&&command!=='auditExport')return result;
       return result.then(async ({filename,csv,base64})=>{
         const extension=filename.split('.').at(-1);
@@ -153,7 +167,7 @@ app.whenReady().then(async () => {
         await fs.writeFile(choice.filePath,base64?Buffer.from(base64,'base64'):csv,base64?undefined:'utf8');
         return {saved:true};
       });
-    });
+    }));
   }
   window.once("ready-to-show", () => window.show());
   window.loadURL(entryUrl);

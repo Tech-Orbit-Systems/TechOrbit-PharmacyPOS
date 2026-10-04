@@ -24,6 +24,8 @@ test('Demo Edition is clearly labelled and restores its isolated sample data', a
     const page = await app.firstWindow();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
+    const anonymousReset=await page.evaluate(async()=>{try{await window.pharmacy.resetDemo();return 'allowed'}catch(error){return {code:error.code,message:error.message}}});
+    expect(anonymousReset.code,anonymousReset.message).toBe('ACCESS_DENIED');
     await login(page);
     await expect(page.getByText(/Demo Edition · Sample data only/)).toBeVisible();
 

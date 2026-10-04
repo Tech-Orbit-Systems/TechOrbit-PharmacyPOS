@@ -86,6 +86,15 @@ export interface User {
   canViewAuditReport:boolean;
   canManageSettings:boolean;
 }
+export interface OpeningStockManualInput {productId:number;entryDate:string;batchNumber:string;expiryDate:string;unit:string;quantity:number;unitCost:number;notes:string}
+export interface PackingSaveInput {id:number;updatedAt:string;units:{unitName:string;baseQuantity:number;sellingPriceMinor:number;isDefaultSaleUnit:boolean;allowsFractionalQuantity:boolean}[]}
+export interface ProductSaveInput {
+  id?:number;createKey?:string;updatedAt?:string;confirmDuplicateName:boolean;
+  name:string;barcode:string;genericName:string;manufacturer:string;category:string;productType:'medicine'|'general'|'cosmetic'|'device'|'other';
+  dosageForm:string;strength:string;packDescription:string;baseUnit:string;defaultSalePriceMinor:number;boxSalePriceMinor:number|null;stripSalePriceMinor:number|null;
+  minimumStock:number;reorderLevel:number;defaultSupplierId:number|null;prescriptionRequired:boolean;controlledMedicine:boolean;
+  gstRateBasisPoints:number;taxStatus:'taxable'|'exempt';active:boolean;notes:string;
+}
 export interface ManagedUser {
   id:number;username:string;displayName:string;roleCode:string;active:boolean;mustChangePassword:boolean;
   createdAt:string;updatedAt:string;overrides?:Record<string,boolean>;
@@ -338,7 +347,7 @@ export interface Api {
   productImportErrors(input:{jobId:number}):Promise<DownloadFile>;
   productImportCommit(input:{jobId:number}):Promise<{jobId:number;status:string;committedRows:number;skippedRows:number}>;
   openingStockProducts(input:{q:string}):Promise<OpeningStockProduct[]>;
-  openingStockPreviewManual(input:Record<string,unknown>):Promise<OpeningStockPreview>;
+  openingStockPreviewManual(input:OpeningStockManualInput):Promise<OpeningStockPreview>;
   openingStockPreviewFile(input:{name:string;base64:string}):Promise<OpeningStockPreview>;
   openingStockTemplate(input?:undefined):Promise<{name:string;mime:string;base64:string}>;
   openingStockCommit(input:{jobId:number}):Promise<{jobId:number;status:string;committedRows:number}>;
@@ -347,10 +356,10 @@ export interface Api {
   stockAdjustmentDetail(input:{batchId:number}):Promise<StockAdjustmentBatch>;
   stockAdjustmentPost(input:{batchId:number;mode:string;quantity:number;reason:string;occurredAt:string;idempotencyKey:string}):Promise<{adjustmentId:number;itemCount:number;idempotent:boolean}>;
   packingDetail(input:{id:number}):Promise<ProductMasterResult & {historyLocked:boolean}>;
-  packingSave(input:Record<string,unknown>):Promise<ProductMasterResult & {historyLocked:boolean}>;
+  packingSave(input:PackingSaveInput):Promise<ProductMasterResult & {historyLocked:boolean}>;
   productList(input:{q:string;state:string;page:number}):Promise<{items:ProductSummary[];total:number;page:number;pageSize:number}>;
   productDetail(input:{id:number}):Promise<ProductMasterResult>;
-  productSave(input:Record<string,unknown>):Promise<ProductMasterResult>;
+  productSave(input:ProductSaveInput):Promise<ProductMasterResult>;
   productSuppliers():Promise<{id:number;name:string}[]>;
   shiftStatus():Promise<{id:number;opened_at:string;device_id:string}|null>;
   closingShiftPreview(input:{shiftId:number}):Promise<{shiftId:number;userId:number|null;deviceId:string;status:string;openedAt:string;closedAt:string|null;openingCashMinor:number;expectedCashMinor:number;countedCashMinor:number|null;varianceMinor:number|null;unattributedCashCount:number;movements:{method:string;direction:string;amount:number}[]}>;
@@ -461,7 +470,7 @@ export interface SupplierReturnPreview {invoiceNumber:string|null;totalMinor:num
 export interface ProductImportInspection {headers:string[];totalRows:number;sampleRows:Record<string,unknown>[];suggestedMapping:Record<string,string>}
 export interface ProductImportPreviewRow {rowNumber:number;action:string;errors:string[];normalized:{sku:string|null;barcode:string|null;name:string|null;manufacturer:string|null;baseUnit:string}}
 export interface ProductImportPreview {jobId:number;totalRows:number;validRows:number;errorRows:number;skippedRows:number;rows:ProductImportPreviewRow[]}
-export interface InvoiceSearchInput {invoiceNumber:string;product:string;phone:string;paymentStatus:string;dateFrom:string;dateTo:string;page:number}
+export interface InvoiceSearchInput {invoiceNumber?:string;product?:string;phone?:string;paymentStatus?:string;dateFrom?:string;dateTo?:string;page?:number}
 export interface InvoiceSummary {id:number;invoice_number:string;sold_at:string;customer_name_snapshot:string|null;customer_phone_snapshot:string|null;payment_method:string;payment_status:string;final_total_minor:number;amount_paid_minor:number;balance_due_minor:number;due_date:string|null;products:string|null}
 export interface InvoiceSearchResult {items:InvoiceSummary[];total:number;page:number;pageSize:number}
 export interface InvoiceDetail {saleId:number;invoiceNumber:string;soldAt:string;status:string;customer:{id:number|null;name:string|null;phone:string|null};payment:{method:string;status:string;amountPaidMinor:number;balanceDueMinor:number;dueDate:string|null;cashTenderedMinor:number|null;cashChangeMinor:number|null};totals:{grossMinor:number;lineDiscountMinor:number;invoiceDiscountMinor:number;taxableMinor:number;gstMinor:number;exactTotalMinor:number;roundingMinor:number;finalTotalMinor:number};receipt:Receipt;items:{id:number;lineNumber:number;productName:string;genericName:string|null;saleUnit:string;quantity:number;baseQuantity:number;unitPriceMinor:number;lineDiscountMinor:number;gstMinor:number;lineTotalMinor:number;returnedBaseQuantity:number;returnedMinor:number;returnableBaseQuantity:number}[];receivable:{id:number;balance_minor:number;due_date:string;status:string}|null;payments:{id:number;amount_minor:number;method:string;collected_at:string}[];returns:{id:number;returned_at:string;total_minor:number;receivable_credit_minor:number;refund_minor:number;reason:string}[];audit:{id:number;occurred_at:string;action:string;role_code:string|null;reason:string|null;new_json:unknown}[];actions:{canPrint:boolean;canViewCustomerHistory:boolean;canStartReturn:boolean;canViewAudit:boolean}}
