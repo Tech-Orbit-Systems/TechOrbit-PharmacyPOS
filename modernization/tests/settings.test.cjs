@@ -1,0 +1,51 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {randomUUID}=require('node:crypto');
+const bcrypt=require('bcrypt');
+const {openDatabase}=require('../../infrastructure/sqlite/database');
+const {seedDemo}=require('../desktop/demo.cjs');
+const {Gateway}=require('../desktop/gateway.cjs');
+
+test('P062 validates and audits operational settings, then applies new receipt, invoice and warning rules',async()=>{
+  const db=openDatabase({filename:':memory:'});
+  try{
+    seedDemo(db);
+    const gateway=new Gateway(db,{demo:true});
+    const user=await gateway.call('login',{username:'demo',password:'TechOrbit-Demo-2026!'});
+    assert.equal(user.canManageSettings,true);
+    const before=await gateway.call('settingsRead');
+    assert.equal(before.invoicePrefix,'TO');
+    await assert.rejects(gateway.call('settingsSave',{invoicePrefix:'bad prefix'}),/Invoice prefix/);
+    await assert.rejects(gateway.call('settingsSave',{backupRetentionDays:0}),/backupRetentionDays/);
+    assert.equal(db.prepare("SELECT COUNT(*) count FROM AuditLog WHERE action='settings.change'").get().count,0);
+    const after=await gateway.call('settingsSave',{invoicePrefix:'MED',nearExpiryWarningDays:0,defaultPaymentMethod:'digital',receiptProfile:{...before.receiptProfile,pharmacyName:'Care Pharmacy',strn:'STRN-123',footer:'Visit again'}});
+    assert.equal(after.invoicePrefix,'MED');
+    assert.equal((await gateway.call('counterDefaults')).defaultPaymentMethod,'digital');
+    assert.equal(db.prepare("SELECT COUNT(*) count FROM AuditLog WHERE action='settings.change'").get().count,4);
+    const product=await gateway.call('barcode',{barcode:'0012345678901'});
+    const nearDate=new Date(Date.now()+5*86400000).toISOString().slice(0,10);
+    db.prepare('UPDATE ProductBatches SET expiry_date=? WHERE product_id=?').run(nearDate,product.id);
+    const key=`TO-${randomUUID()}`;
+    const input={key,paymentMethod:'cash',cashTenderedMinor:1000000,warningAcknowledged:true,items:[{productId:product.id,saleUnit:product.units[0].unit_name,quantity:1}]};
+    assert.equal((await gateway.call('quote',input)).warnings.filter(w=>w.type==='near_expiry').length,0);
+    await gateway.call('settingsSave',{nearExpiryWarningDays:30});
+    assert.ok((await gateway.call('quote',input)).warnings.some(w=>w.type==='near_expiry'));
+    const posted=await gateway.call('post',input);
+    assert.equal(posted.invoiceNumber,`MED-${key.slice(3)}`);
+    const saved=await gateway.call('invoiceDetail',{id:posted.saleId});
+    assert.equal(saved.receipt.profile.pharmacyName,'Care Pharmacy');
+    assert.equal(saved.receipt.profile.strn,'STRN-123');
+    assert.equal(saved.receipt.profile.footer,'Visit again');
+    const audit=db.prepare("SELECT entity_id,previous_json,new_json FROM AuditLog WHERE action='settings.change' AND entity_id='invoicePrefix'").get();
+    assert.equal(JSON.parse(audit.previous_json),'TO');
+    assert.equal(JSON.parse(audit.new_json),'MED');
+    const now=new Date().toISOString();
+    db.prepare("INSERT INTO Users(username,password_hash,display_name,role_id,must_change_password,created_at,updated_at) SELECT 'settings-cashier',?,'Settings Cashier',id,0,?,? FROM Roles WHERE code='cashier'").run(bcrypt.hashSync('Cashier-Settings-2026!',10),now,now);
+    const cashier=new Gateway(db,{demo:true});
+    const cashierUser=await cashier.call('login',{username:'settings-cashier',password:'Cashier-Settings-2026!'});
+    assert.equal(cashierUser.canManageSettings,false);
+    await assert.rejects(cashier.call('settingsRead'),/role does not allow/);
+    await assert.rejects(cashier.call('settingsSave',{invoicePrefix:'BAD'}),/role does not allow/);
+    assert.equal((await cashier.call('counterDefaults')).defaultPaymentMethod,'digital');
+  }finally{db.close()}
+});

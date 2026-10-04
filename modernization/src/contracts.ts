@@ -84,6 +84,14 @@ export interface User {
   canViewVendorDues:boolean;
   canViewClosingReport:boolean;
   canViewAuditReport:boolean;
+  canManageSettings:boolean;
+}
+export interface OperationalSettings {
+  invoicePrefix:string;defaultGstBasisPoints:number;nearExpiryWarningDays:number;stockAlertThreshold:number;
+  defaultSaleUnit:'product'|'base'|'strip'|'box';defaultPaymentMethod:Payment;
+  receiptPrinterName:string;receiptPaperWidthMm:58|80;backupScheduleTime:string;backupRetentionDays:number;
+  closingVarianceToleranceMinor:number;sixMonthCycleStartMonth:number;
+  receiptProfile:{pharmacyName:string;address:string;phone:string;taxRegistration:string;strn:string;footer:string};
 }
 export interface Quote {
   amountPaidMinor:number;
@@ -113,7 +121,7 @@ export interface Receipt {
   saleId:number;
   invoiceNumber: string;
   soldAt: string;
-  profile:{pharmacyName:string;address:string|null;phone:string|null;taxRegistration:string|null;footer:string};
+  profile:{pharmacyName:string;address:string|null;phone:string|null;taxRegistration:string|null;strn?:string|null;footer:string};
   cashier:{id:number|null;name:string;roleCode:string};
   customer:{name:string|null;phone:string|null};
   items: {
@@ -230,6 +238,9 @@ export interface AuditReportInput {range:string;from?:string;to?:string;actor?:s
 export interface AuditReportRow {previousValue:string;newValue:string;id:number;occurredAt:string;userId:number|null;actor:string;role:string;action:string;entity:string;entityId:string;reason:string;device:string}
 export interface AuditReportSummary {range:{from:string;to:string};items:AuditReportRow[];actions:{action:string;count:number}[];totals:{eventCount:number;actorCount:number;actionCount:number};scope:string}
 export interface Api {
+  settingsRead():Promise<OperationalSettings>;
+  settingsSave(input:Partial<OperationalSettings>):Promise<OperationalSettings>;
+  counterDefaults():Promise<Pick<OperationalSettings,'defaultSaleUnit'|'defaultPaymentMethod'>>;
   resetDemo():Promise<{reset:boolean}>;
   auditSummary(input:AuditReportInput):Promise<AuditReportSummary>;
   auditEntries(input:AuditReportInput&{page:number;pageSize?:number}):Promise<{hasMore:boolean;items:AuditReportRow[]}>;

@@ -26,6 +26,7 @@ import { SalesHistory } from './SalesHistory';
 import { Accounts } from './Accounts';
 import { Closing } from './Closing';
 import { Reports } from './Reports';
+import { OperationalSettings } from './OperationalSettings';
 const nav = [
   ["Dashboard", LayoutDashboard],
   ["Point of Sale", ShoppingCart],
@@ -234,6 +235,7 @@ export function App() {
                   System follows your Windows appearance preference.
                 </small>
               </section>
+              {user.canManageSettings&&<OperationalSettings/>}
               {user.demo && (
                 <section className="panel demo-tools">
                   <h2>Demo data</h2>

@@ -1,0 +1,37 @@
+const {test,expect,_electron}=require('@playwright/test');
+const fs=require('fs'),path=require('path'),os=require('os');
+test('P062 manager edits grouped settings and sees the saved values after reopening',async()=>{
+  const env={...process.env,TECHORBIT_UI_DATA_DIR:fs.mkdtempSync(path.join(os.tmpdir(),'techorbit-settings-'))};
+  delete env.ELECTRON_RUN_AS_NODE;delete env.TECHORBIT_UI_DATABASE;
+  const app=await _electron.launch({args:[path.resolve(__dirname,'../desktop/main.cjs')],env});
+  try{
+    const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+    await page.getByLabel('Username',{exact:true}).fill('demo');
+    await page.getByLabel('Password',{exact:true}).fill('TechOrbit-Demo-2026!');
+    await page.getByRole('button',{name:'Sign in',exact:true}).click();
+    await page.getByRole('button',{name:'Settings',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Pharmacy and receipt'})).toBeVisible();
+    await page.getByLabel('Pharmacy name').fill('Care Pharmacy');
+    await page.getByLabel('STRN').fill('STRN-123');
+    await page.getByLabel('Invoice prefix').fill('MED');
+    await page.getByLabel('Near-expiry warning (days)').fill('30');
+    await page.getByLabel('Default GST for new taxable products (%)').fill('17');
+    await page.getByLabel('Default low-stock alert (base units)').fill('6');
+    await page.getByLabel('Default payment method').selectOption('digital');
+    await page.getByRole('button',{name:'Save operational settings'}).click();
+    await expect(page.getByText('Operational settings saved and audited.')).toBeVisible();
+    await page.getByRole('button',{name:'Dashboard',exact:true}).click();
+    await page.getByRole('button',{name:'Settings',exact:true}).click();
+    await expect(page.getByLabel('Pharmacy name')).toHaveValue('Care Pharmacy');
+    await expect(page.getByLabel('Invoice prefix')).toHaveValue('MED');
+    await expect(page.getByLabel('Default payment method')).toHaveValue('digital');
+    await page.getByRole('button',{name:'Products',exact:true}).click();
+    await page.getByRole('button',{name:'Add product',exact:true}).click();
+    await expect(page.getByLabel('GST percent')).toHaveValue('17');
+    await expect(page.getByLabel('Minimum stock (base units)')).toHaveValue('6');
+    await page.getByRole('button',{name:'Close dialog',exact:true}).click();
+    await page.getByRole('button',{name:'Point of Sale',exact:true}).click();
+    await expect(page.getByRole('button',{name:'Digital',exact:true})).toHaveAttribute('aria-pressed','true');
+    expect(errors).toEqual([]);
+  }finally{await app.close()}
+});

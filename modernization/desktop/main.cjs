@@ -98,6 +98,7 @@ app.whenReady().then(async () => {
     return { reset: true };
   });
   for (const command of [
+  "settingsRead", "settingsSave", "counterDefaults",
   "productList", "productDetail", "productSave", "productSuppliers", "packingDetail", "packingSave",
     "productImportInspect", "productImportPreview", "productImportTemplate", "productImportErrors", "productImportCommit",
     "shiftStatus", "closingShiftPreview", "closingPeriodPreview", "closingHandover", "closingShiftOpen", "closingShiftClose",

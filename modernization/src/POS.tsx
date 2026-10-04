@@ -56,6 +56,7 @@ function readActiveDraft(storageKey:string):ActiveDraft|null{
   }catch{return null;}
 }
 export function POS({ user }: { user: User }) {
+  const [counterDefaults,setCounterDefaults]=useState<{defaultSaleUnit:'product'|'base'|'strip'|'box';defaultPaymentMethod:Payment}>({defaultSaleUnit:'product',defaultPaymentMethod:'cash'});
   const canOverrideBatch=['pharmacist','manager','admin'].includes(user.roleCode);
   const storageKey = `techorbit.drafts.${user.demo ? "review" : "live"}.${user.id}`;
   const activeStorageKey=`techorbit.active-sale.v1.${user.demo ? "review" : "live"}.${user.id}`;
@@ -111,6 +112,8 @@ export function POS({ user }: { user: User }) {
     [alternatives,setAlternatives]=useState<AlternativeResult|null>(null),
     [alternativeBusy,setAlternativeBusy]=useState(false),
     [tab, setTab] = useState("Products");
+  useEffect(()=>{let live=true;window.pharmacy.counterDefaults().then(value=>{if(live){setCounterDefaults(value);if(!initialDraft)setMethod(value.defaultPaymentMethod)}}).catch(()=>{});return()=>{live=false}},[initialDraft]);
+  useEffect(()=>{const refresh=()=>{void window.pharmacy.counterDefaults().then(value=>{setCounterDefaults(value);if(!initialDraft&&lines.length===0)setMethod(value.defaultPaymentMethod)}).catch(()=>{})};window.addEventListener('techorbit:settings-saved',refresh);return()=>window.removeEventListener('techorbit:settings-saved',refresh)},[initialDraft,lines.length]);
   const scan = useRef<HTMLInputElement>(null),
     seq = useRef(0),
     postLock = useRef(false),
@@ -261,7 +264,7 @@ export function POS({ user }: { user: User }) {
       setError("No unexpired stock is available");
       return;
     }
-    const unit = product.units[0];
+    const unit = (counterDefaults.defaultSaleUnit==='product'?null:product.units.find(value=>value.unit_name.toLowerCase()===(counterDefaults.defaultSaleUnit==='base'?product.baseUnit.toLowerCase():counterDefaults.defaultSaleUnit)))||product.units[0];
     if (!unit) {
       setError("Configure a sale unit before selling this product");
       return;
@@ -334,7 +337,7 @@ export function POS({ user }: { user: User }) {
     setDiscount("0");
     setDiscountType('fixed');
     setCustomer(null);
-    setMethod("cash");
+    setMethod(counterDefaults.defaultPaymentMethod);
     setCreditMode('paid');setReceived('0');setDueDate('');setCashTendered('');
     setDoctorName('');setPrescriptionReference('');setWarningAcknowledged(false);
     setRecoveryState('editing');setRecoveryNotice('');

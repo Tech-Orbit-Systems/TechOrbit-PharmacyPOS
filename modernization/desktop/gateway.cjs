@@ -48,6 +48,7 @@ class Gateway {
         this.expires = Date.now() + 8 * 3600000;
         this.failures = 0;
         return { ...user, demo: this.demo,canViewProfit:hasPermission(this.db,user.id,'report.cost'),
+          canManageSettings:hasPermission(this.db,user.id,'settings.manage'),
           canViewSalesReport:hasPermission(this.db,user.id,'invoice.search'),canViewInventory:hasPermission(this.db,user.id,'inventory.view'),canViewDues:hasPermission(this.db,user.id,'dues.manage'),canViewAuditReport:hasPermission(this.db,user.id,'audit.view'),canViewClosingReport:hasPermission(this.db,user.id,'closing.create'),canViewVendorDues:hasPermission(this.db,user.id,'dues.manage')&&hasPermission(this.db,user.id,'expense.manage') };
       } catch (error) {
         if (++this.failures >= 5) {
@@ -74,6 +75,19 @@ class Gateway {
     }
     if (active.must_change_password)
       throw Error("Change your temporary password first");
+    if (command === 'settingsRead') {
+      this.authorize('settings.manage');
+      return require('./settings.cjs').current(this.db);
+    }
+    if (command === 'counterDefaults') {
+      this.authorize('sale.create');
+      const {read} = require('./settings.cjs');
+      return {defaultSaleUnit:read(this.db,'defaultSaleUnit'),defaultPaymentMethod:read(this.db,'defaultPaymentMethod')};
+    }
+    if (command === 'settingsSave') {
+      this.authorize('settings.manage');
+      return require('./settings.cjs').save(this.db, input, this.session);
+    }
     if (['packingDetail','packingSave'].includes(command)) {
       this.authorize('settings.manage');
       const service=new (require('./packing.cjs').Packing)(this.db);
@@ -577,7 +591,7 @@ class Gateway {
       if(doctorName.length>150)throw Error('Doctor name must be 150 characters or fewer');
       if(prescriptionReference.length>200)throw Error('Prescription reference must be 200 characters or fewer');
       const sale = {
-        invoiceNumber: String(input.key || ""),
+        invoiceNumber: require('./settings.cjs').read(this.db, 'invoicePrefix') + '-' + String(input.key || '').replace(/^TO-/, ''),
         idempotencyKey: String(input.key || ""),
         items: input.items.map((i) => {
           const item={productId:i.productId,saleUnit:i.saleUnit,quantity:i.quantity};

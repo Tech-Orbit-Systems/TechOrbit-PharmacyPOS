@@ -26,6 +26,9 @@ class SalesQuotationService {
     if(!Array.isArray(sale.items)||sale.items.length===0)throw new Error('At least one sale item is required');
     const soldAt=sale.soldAt||new Date().toISOString(),saleDate=soldAt.slice(0,10);
     const method=sale.paymentMethod||'cash';if(!METHODS.has(method))throw new Error('Unsupported payment method');
+    const warningSetting=this.db.prepare("SELECT value_json FROM Settings WHERE key='nearExpiryWarningDays'").get();
+    let warningDays=90;
+    if(warningSetting){try{const value=JSON.parse(warningSetting.value_json);if(Number.isSafeInteger(value)&&value>=0&&value<=365)warningDays=value}catch{}}
     const items=sale.items.map((item,index)=>this.normalizeItem(item,index+1,sale.roleCode));
     const grossMinor=items.reduce((sum,item)=>sum+item.grossMinor,0);
     const lineDiscountMinor=items.reduce((sum,item)=>sum+item.lineDiscountMinor,0);
@@ -46,7 +49,7 @@ class SalesQuotationService {
       if(item.product.prescription_required)item.warnings.push({type:'prescription'});
       if(item.product.controlled_medicine)item.warnings.push({type:'controlled'});
       for(const allocation of item.allocations){
-        if(allocation.batch.expiry_date&&this.daysUntil(saleDate,allocation.batch.expiry_date)<=90)item.warnings.push({type:'near_expiry',batchId:allocation.batch.id,expiryDate:allocation.batch.expiry_date});
+        if(allocation.batch.expiry_date&&this.daysUntil(saleDate,allocation.batch.expiry_date)<=warningDays)item.warnings.push({type:'near_expiry',batchId:allocation.batch.id,expiryDate:allocation.batch.expiry_date});
       }
     });
     const taxableMinor=items.reduce((sum,item)=>sum+item.taxableMinor,0),gstMinor=items.reduce((sum,item)=>sum+item.gstMinor,0);
