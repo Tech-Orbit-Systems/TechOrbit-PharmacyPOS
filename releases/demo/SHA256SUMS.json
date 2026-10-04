@@ -1,0 +1,22 @@
+{
+  "productName": "TechOrbit Pharmacy POS Demo",
+  "version": "0.9.0",
+  "generatedAt": "2026-10-03T21:06:33.661Z",
+  "artifacts": [
+    {
+      "file": "TechOrbit-PharmacyPOS-Demo-0.9.0-Portable.zip",
+      "bytes": 186121483,
+      "sha256": "697fd6a900328a6f1e82787e0888312502d45eceb228e884b8fb1c45e95daaee"
+    },
+    {
+      "file": "installer/TechOrbit-PharmacyPOS-Demo-0.9.0-Setup.exe",
+      "bytes": 177573376,
+      "sha256": "8774cca0f622110277e88cd75f2bbf0d054fe8688fdd1f0829fdf29ea61094a6"
+    },
+    {
+      "file": "TechOrbit-PharmacyPOS-Detailed-Demo-Walkthrough-Roman-Urdu.docx",
+      "bytes": 44802,
+      "sha256": "f5f0d3650619a0bdf8039751b0934b532010545ff8a40e28ca9da7fee5a099d1"
+    }
+  ]
+}
