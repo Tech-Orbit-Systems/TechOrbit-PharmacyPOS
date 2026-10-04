@@ -10,7 +10,7 @@ function createCustomer(db,input,userId){
   const existing=db.prepare('SELECT id,name,phone,active FROM Customers WHERE normalized_phone=?').get(normalized);
   if(existing){if(existing.active&&existing.name.toLowerCase()===name.toLowerCase())return existing;throw Error('This phone number already belongs to a customer. Select the existing customer.');}
   const now=new Date().toISOString();const id=Number(db.prepare('INSERT INTO Customers(name,phone,normalized_phone,created_at,updated_at) VALUES(?,?,?,?,?)').run(name,phone,normalized,now,now).lastInsertRowid);
-  db.prepare("INSERT INTO AuditLog(occurred_at,user_id,action,entity_type,entity_id,new_json) VALUES(?,?,'customer.create','customer',?,?)").run(now,userId,String(id),JSON.stringify({name,phone}));
+  db.prepare("INSERT INTO AuditLog(occurred_at,user_id,action,entity_type,entity_id,new_json,reason,device_id) VALUES(?,?,'customer.create','customer',?,?,?,'modern-desktop')").run(now,userId,String(id),JSON.stringify({created:true}), 'Customer account created');
   return {id,name,phone};
  })();
 }

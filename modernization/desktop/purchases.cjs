@@ -11,9 +11,10 @@ class PurchasesDesktop{
    FROM Suppliers s WHERE (?='' OR s.name LIKE ? ESCAPE '\\' OR s.phone LIKE ? ESCAPE '\\') ORDER BY s.active DESC,s.name COLLATE NOCASE,s.id LIMIT 200`).all(q,pattern,pattern);}
  saveSupplier(input,user){const name=text(input.name,200,'Supplier name',true),phone=text(input.phone,50,'Phone'),email=text(input.email,200,'Email'),address=text(input.address,500,'Address');
   if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw Error('Enter a valid supplier email');
-  const before=input.id?this.repo.findById(input.id):null,result=this.repo.save({id:input.id,name,phone,email,address,active:input.active!==false});
-  this.db.prepare("INSERT INTO AuditLog(occurred_at,user_id,role_code,action,entity_type,entity_id,previous_json,new_json,device_id) VALUES(?,?,?,?,?,?,?,?,?)")
-   .run(new Date().toISOString(),user.id,user.roleCode,before?'supplier.update':'supplier.create','supplier',String(result.id),before?JSON.stringify(before):null,JSON.stringify(result),'modern-desktop');return result;}
+  return this.db.transaction(()=>{const before=input.id?this.repo.findById(input.id):null,result=this.repo.save({id:input.id,name,phone,email,address,active:input.active!==false});
+   const facts=row=>row?{name:row.name,active:Boolean(row.active)}:null;
+   this.db.prepare("INSERT INTO AuditLog(occurred_at,user_id,role_code,action,entity_type,entity_id,previous_json,new_json,reason,device_id) VALUES(?,?,?,?,?,?,?,?,?,?)")
+    .run(new Date().toISOString(),user.id,user.roleCode,before?'supplier.update':'supplier.create','supplier',String(result.id),before?JSON.stringify(facts(before)):null,JSON.stringify(facts(result)),before?'Supplier profile updated':'Supplier created','modern-desktop');return result;})();}
  products(input={}){const q=text(input.q,100,'Search')||'',pattern='%'+q.replace(/[\\%_]/g,'\\$&')+'%';return this.db.prepare(`SELECT p.id,p.name,p.generic_name,p.product_type,p.base_unit,p.default_sale_price_minor,
    json_group_array(json_object('unitName',u.unit_name,'baseQuantity',u.base_quantity,'sellingPriceMinor',u.selling_price_minor,'default',u.is_default_sale_unit)) units
    FROM Products p JOIN ProductUnits u ON u.product_id=p.id WHERE p.active=1 AND (?='' OR p.name LIKE ? ESCAPE '\\' OR p.generic_name LIKE ? ESCAPE '\\' OR p.barcode LIKE ? ESCAPE '\\' OR p.sku LIKE ? ESCAPE '\\')
