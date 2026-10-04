@@ -109,6 +109,7 @@ app.whenReady().then(async () => {
     "customerSearch", "customerDetail", "duesList", "duesHistory", "receivableCollect", "supplierPay", "vendorPay",
     "expenseMetadata", "vendorSave", "expenseList", "expensePost", "expenseVoid",
     "login",
+    "usersCatalog", "usersList", "userDetail", "userCreate", "userUpdate", "userResetPassword", "userSetPermission",
     "reportProfitLoss", "reportEntries", "reportExport",
     "dailySalesSummary", "dailySalesEntries", "dailySalesExport",
     "medicineSummary", "medicineEntries", "medicineExport",

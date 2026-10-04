@@ -27,6 +27,7 @@ import { Accounts } from './Accounts';
 import { Closing } from './Closing';
 import { Reports } from './Reports';
 import { OperationalSettings } from './OperationalSettings';
+import { UsersAdmin } from './UsersAdmin';
 const nav = [
   ["Dashboard", LayoutDashboard],
   ["Point of Sale", ShoppingCart],
@@ -130,11 +131,7 @@ export function App() {
           <button className="primary">
             {user ? "Save password" : "Sign in"}
           </button>
-          <small>
-            Review workspace: demo / TechOrbit-Demo-2026!
-            <br />
-            Review data is separate from the existing pharmacy database.
-          </small>
+          <small>Sign in with your assigned account. Demo credentials are provided separately for the isolated review workspace.</small>
         </form>
       </main>
     );
@@ -236,6 +233,7 @@ export function App() {
                 </small>
               </section>
               {user.canManageSettings&&<OperationalSettings/>}
+              {user.roleCode==='admin'&&<UsersAdmin/>}
               {user.demo && (
                 <section className="panel demo-tools">
                   <h2>Demo data</h2>

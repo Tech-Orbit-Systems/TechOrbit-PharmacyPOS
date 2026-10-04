@@ -65,9 +65,10 @@ class Gateway {
     if (!this.session || Date.now() > this.expires)
       throw Error("Please sign in");
     const active = this.db
-      .prepare("SELECT active,must_change_password FROM Users WHERE id=?")
+      .prepare("SELECT u.active,u.must_change_password,r.code role_code FROM Users u JOIN Roles r ON r.id=u.role_id WHERE u.id=?")
       .get(this.session.id);
     if (!active?.active) throw Error("Account is inactive");
+    this.session.roleCode = active.role_code;
     if (command === "changePassword") {
       const r = this.auth.changePassword({ ...input, userId: this.session.id });
       this.session.mustChangePassword = false;
@@ -75,6 +76,18 @@ class Gateway {
     }
     if (active.must_change_password)
       throw Error("Change your temporary password first");
+    if (['usersCatalog','usersList','userDetail','userCreate','userUpdate','userResetPassword','userSetPermission'].includes(command)) {
+      if (this.session.roleCode !== 'admin') throw Error('Only an admin can manage users');
+      this.authorize('user.manage');
+      const service = new (require('./users.cjs').UsersAdmin)(this.db);
+      if (command === 'usersCatalog') return service.catalog();
+      if (command === 'usersList') return service.list();
+      if (command === 'userDetail') return service.detail(input.id);
+      if (command === 'userCreate') return service.create(input,this.session);
+      if (command === 'userUpdate') return service.update(input,this.session);
+      if (command === 'userResetPassword') return service.resetPassword(input,this.session);
+      return service.setPermission(input,this.session);
+    }
     if (command === 'settingsRead') {
       this.authorize('settings.manage');
       return require('./settings.cjs').current(this.db);

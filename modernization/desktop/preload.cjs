@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 const methods = [
   "resetDemo",
   "settingsRead", "settingsSave", "counterDefaults",
+  "usersCatalog", "usersList", "userDetail", "userCreate", "userUpdate", "userResetPassword", "userSetPermission",
   "productList", "productDetail", "productSave", "productSuppliers", "packingDetail", "packingSave",
   "productImportInspect", "productImportPreview", "productImportTemplate", "productImportErrors", "productImportCommit",
   "shiftStatus", "closingShiftPreview", "closingPeriodPreview", "closingHandover", "closingShiftOpen", "closingShiftClose",

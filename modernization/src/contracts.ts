@@ -86,6 +86,15 @@ export interface User {
   canViewAuditReport:boolean;
   canManageSettings:boolean;
 }
+export interface ManagedUser {
+  id:number;username:string;displayName:string;roleCode:string;active:boolean;mustChangePassword:boolean;
+  createdAt:string;updatedAt:string;overrides?:Record<string,boolean>;
+}
+export interface UsersCatalog {
+  roles:{id:number;code:string;name:string}[];
+  permissions:{code:string;description:string}[];
+  rolePermissions:{roleCode:string;permissionCode:string}[];
+}
 export interface OperationalSettings {
   invoicePrefix:string;defaultGstBasisPoints:number;nearExpiryWarningDays:number;stockAlertThreshold:number;
   defaultSaleUnit:'product'|'base'|'strip'|'box';defaultPaymentMethod:Payment;
@@ -385,6 +394,13 @@ export interface Api {
     currentPassword: string;
     newPassword: string;
   }): Promise<unknown>;
+  usersCatalog():Promise<UsersCatalog>;
+  usersList():Promise<ManagedUser[]>;
+  userDetail(input:{id:number}):Promise<ManagedUser>;
+  userCreate(input:{username:string;displayName:string;roleCode:string}):Promise<{user:ManagedUser;temporaryPassword:string}>;
+  userUpdate(input:{id:number;displayName:string;roleCode:string;active:boolean}):Promise<ManagedUser>;
+  userResetPassword(input:{id:number}):Promise<{user:ManagedUser;temporaryPassword:string}>;
+  userSetPermission(input:{id:number;permissionCode:string;mode:'allow'|'deny'|'inherit'}):Promise<{user:ManagedUser;effective:boolean}>;
   dashboard(input: {
     range: string;
     from?: string;
