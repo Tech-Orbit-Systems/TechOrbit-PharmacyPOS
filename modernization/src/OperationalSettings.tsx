@@ -4,7 +4,9 @@ import type {OperationalSettings as Values} from './contracts';
 const numeric: (keyof Values)[] = ['defaultGstBasisPoints','nearExpiryWarningDays','stockAlertThreshold','receiptPaperWidthMm','backupRetentionDays','closingVarianceToleranceMinor','sixMonthCycleStartMonth'];
 export function OperationalSettings(){
   const [values,setValues]=useState<Values|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
-  useEffect(()=>{let live=true;window.pharmacy.settingsRead().then(v=>{if(live)setValues(v)}).catch(e=>{if(live)setError((e as Error).message)});return()=>{live=false}},[]);
+  const [backup,setBackup]=useState<Awaited<ReturnType<typeof window.pharmacy.backupStatus>>|null>(null),[backupError,setBackupError]=useState('');
+  const refreshBackup=()=>window.pharmacy.backupStatus().then(setBackup).catch(e=>setBackupError((e as Error).message));
+  useEffect(()=>{let live=true;window.pharmacy.settingsRead().then(v=>{if(live)setValues(v)}).catch(e=>{if(live)setError((e as Error).message)});void refreshBackup();return()=>{live=false}},[]);
   const change=<K extends keyof Values>(key:K,value:Values[K])=>setValues(old=>old?{...old,[key]:value}:old);
   const profile=(key:keyof Values['receiptProfile'],value:string)=>setValues(old=>old?{...old,receiptProfile:{...old.receiptProfile,[key]:value}}:old);
   const text=(key:keyof Values,label:string,maxLength=120)=> <label>{label}<input value={String(values?.[key]??'')} maxLength={maxLength} onChange={e=>change(key,e.target.value as Values[typeof key])}/></label>;
@@ -14,7 +16,7 @@ export function OperationalSettings(){
     event.preventDefault();if(!values||busy)return;setBusy(true);setError('');setNotice('');
     try{
       if(numeric.some(key=>!Number.isSafeInteger(values[key]) || Number(values[key])<0))throw Error('Enter valid whole-number settings');
-      const saved=await window.pharmacy.settingsSave(values);setValues(saved);window.dispatchEvent(new Event('techorbit:settings-saved'));setNotice('Operational settings saved and audited.');
+      const saved=await window.pharmacy.settingsSave(values);setValues(saved);window.dispatchEvent(new Event('techorbit:settings-saved'));setNotice('Operational settings saved and audited.');void refreshBackup();
     }catch(e){setError((e as Error).message)}finally{setBusy(false)}
   };
   if(!values)return <section className="panel"><h2>Operational settings</h2><p role={error?'alert':'status'}>{error||'Loading settings…'}</p></section>;
@@ -39,7 +41,8 @@ export function OperationalSettings(){
     <section className="panel"><h2>Backup preferences</h2><div className="settings-fields">
       <label>Daily backup time<input type="time" value={values.backupScheduleTime} onChange={e=>change('backupScheduleTime',e.target.value)}/></label>
       {number('backupRetentionDays','Keep backups (days)',1,365)}
-    </div><small>Automatic scheduling and restore controls are tracked separately under P066–P067; this stores the approved preferences.</small></section>
+    </div><small>Local SQLite backup runs daily and catches up after a missed schedule. Restore controls are tracked under P067. Keep backup files private and copy them off-device using an approved secure process.</small>
+    <div role="status">{backup ? <><p>Last successful backup: {backup.lastSuccess ? `${backup.lastSuccess.at} (${backup.lastSuccess.file})` : 'None yet'}</p><p>Last failure: {backup.lastFailure ? `${backup.lastFailure.at} — ${backup.lastFailure.message}` : 'None'}</p><p>Free backup space: {backup.freeBytes == null ? 'Unavailable' : `${Math.floor(backup.freeBytes/1024/1024)} MB`}</p><p>{backup.running?'Backup running':'Backup idle'}</p></> : <p>{backupError || 'Loading backup health…'}</p>}</div><button type="button" onClick={refreshBackup}>Refresh backup health</button></section>
     {error&&<p className="error" role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
     <button className="primary" disabled={busy} type="submit">{busy?'Saving…':'Save operational settings'}</button>
   </form>;

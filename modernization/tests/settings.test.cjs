@@ -11,8 +11,10 @@ test('P062 validates and audits operational settings, then applies new receipt, 
   try{
     seedDemo(db);
     const gateway=new Gateway(db,{demo:true});
+    gateway.dailyBackup={status:()=>({lastSuccess:null,lastFailure:null,freeBytes:123456,running:false,scheduleTime:'22:00'})};
     const user=await gateway.call('login',{username:'demo',password:'TechOrbit-Demo-2026!'});
     assert.equal(user.canManageSettings,true);
+    assert.equal((await gateway.call('backupStatus')).freeBytes,123456);
     const before=await gateway.call('settingsRead');
     assert.equal(before.invoicePrefix,'TO');
     await assert.rejects(gateway.call('settingsSave',{invoicePrefix:'bad prefix'}),/Invoice prefix/);
@@ -46,6 +48,7 @@ test('P062 validates and audits operational settings, then applies new receipt, 
     assert.equal(cashierUser.canManageSettings,false);
     await assert.rejects(cashier.call('settingsRead'),/role does not allow/);
     await assert.rejects(cashier.call('settingsSave',{invoicePrefix:'BAD'}),/role does not allow/);
+    await assert.rejects(cashier.call('backupStatus'),/role does not allow/);
     assert.equal((await cashier.call('counterDefaults')).defaultPaymentMethod,'digital');
   }finally{db.close()}
 });

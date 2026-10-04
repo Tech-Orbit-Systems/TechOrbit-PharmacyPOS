@@ -255,6 +255,10 @@
       }
     }
   },
+  "backupStatus": {
+    "kind": "object",
+    "properties": {}
+  },
   "counterDefaults": {
     "kind": "object",
     "properties": {}

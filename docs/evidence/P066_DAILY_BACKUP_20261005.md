@@ -1,0 +1,7 @@
+# P066 daily backup evidence (2026-10-05)
+
+The desktop worker owns one local scheduler per SQLite database. On startup it catches up if no backup has ever succeeded or at least one scheduled day was missed; otherwise it runs once per local calendar day after the configured time. Each attempt uses SQLite's online backup API, integrity check and SHA-256 manifest, plus a checksum-covered archive of validated operational settings. It does not copy raw WAL files, save passwords/tokens into the settings archive, or use cloud storage.
+
+The admin-only settings screen shows last success, last failure and available backup-disk space. A free-space preflight requires at least twice the source DB size or 100 MiB, whichever is higher. Retention applies only after a verified new backup and removes the DB, manifest and settings archive together. A failed attempt keeps the prior good backup and records a visible failure. State and files remain in the app's private local data directory; an approved off-device copy process remains an operational release consideration. P067 separately owns restore controls and drills.
+
+Verification: isolated Jest backup-manager and daily-backup suites (WAL data, first-start/missed-day catch-up, retention, low-space failure, tamper): 6/6; modern desktop Node tests: 37/37; focused settings permission test 1/1 after the test change; TypeScript/Vite build passed; isolated Electron settings E2E 1/1. Formal manual three-run QA, packaged Windows/low-disk field validation and restore acceptance remain separate gates.

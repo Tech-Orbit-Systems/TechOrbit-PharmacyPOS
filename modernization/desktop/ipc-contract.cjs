@@ -10,7 +10,7 @@ const strict={
   userResetPassword:{id:'id'},
   userSetPermission:{id:'id',permissionCode:'string:80',mode:'mode'},
 };
-const empty=new Set(['logout','usersCatalog','usersList','settingsRead','counterDefaults','productSuppliers','shiftStatus','expenseMetadata','closingHandover','customers','resetDemo','reviewAccess']);
+const empty=new Set(['logout','usersCatalog','usersList','settingsRead','counterDefaults','backupStatus','productSuppliers','shiftStatus','expenseMetadata','closingHandover','customers','resetDemo','reviewAccess']);
 function invalid(){throw Error('Invalid request payload')}
 function matches(value,schema,depth=0){
   if(depth>16)return false;

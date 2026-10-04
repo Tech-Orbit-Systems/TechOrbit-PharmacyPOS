@@ -18,6 +18,7 @@ var require_commands = __commonJS({
       "settingsRead",
       "settingsSave",
       "counterDefaults",
+      "backupStatus",
       "usersCatalog",
       "usersList",
       "userDetail",

@@ -11,6 +11,9 @@ test('P062 manager edits grouped settings and sees the saved values after reopen
     await page.getByRole('button',{name:'Sign in',exact:true}).click();
     await page.getByRole('button',{name:'Settings',exact:true}).click();
     await expect(page.getByRole('heading',{name:'Pharmacy and receipt'})).toBeVisible();
+    await expect(page.getByText('Last successful backup:')).toBeVisible();
+    await page.getByRole('button',{name:'Refresh backup health'}).click();
+    await expect(page.getByText(/Free backup space: \d+ MB/)).toBeVisible();
     await page.getByLabel('Pharmacy name').fill('Care Pharmacy');
     await page.getByLabel('STRN').fill('STRN-123');
     await page.getByLabel('Invoice prefix').fill('MED');

@@ -258,6 +258,7 @@ export interface AuditReportSummary {range:{from:string;to:string};items:AuditRe
 export interface Api {
   settingsRead():Promise<OperationalSettings>;
   settingsSave(input:Partial<OperationalSettings>):Promise<OperationalSettings>;
+  backupStatus():Promise<{lastSuccess:{day:string;at:string;file:string;bytes:number}|null;lastFailure:{at:string;message:string}|null;running:boolean;freeBytes:number|null;backupDirectory:string;scheduleTime:string}>;
   counterDefaults():Promise<Pick<OperationalSettings,'defaultSaleUnit'|'defaultPaymentMethod'>>;
   resetDemo():Promise<{reset:boolean}>;
   auditSummary(input:AuditReportInput):Promise<AuditReportSummary>;

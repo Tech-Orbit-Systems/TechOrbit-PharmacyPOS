@@ -92,6 +92,11 @@ class Gateway {
       this.authorize('settings.manage');
       return require('./settings.cjs').current(this.db);
     }
+    if (command === 'backupStatus') {
+      this.authorize('backup.manage');
+      if (!this.dailyBackup) throw Error('Backup status is unavailable');
+      return this.dailyBackup.status();
+    }
     if (command === 'counterDefaults') {
       this.authorize('sale.create');
       const {read} = require('./settings.cjs');
