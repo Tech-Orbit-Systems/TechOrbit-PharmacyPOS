@@ -1,0 +1,9 @@
+# P067 restore workflow evidence (2026-10-05)
+
+The admin-only Settings workflow lists exact local backup filenames and marks checksum, configuration and schema validation failures as unavailable. A manual verified backup can be created before restore. Restore requires a reason plus the typed confirmation `RESTORE`.
+
+Before replacement, the worker rechecks permission and the selected file, refuses a running backup, creates a standard verified `pre-restore` backup without pruning the selected snapshot, checkpoints WAL, stops scheduling and closes SQLite. The main process then re-verifies the backup, rejects unknown/newer migrations, creates a private rollback copy, and installs the selected database through a verified temporary copy. On any post-replacement reconciliation failure it restores the rollback copy. The selected and standard pre-restore backups are never deleted or overwritten by the operation.
+
+After opening the restored database, the coordinator runs migrations, `quick_check`, compares operational table counts with the selected backup, reconciles the effective settings against the checksum-covered configuration archive and appends `backup.restore` to immutable audit history. The desktop restarts its worker and signs the operator out so no pre-restore session continues.
+
+Verification: isolated backup/restore Jest suites 10/10 (exact selection, WAL-safe backup, checksum/config tamper, path traversal, newer schema, safety rollback, counts and audit); modern integration suite 37/37; focused backup permission test 1/1; TypeScript/Vite build passed; focused isolated Electron settings and full create-change-restore-sign-in E2E passed 1/1. Formal three-run manual acceptance, packaged Windows disk-full field rehearsal, off-device recovery and P088 diagnostic bundle remain separate release gates.

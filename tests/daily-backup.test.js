@@ -12,6 +12,7 @@ describe('P066 daily backup', () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(),'to-daily-backup-'));
     databaseFile = path.join(dir,'pharmacy.sqlite3');
     db = openDatabase({filename:databaseFile});
+    db.prepare("UPDATE Settings SET value_json='7' WHERE key='backupRetentionDays'").run();
     now = new Date('2026-10-05T08:00:00');
   });
   afterEach(() => {scheduler?.stop(); if(db?.open) db.close(); fs.rmSync(dir,{recursive:true,force:true});});

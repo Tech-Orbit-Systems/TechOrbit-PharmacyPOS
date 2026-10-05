@@ -35,6 +35,22 @@ test('P062 manager edits grouped settings and sees the saved values after reopen
     await page.getByRole('button',{name:'Close dialog',exact:true}).click();
     await page.getByRole('button',{name:'Point of Sale',exact:true}).click();
     await expect(page.getByRole('button',{name:'Digital',exact:true})).toHaveAttribute('aria-pressed','true');
+    await page.getByRole('button',{name:'Settings',exact:true}).click();
+    await page.getByRole('button',{name:'Create verified backup now'}).click();
+    await expect(page.getByText('Verified backup created.')).toBeVisible();
+    await expect(page.getByLabel('Exact backup')).not.toHaveValue('');
+    await page.getByLabel('Pharmacy name').fill('Changed After Backup');
+    await page.getByRole('button',{name:'Save operational settings'}).click();
+    await expect(page.getByText('Operational settings saved and audited.')).toBeVisible();
+    await page.getByLabel('Restore reason').fill('Recover the verified settings snapshot');
+    await page.getByLabel('Type RESTORE to confirm').fill('RESTORE');
+    await page.getByRole('button',{name:'Restore selected backup'}).click();
+    await expect(page.getByRole('heading',{name:'Sign in',exact:true})).toBeVisible({timeout:30000});
+    await page.getByLabel('Username',{exact:true}).fill('demo');
+    await page.getByLabel('Password',{exact:true}).fill('TechOrbit-Demo-2026!');
+    await page.getByRole('button',{name:'Sign in',exact:true}).click();
+    await page.getByRole('button',{name:'Settings',exact:true}).click();
+    await expect(page.getByLabel('Pharmacy name')).toHaveValue('Care Pharmacy');
     expect(errors).toEqual([]);
   }finally{await app.close()}
 });

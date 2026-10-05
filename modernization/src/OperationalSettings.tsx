@@ -5,7 +5,8 @@ const numeric: (keyof Values)[] = ['defaultGstBasisPoints','nearExpiryWarningDay
 export function OperationalSettings(){
   const [values,setValues]=useState<Values|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
   const [backup,setBackup]=useState<Awaited<ReturnType<typeof window.pharmacy.backupStatus>>|null>(null),[backupError,setBackupError]=useState('');
-  const refreshBackup=()=>window.pharmacy.backupStatus().then(setBackup).catch(e=>setBackupError((e as Error).message));
+  const [backups,setBackups]=useState<Awaited<ReturnType<typeof window.pharmacy.backupList>>>([]),[selectedBackup,setSelectedBackup]=useState(''),[restoreReason,setRestoreReason]=useState(''),[restoreConfirm,setRestoreConfirm]=useState(''),[backupBusy,setBackupBusy]=useState(false);
+  const refreshBackup=()=>Promise.all([window.pharmacy.backupStatus(),window.pharmacy.backupList()]).then(([health,list])=>{setBackup(health);setBackups(list);setSelectedBackup(old=>list.some(item=>item.name===old&&item.valid)?old:(list.find(item=>item.valid)?.name||''));setBackupError('')}).catch(e=>setBackupError((e as Error).message));
   useEffect(()=>{let live=true;window.pharmacy.settingsRead().then(v=>{if(live)setValues(v)}).catch(e=>{if(live)setError((e as Error).message)});void refreshBackup();return()=>{live=false}},[]);
   const change=<K extends keyof Values>(key:K,value:Values[K])=>setValues(old=>old?{...old,[key]:value}:old);
   const profile=(key:keyof Values['receiptProfile'],value:string)=>setValues(old=>old?{...old,receiptProfile:{...old.receiptProfile,[key]:value}}:old);
@@ -19,6 +20,8 @@ export function OperationalSettings(){
       const saved=await window.pharmacy.settingsSave(values);setValues(saved);window.dispatchEvent(new Event('techorbit:settings-saved'));setNotice('Operational settings saved and audited.');void refreshBackup();
     }catch(e){setError((e as Error).message)}finally{setBusy(false)}
   };
+  const createBackup=async()=>{setBackupBusy(true);setError('');setNotice('');try{const created=await window.pharmacy.backupCreate();setNotice('Verified backup created.');await refreshBackup();setSelectedBackup(created.file)}catch(e){setError((e as Error).message)}finally{setBackupBusy(false)}};
+  const restoreBackup=async()=>{if(!selectedBackup||restoreConfirm!=='RESTORE'||backupBusy)return;setBackupBusy(true);setError('');setNotice('');try{await window.pharmacy.backupRestore({name:selectedBackup,reason:restoreReason});window.dispatchEvent(new Event('techorbit:database-restored'))}catch(e){setError((e as Error).message);setBackupBusy(false)}};
   if(!values)return <section className="panel"><h2>Operational settings</h2><p role={error?'alert':'status'}>{error||'Loading settings…'}</p></section>;
   return <form className="operational-settings" onSubmit={save}>
     <section className="panel"><h2>Pharmacy and receipt</h2><div className="settings-fields">
@@ -42,7 +45,12 @@ export function OperationalSettings(){
       <label>Daily backup time<input type="time" value={values.backupScheduleTime} onChange={e=>change('backupScheduleTime',e.target.value)}/></label>
       {number('backupRetentionDays','Keep backups (days)',1,365)}
     </div><small>Local SQLite backup runs daily and catches up after a missed schedule. Restore controls are tracked under P067. Keep backup files private and copy them off-device using an approved secure process.</small>
-    <div role="status">{backup ? <><p>Last successful backup: {backup.lastSuccess ? `${backup.lastSuccess.at} (${backup.lastSuccess.file})` : 'None yet'}</p><p>Last failure: {backup.lastFailure ? `${backup.lastFailure.at} — ${backup.lastFailure.message}` : 'None'}</p><p>Free backup space: {backup.freeBytes == null ? 'Unavailable' : `${Math.floor(backup.freeBytes/1024/1024)} MB`}</p><p>{backup.running?'Backup running':'Backup idle'}</p></> : <p>{backupError || 'Loading backup health…'}</p>}</div><button type="button" onClick={refreshBackup}>Refresh backup health</button></section>
+    <div role="status">{backup ? <><p>Last successful backup: {backup.lastSuccess ? `${backup.lastSuccess.at} (${backup.lastSuccess.file})` : 'None yet'}</p><p>Last failure: {backup.lastFailure ? `${backup.lastFailure.at} — ${backup.lastFailure.message}` : 'None'}</p><p>Free backup space: {backup.freeBytes == null ? 'Unavailable' : `${Math.floor(backup.freeBytes/1024/1024)} MB`}</p><p>{backup.running?'Backup running':'Backup idle'}</p></> : <p>{backupError || 'Loading backup health…'}</p>}</div><div className="toolbar"><button type="button" onClick={refreshBackup}>Refresh backup health</button><button type="button" disabled={backupBusy} onClick={createBackup}>{backupBusy?'Working…':'Create verified backup now'}</button></div>
+    <h3>Restore a backup</h3><p>Restore signs everyone out and preserves the current database as a safety copy. Invalid, corrupt or newer-version backups cannot be selected.</p><div className="settings-fields">
+      <label>Exact backup<select aria-label="Exact backup" value={selectedBackup} onChange={e=>setSelectedBackup(e.target.value)}><option value="">Choose backup</option>{backups.map(item=><option key={item.name} value={item.name} disabled={!item.valid}>{item.name} · {item.valid?(item.hasConfiguration?'verified + configuration':'verified'):`invalid: ${item.error}`}</option>)}</select></label>
+      <label>Restore reason<input value={restoreReason} maxLength={240} onChange={e=>setRestoreReason(e.target.value)} placeholder="Why is this restore required?"/></label>
+      <label>Type RESTORE to confirm<input value={restoreConfirm} onChange={e=>setRestoreConfirm(e.target.value)} autoComplete="off"/></label>
+    </div><button className="danger" type="button" disabled={backupBusy||!selectedBackup||restoreReason.trim().length<10||restoreConfirm!=='RESTORE'} onClick={restoreBackup}>Restore selected backup</button></section>
     {error&&<p className="error" role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
     <button className="primary" disabled={busy} type="submit">{busy?'Saving…':'Save operational settings'}</button>
   </form>;

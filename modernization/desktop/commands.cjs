@@ -2,7 +2,7 @@
 const methods = [
   "resetDemo",
   "reviewAccess",
-  "settingsRead", "settingsSave", "counterDefaults", "backupStatus",
+  "settingsRead", "settingsSave", "counterDefaults", "backupStatus", "backupList", "backupCreate", "backupRestore",
   "usersCatalog", "usersList", "userDetail", "userCreate", "userUpdate", "userResetPassword", "userSetPermission",
   "productList", "productDetail", "productSave", "productSuppliers", "packingDetail", "packingSave",
   "productImportInspect", "productImportPreview", "productImportTemplate", "productImportErrors", "productImportCommit",

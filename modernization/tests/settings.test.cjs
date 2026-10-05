@@ -11,10 +11,13 @@ test('P062 validates and audits operational settings, then applies new receipt, 
   try{
     seedDemo(db);
     const gateway=new Gateway(db,{demo:true});
-    gateway.dailyBackup={status:()=>({lastSuccess:null,lastFailure:null,freeBytes:123456,running:false,scheduleTime:'22:00'})};
+    gateway.dailyBackup={status:()=>({lastSuccess:null,lastFailure:null,freeBytes:123456,running:false,scheduleTime:'22:00'}),manager:{list:()=>[{name:'pharmacy-test.sqlite3',valid:true}]},createNow:async()=>({file:'pharmacy-test.sqlite3'})};
     const user=await gateway.call('login',{username:'demo',password:'TechOrbit-Demo-2026!'});
     assert.equal(user.canManageSettings,true);
+    assert.equal(user.canManageBackup,true);
     assert.equal((await gateway.call('backupStatus')).freeBytes,123456);
+    assert.equal((await gateway.call('backupList'))[0].valid,true);
+    assert.equal((await gateway.call('backupCreate')).file,'pharmacy-test.sqlite3');
     const before=await gateway.call('settingsRead');
     assert.equal(before.invoicePrefix,'TO');
     await assert.rejects(gateway.call('settingsSave',{invoicePrefix:'bad prefix'}),/Invoice prefix/);
@@ -49,6 +52,8 @@ test('P062 validates and audits operational settings, then applies new receipt, 
     await assert.rejects(cashier.call('settingsRead'),/role does not allow/);
     await assert.rejects(cashier.call('settingsSave',{invoicePrefix:'BAD'}),/role does not allow/);
     await assert.rejects(cashier.call('backupStatus'),/role does not allow/);
+    await assert.rejects(cashier.call('backupList'),/role does not allow/);
+    await assert.rejects(cashier.call('backupCreate'),/role does not allow/);
     assert.equal((await cashier.call('counterDefaults')).defaultPaymentMethod,'digital');
   }finally{db.close()}
 });

@@ -54,6 +54,7 @@ export function App() {
   useEffect(() => {
     window.pharmacy.reviewAccess().then(setReviewAccess).catch(()=>{});
   },[]);
+  useEffect(()=>{const restored=()=>{setUser(null);setPage('Dashboard')};window.addEventListener('techorbit:database-restored',restored);return()=>window.removeEventListener('techorbit:database-restored',restored)},[]);
   useEffect(() => {
     const media = matchMedia("(prefers-color-scheme: dark)");
     const apply = () =>

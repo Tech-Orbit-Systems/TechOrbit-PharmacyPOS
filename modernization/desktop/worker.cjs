@@ -17,6 +17,17 @@ parentPort.on("message", async ({ id, command, input }) => {
       if(!workerData.demo)throw Error('Demo reset is unavailable for a live database.');
       await gateway.call('usersList',{});
       parentPort.postMessage({id,result:true});
+    }else if(command==='__prepareRestore'){
+      await gateway.call('backupList',{});
+      if(dailyBackup?.running)throw Error('Wait for the current backup to finish');
+      const versions=db.prepare('SELECT version FROM SchemaMigrations ORDER BY version').all().map(row=>row.version);
+      dailyBackup.manager.verify(input.name,{allowedMigrationVersions:versions});
+      const preferences=require('./settings.cjs').current(db);
+      const safety=await dailyBackup.manager.create({label:'pre-restore',retentionDays:preferences.backupRetentionDays,configuration:preferences,pruneAfter:false});
+      dailyBackup.manager.verify(safety.file,{allowedMigrationVersions:versions});
+      const actor={id:gateway.session.id,roleCode:gateway.session.roleCode,reason:input.reason};
+      dailyBackup.stop();db.pragma('wal_checkpoint(TRUNCATE)');db.close();
+      parentPort.postMessage({id,result:{actor,allowedMigrationVersions:versions,safetyBackupName:require('node:path').basename(safety.file)}});
     }else parentPort.postMessage({ id, result: await gateway.call(command, validateInput(command,input)) });
   } catch (error) {
     parentPort.postMessage({ id, error: error.message });

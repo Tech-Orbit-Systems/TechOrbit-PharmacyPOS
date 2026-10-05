@@ -85,6 +85,7 @@ export interface User {
   canViewClosingReport:boolean;
   canViewAuditReport:boolean;
   canManageSettings:boolean;
+  canManageBackup:boolean;
 }
 export interface OpeningStockManualInput {productId:number;entryDate:string;batchNumber:string;expiryDate:string;unit:string;quantity:number;unitCost:number;notes:string}
 export interface PackingSaveInput {id:number;updatedAt:string;units:{unitName:string;baseQuantity:number;sellingPriceMinor:number;isDefaultSaleUnit:boolean;allowsFractionalQuantity:boolean}[]}
@@ -259,6 +260,9 @@ export interface Api {
   settingsRead():Promise<OperationalSettings>;
   settingsSave(input:Partial<OperationalSettings>):Promise<OperationalSettings>;
   backupStatus():Promise<{lastSuccess:{day:string;at:string;file:string;bytes:number}|null;lastFailure:{at:string;message:string}|null;running:boolean;freeBytes:number|null;backupDirectory:string;scheduleTime:string}>;
+  backupList():Promise<{name:string;createdAt:string|null;bytes:number;valid:boolean;error?:string;schemaMigrations:number|null;hasConfiguration:boolean}[]>;
+  backupCreate():Promise<{day:string;at:string;file:string;bytes:number}>;
+  backupRestore(input:{name:string;reason:string}):Promise<{restored:boolean;backupName:string;safetyFile:string;counts:Record<string,number>;requiresSignIn:boolean}>;
   counterDefaults():Promise<Pick<OperationalSettings,'defaultSaleUnit'|'defaultPaymentMethod'>>;
   resetDemo():Promise<{reset:boolean}>;
   auditSummary(input:AuditReportInput):Promise<AuditReportSummary>;

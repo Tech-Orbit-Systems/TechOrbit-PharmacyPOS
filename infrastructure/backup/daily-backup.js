@@ -60,6 +60,22 @@ class DailyBackup {
     } finally { this.running = false; }
     return this.status();
   }
+  async createNow() {
+    if(this.running) throw Error('A backup is already running');
+    this.running=true;
+    try{
+      const preferences=this.settings();
+      fs.mkdirSync(this.backupDir,{recursive:true});
+      const sourceBytes=fs.statSync(this.databaseFile).size;
+      if(this.freeBytes()<Math.max(sourceBytes*2,100*1024*1024))throw Error('Insufficient free space for backup');
+      const result=await this.manager.create({label:'manual',retentionDays:preferences.backupRetentionDays,configuration:preferences});
+      this.manager.verify(result.file);
+      this.state.lastSuccess={day:localDay(this.now()),at:this.now().toISOString(),file:path.basename(result.file),bytes:result.manifest.bytes};
+      this.state.lastFailure=null;this.persist();
+      return this.state.lastSuccess;
+    }catch(error){this.state.lastFailure={at:this.now().toISOString(),message:String(error.message||error).slice(0,240)};this.persist();throw error;}
+    finally{this.running=false;}
+  }
   start() {
     if(this.timer) return;
     void this.tick();

@@ -9,8 +9,9 @@ const strict={
   userUpdate:{id:'id',displayName:'string:100',roleCode:'role',active:'boolean'},
   userResetPassword:{id:'id'},
   userSetPermission:{id:'id',permissionCode:'string:80',mode:'mode'},
+  backupRestore:{name:'string:180',reason:'string:240'},
 };
-const empty=new Set(['logout','usersCatalog','usersList','settingsRead','counterDefaults','backupStatus','productSuppliers','shiftStatus','expenseMetadata','closingHandover','customers','resetDemo','reviewAccess']);
+const empty=new Set(['logout','usersCatalog','usersList','settingsRead','counterDefaults','backupStatus','backupList','backupCreate','productSuppliers','shiftStatus','expenseMetadata','closingHandover','customers','resetDemo','reviewAccess']);
 function invalid(){throw Error('Invalid request payload')}
 function matches(value,schema,depth=0){
   if(depth>16)return false;

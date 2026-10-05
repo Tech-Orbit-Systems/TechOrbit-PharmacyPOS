@@ -49,6 +49,7 @@ class Gateway {
         this.failures = 0;
         return { ...user, demo: this.demo,canViewProfit:hasPermission(this.db,user.id,'report.cost'),
           canManageSettings:hasPermission(this.db,user.id,'settings.manage'),
+          canManageBackup:hasPermission(this.db,user.id,'backup.manage'),
           canViewSalesReport:hasPermission(this.db,user.id,'invoice.search'),canViewInventory:hasPermission(this.db,user.id,'inventory.view'),canViewDues:hasPermission(this.db,user.id,'dues.manage'),canViewAuditReport:hasPermission(this.db,user.id,'audit.view'),canViewClosingReport:hasPermission(this.db,user.id,'closing.create'),canViewVendorDues:hasPermission(this.db,user.id,'dues.manage')&&hasPermission(this.db,user.id,'expense.manage') };
       } catch (error) {
         if (++this.failures >= 5) {
@@ -96,6 +97,17 @@ class Gateway {
       this.authorize('backup.manage');
       if (!this.dailyBackup) throw Error('Backup status is unavailable');
       return this.dailyBackup.status();
+    }
+    if (command === 'backupList') {
+      this.authorize('backup.manage');
+      if (!this.dailyBackup) throw Error('Backup management is unavailable');
+      const versions=this.db.prepare('SELECT version FROM SchemaMigrations ORDER BY version').all().map(row=>row.version);
+      return this.dailyBackup.manager.list({allowedMigrationVersions:versions});
+    }
+    if (command === 'backupCreate') {
+      this.authorize('backup.manage');
+      if (!this.dailyBackup) throw Error('Backup management is unavailable');
+      return this.dailyBackup.createNow();
     }
     if (command === 'counterDefaults') {
       this.authorize('sale.create');

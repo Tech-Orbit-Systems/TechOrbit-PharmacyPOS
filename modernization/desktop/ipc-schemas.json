@@ -259,6 +259,31 @@
     "kind": "object",
     "properties": {}
   },
+  "backupList": {
+    "kind": "object",
+    "properties": {}
+  },
+  "backupCreate": {
+    "kind": "object",
+    "properties": {}
+  },
+  "backupRestore": {
+    "kind": "object",
+    "properties": {
+      "name": {
+        "optional": false,
+        "schema": {
+          "kind": "string"
+        }
+      },
+      "reason": {
+        "optional": false,
+        "schema": {
+          "kind": "string"
+        }
+      }
+    }
+  },
   "counterDefaults": {
     "kind": "object",
     "properties": {}

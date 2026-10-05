@@ -7,6 +7,7 @@ const { pathToFileURL } = require("url");
 const {validateInput}=require('./ipc-contract.cjs');
 const { SCHEME, ENTRY_URL, resolveAppAsset } = require('./app-protocol.cjs');
 const {publicError}=require('./ipc-error.cjs');
+const {restoreAndReconcile}=require('../../infrastructure/backup/restore-coordinator');
 // This separate entry never imports legacy server.js or opens the production data by default.
 protocol.registerSchemesAsPrivileged([{scheme:SCHEME,privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 app.setName("TechOrbit Pharmacy POS Demo");
@@ -23,6 +24,7 @@ const userData = process.env.TECHORBIT_UI_DATA_DIR;
 if (userData) app.setPath("userData", path.resolve(userData));
 let worker, window, databaseFilename, demoWorkspace, reviewPassword;
 let sequence = 0;
+let restoring = false;
 const pending = new Map();
 function requestWorker(command,input,timeoutMs=30000) {
   return new Promise((resolve,reject)=>{
@@ -78,6 +80,22 @@ async function resetDemoData() {
   for (const suffix of ["", "-wal", "-shm"])
     await fs.rm(databaseFilename + suffix, { force: true });
   await startWorker(databaseFilename, true);
+}
+async function restoreDatabase(input) {
+  if(restoring)throw Error('A restore is already in progress');
+  if(!input.reason.trim()||input.reason.trim().length<10)throw Error('Enter a clear restore reason');
+  restoring=true;let databaseClosed=false;
+  try{
+    const prepared=await requestWorker('__prepareRestore',{name:input.name,reason:input.reason.trim()});
+    databaseClosed=true;
+    await worker.terminate();worker=null;
+    const result=restoreAndReconcile({databaseFile:databaseFilename,backupDir:path.join(path.dirname(databaseFilename),'backups'),backupName:input.name,allowedMigrationVersions:prepared.allowedMigrationVersions,actor:prepared.actor,readConfiguration:require('./settings.cjs').current});
+    await startWorker(databaseFilename,demoWorkspace);databaseClosed=false;
+    return {...result,safetyFile:prepared.safetyBackupName};
+  }catch(error){
+    if(databaseClosed&&!worker){await startWorker(databaseFilename,demoWorkspace);databaseClosed=false;}
+    throw error;
+  }finally{restoring=false;}
 }
 app.whenReady().then(async () => {
   const distDirectory = path.join(__dirname, '../dist');
@@ -157,6 +175,8 @@ app.whenReady().then(async () => {
       const requestLimit = ["openingStockPreviewFile","productImportInspect","productImportPreview"].includes(command) ? 12000000 : 100000;
       if (JSON.stringify(input ?? {}).length > requestLimit)
         throw Error("Request too large");
+      if(restoring)throw Error('Restore in progress. Please wait.');
+      if(command==='backupRestore')return restoreDatabase(input);
       const result=requestWorker(command,input);
       if(command!=='closingPeriodExport'&&command!=='reportExport'&&command!=='dailySalesExport'&&command!=='medicineExport'&&command!=='customerReturnExport'&&command!=='supplierReturnExport'&&command!=='purchaseExport'&&command!=='supplierPurchaseExport'&&command!=='bonusStockExport'&&command!=='lowStockExport'&&command!=='expiryExport'&&command!=='batchStockExport'&&command!=='stockMovementExport'&&command!=='adjustmentExport'&&command!=='stockValuationExport'&&command!=='customerBalanceExport'&&command!=='supplierBalanceExport'&&command!=='vendorBalanceExport'&&command!=='overdueBalanceExport'&&command!=='settlementExport'&&command!=='dailyClosingExport'&&command!=='auditExport')return result;
       return result.then(async ({filename,csv,base64})=>{
